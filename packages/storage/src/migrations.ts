@@ -1,4 +1,5 @@
 import { CURRENT_FORMAT_VERSION, type DesignDocument } from '@designo/core'
+import { migrateRotationPivot } from './migrateRotationPivot.ts'
 import { storedDocumentSchema } from './schemas.ts'
 import type { MigrationSteps, RawDocument } from './types.ts'
 
@@ -6,7 +7,9 @@ import type { MigrationSteps, RawDocument } from './types.ts'
  * Every upgrade, keyed by the version it starts from. Bumping CURRENT_FORMAT_VERSION from N to
  * N + 1 means adding the entry N here and nothing else.
  */
-export const MIGRATION_STEPS: MigrationSteps = {}
+export const MIGRATION_STEPS: MigrationSteps = {
+  1: migrateRotationPivot
+}
 
 const isRawDocument = (value: unknown): value is RawDocument =>
   typeof value === 'object' && value !== null && !Array.isArray(value)

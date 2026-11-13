@@ -55,7 +55,8 @@ the same batch can nest inside them. If any operation fails, nothing is saved.
 text is plain SVG text with no shaping and differs slightly from the editor's canvas. It uses the
 fonts installed on the machine running the server.
 
-Colours are `#rrggbb` or `#rrggbbaa`. Coordinates are absolute on the page.
+Colours are `#rrggbb` or `#rrggbbaa`. Coordinates are absolute on the page, and `rotation` (in
+degrees) turns a node around its centre.
 
 ## Try it
 

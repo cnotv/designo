@@ -1,6 +1,6 @@
 import { CURRENT_FORMAT_VERSION, createDocument } from '@designo/core'
 import { describe, expect, it } from 'vitest'
-import { migrateRawDocument, parseStoredDocument } from './migrations.ts'
+import { MIGRATION_STEPS, migrateRawDocument, parseStoredDocument } from './migrations.ts'
 import type { MigrationSteps } from './types.ts'
 
 // A made-up v0 file that called the name "title"; proves the pipeline before a real bump exists.
@@ -9,7 +9,9 @@ const versionZeroFile = (): Record<string, unknown> => {
   return { ...rest, formatVersion: 0, title: name }
 }
 
+// The fixture step sits below the real ones, so an old file runs through every step to the current.
 const renameTitleToName: MigrationSteps = {
+  ...MIGRATION_STEPS,
   0: ({ title, ...rest }) => ({ ...rest, name: title })
 }
 

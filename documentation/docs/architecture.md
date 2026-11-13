@@ -104,6 +104,11 @@ the entry `N` to `MIGRATION_STEPS` in `packages/storage/src/migrations.ts`, a pu
 the raw version-N object to a version-(N + 1) one. The pipeline sets `formatVersion` itself. Add a
 test in `migrations.test.ts` with a sample of the old file.
 
+| Version | Change                                                                                       | Step                      |
+| ------- | -------------------------------------------------------------------------------------------- | ------------------------- |
+| 1       | First format; a node turns around its top-left corner                                        |                           |
+| 2       | A node turns around its centre; rotated nodes move so they are drawn exactly where they were | `migrateRotationPivot.ts` |
+
 ## Decisions
 
 - **UI library:** shadcn-vue, on Reka UI, with Tailwind CSS v4. Its components are copied into
