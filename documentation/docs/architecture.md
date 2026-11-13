@@ -81,9 +81,8 @@ flowchart LR
 - **MCP:** stdio only. A remote agent reaches it through `ssh` and `docker exec`, so it needs no
   network listener or login of its own.
 
-Deployment files: `Dockerfile`, `docker-compose.yml`, `netlify.toml`,
-`deploy/hetzner/cloud-init.yaml`, and the workflows in `.github/workflows`. How to use them:
-the self-hosting guide.
+Deployment files: `Dockerfile`, `docker-compose.yml`, `netlify.toml` and the workflows in
+`.github/workflows`. How to use them: the self-hosting guide.
 
 ## Files
 

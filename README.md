@@ -23,9 +23,8 @@ pnpm build && pnpm start     # http://127.0.0.1:3000
 Or with Docker: `docker compose up -d --build`, on port 3020.
 
 On a cloud server, put your reverse proxy in front of port 3020 with a login.
-The repository deploys itself to Hetzner Cloud once a few secrets are set.
 
-The [self-hosting guide](https://cnotv.github.io/designo/guides/self-hosting) covers all three,
+The [self-hosting guide](https://cnotv.github.io/designo/guides/self-hosting) covers each of these,
 including connecting agents to a remote server over SSH. For development, `pnpm dev` runs the
 editor with hot reload on port 5320.
 

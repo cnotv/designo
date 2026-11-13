@@ -1,4 +1,4 @@
-# Deploys to a Hetzner Cloud server set up as in the self-hosting guide. It stays off until the
+# Deploys to a Hetzner Cloud server set up as in deploy/hetzner/README.md. It stays off until the
 # repository variable HETZNER_DEPLOY is "true", so a fork or a fresh clone never fails a deploy.
 name: Deploy to Hetzner
 
