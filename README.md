@@ -24,8 +24,8 @@ Or with Docker: `docker compose up -d --build`, on port 3020.
 
 On a cloud server, put your reverse proxy in front of port 3020 with a login.
 
-The [self-hosting guide](https://cnotv.github.io/designo/guides/self-hosting) covers each of these,
-including connecting agents to a remote server over SSH. For development, `pnpm dev` runs the
+The [self-hosting guide](https://cnotv.github.io/designo/guides/self-hosting) covers Docker and
+connecting agents to it, locally or over SSH. For development, `pnpm dev` runs the
 editor with hot reload on port 5320.
 
 ## Docs and demo
