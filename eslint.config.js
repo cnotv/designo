@@ -11,10 +11,11 @@ import tseslint from 'typescript-eslint'
 import vueParser from 'vue-eslint-parser'
 
 export default [
+  // The docs site is a separate Docusaurus project with its own dependencies, which CI does not
+  // install for the workspace; its own build in github-pages.yml checks it.
   {
     ignores: [
-      '**/build/**',
-      '**/.docusaurus/**',
+      'documentation/**',
       '**/dist/**',
       '**/node_modules/**',
       '**/coverage/**',
