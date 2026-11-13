@@ -1,0 +1,21 @@
+{
+  "name": "@designo/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server that lets agents read and edit Designo files.",
+  "bin": {
+    "designo-mcp": "./src/main.ts"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "type-check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@designo/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7",
+    "@designo/storage": "workspace:*"
+  }
+}

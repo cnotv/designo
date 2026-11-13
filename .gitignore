@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+*.log
+*.local
+*.tsbuildinfo
+.DS_Store
+.idea
+/pr-preview/
+.designo-data/

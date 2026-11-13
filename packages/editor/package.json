@@ -1,0 +1,23 @@
+{
+  "name": "@designo/editor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Designo editor: a Vue 3 app that draws Designo files on a canvas.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@designo/core": "workspace:*",
+    "@designo/storage": "workspace:*",
+    "vue": "^3.5.45"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.11",
+    "vite": "^7.3.8",
+    "vue-tsc": "^3.3.14"
+  }
+}

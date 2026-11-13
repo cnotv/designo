@@ -1,0 +1,13 @@
+{
+  "name": "@designo/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Designo document model: nodes, operations and queries. No DOM, no I/O.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc -p tsconfig.json"
+  }
+}

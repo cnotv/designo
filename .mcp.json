@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "designo": {
+      "command": "pnpm",
+      "args": ["-s", "--filter", "@designo/mcp", "start"]
+    }
+  }
+}
