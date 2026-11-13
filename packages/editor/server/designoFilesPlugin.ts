@@ -1,6 +1,6 @@
 import { resolveDataDirectory } from '@designo/storage'
 import type { Plugin } from 'vite'
-import { FILES_ROUTE, handleFilesRequest, requestPath } from './filesApi.ts'
+import { FILES_ROUTE, handleFilesRequest } from './filesApi.ts'
 
 /**
  * Serves the Designo files the MCP server writes, so the dev editor shows an agent's edits live.
@@ -13,7 +13,7 @@ export const designoFilesPlugin = (): Plugin => ({
     const dataDirectory = resolveDataDirectory(process.env)
     // Connect strips the mount path, so the handler sees only what follows the route.
     server.middlewares.use(FILES_ROUTE, (request, response) => {
-      void handleFilesRequest(dataDirectory, requestPath(request), response)
+      void handleFilesRequest(dataDirectory, request, response, request.url ?? '')
     })
   }
 })

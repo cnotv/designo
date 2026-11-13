@@ -1,8 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
-import { fileIdSchema, nodeIdSchema, nodePatchSchema } from '@designo/storage'
-import { creatableNodeTypeSchema, operationInputSchema } from './schemas.ts'
+import {
+  creatableNodeTypeSchema,
+  fileIdSchema,
+  nodeIdSchema,
+  nodePatchSchema,
+  operationBatchSchema
+} from '@designo/storage'
 import {
   applyOperationsTool,
   createFileTool,
@@ -14,7 +19,6 @@ import type { DesignoToolContext } from './types.ts'
 
 const SERVER_VERSION = '0.0.0'
 const MAX_TREE_DEPTH = 50
-const MAX_OPERATIONS_PER_BATCH = 500
 
 const toToolResult = async (work: () => Promise<unknown>): Promise<CallToolResult> => {
   try {
@@ -118,7 +122,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
         'Apply a batch of create, update, delete and move operations as one change: if one fails, nothing is saved. Give create operations your own ids to nest nodes inside each other in the same batch. Prefer this over single-node tools when building a layout.',
       inputSchema: {
         fileId: fileIdSchema,
-        operations: z.array(operationInputSchema).min(1).max(MAX_OPERATIONS_PER_BATCH)
+        operations: operationBatchSchema
       },
       annotations: { destructiveHint: true }
     },

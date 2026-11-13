@@ -1,28 +1,13 @@
+import { createDocument, getNodeTree, type DesignNode, type DesignNodeTree } from '@designo/core'
 import {
-  applyOperations,
-  createDocument,
-  getNodeTree,
-  type DesignDocument,
-  type DesignNode,
-  type DesignNodeTree,
-  type DesignOperation
-} from '@designo/core'
-import { listDocuments, readDocument, writeDocument } from '@designo/storage'
-import type { DocumentSummary } from '@designo/storage'
-import type { DesignoToolContext, OperationInput } from './types.ts'
-
-const withGeneratedIds = (
-  operations: readonly OperationInput[],
-  context: DesignoToolContext
-): DesignOperation[] =>
-  operations.map((operation) =>
-    operation.kind === 'create'
-      ? { ...operation, id: operation.id ?? context.generateId(operation.type) }
-      : operation
-  )
-
-const createdIds = (operations: readonly DesignOperation[]): string[] =>
-  operations.flatMap((operation) => (operation.kind === 'create' ? [operation.id] : []))
+  applyOperationsToFile,
+  listDocuments,
+  readDocument,
+  writeDocument,
+  type DocumentSummary,
+  type OperationInput
+} from '@designo/storage'
+import type { DesignoToolContext } from './types.ts'
 
 /**
  * Lists the files an agent can open.
@@ -90,10 +75,11 @@ export const applyOperationsTool = async (
   context: DesignoToolContext,
   input: { fileId: string; operations: readonly OperationInput[] }
 ): Promise<{ createdNodeIds: string[] }> => {
-  const document: DesignDocument = await readDocument(context.dataDirectory, input.fileId)
-  const operations = withGeneratedIds(input.operations, context)
-  const result = applyOperations(document, operations)
-  if (!result.ok) throw new Error(result.error)
-  await writeDocument(context.dataDirectory, result.document)
-  return { createdNodeIds: createdIds(operations) }
+  const { createdNodeIds } = await applyOperationsToFile(
+    context.dataDirectory,
+    input.fileId,
+    input.operations,
+    context.generateId
+  )
+  return { createdNodeIds }
 }
