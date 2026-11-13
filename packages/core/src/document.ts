@@ -117,7 +117,7 @@ const applyCreate = (
   if (parentProblem) return failure(parentProblem)
   const node: DesignNode = {
     ...DEFAULT_NODE_PROPERTIES,
-    name: operation.type,
+    name: `${operation.type.charAt(0).toUpperCase()}${operation.type.slice(1)}`,
     ...operation.properties,
     id: operation.id,
     type: operation.type,

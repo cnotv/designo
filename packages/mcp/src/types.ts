@@ -1,9 +1,4 @@
-import type { z } from 'zod'
-import type { operationInputSchema } from './schemas.ts'
-
-export type OperationInput = z.infer<typeof operationInputSchema>
-
-export type GenerateId = (prefix: string) => string
+import type { GenerateId } from '@designo/storage'
 
 export interface DesignoToolContext {
   dataDirectory: string

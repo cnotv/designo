@@ -1,0 +1,79 @@
+import type { DesignNode, DesignOperation } from '@designo/core'
+
+export interface Point {
+  x: number
+  y: number
+}
+
+export interface Bounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** Screen position of the world origin, and CSS pixels per world unit. */
+export interface Viewport {
+  offsetX: number
+  offsetY: number
+  scale: number
+}
+
+export type DrawingTool = 'frame' | 'rectangle' | 'ellipse' | 'text'
+
+export type Tool = 'select' | DrawingTool
+
+export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
+
+/** What a pointer drag on the canvas is doing, from pointer down to pointer up. */
+export type Interaction =
+  | { kind: 'idle' }
+  | { kind: 'panning'; startScreen: Point; startViewport: Viewport }
+  | { kind: 'moving'; nodeIds: readonly string[]; startWorld: Point; currentWorld: Point }
+  | {
+      kind: 'resizing'
+      nodeId: string
+      handle: ResizeHandle
+      startBounds: Bounds
+      startWorld: Point
+      currentWorld: Point
+    }
+  | {
+      kind: 'drawing'
+      tool: DrawingTool
+      nodeId: string
+      parentId: string
+      startWorld: Point
+      currentWorld: Point
+    }
+  | {
+      kind: 'marquee'
+      startWorld: Point
+      currentWorld: Point
+      baseSelection: readonly string[]
+    }
+
+/** One undoable step: the batch that made it, and the batch that reverts it. */
+export interface HistoryEntry {
+  forward: readonly DesignOperation[]
+  backward: readonly DesignOperation[]
+}
+
+export interface HistoryState {
+  undoStack: readonly HistoryEntry[]
+  redoStack: readonly HistoryEntry[]
+}
+
+export interface LayerRow {
+  node: DesignNode
+  depth: number
+}
+
+export interface DrawRequest {
+  tool: DrawingTool
+  nodeId: string
+  parentId: string
+  start: Point
+  current: Point
+  keepSquare: boolean
+}

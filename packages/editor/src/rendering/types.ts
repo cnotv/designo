@@ -1,12 +1,9 @@
-export interface Bounds {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+import type { Bounds } from '../editing/types.ts'
 
-export interface Viewport {
-  offsetX: number
-  offsetY: number
-  scale: number
+export interface OverlayState {
+  selection: readonly string[]
+  hoveredId: string | undefined
+  marquee: Bounds | undefined
+  showHandles: boolean
+  color: string
 }

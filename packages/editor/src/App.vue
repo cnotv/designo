@@ -1,82 +1,75 @@
 <script setup lang="ts">
+import { File } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utilities'
 import DesignCanvas from './components/DesignCanvas.vue'
+import EditorToolbar from './components/EditorToolbar.vue'
+import LayersPanel from './components/LayersPanel.vue'
+import PropertiesPanel from './components/PropertiesPanel.vue'
+import { provideEditorContext } from './composables/editorContext.ts'
+import { useCanvasInteraction } from './composables/useCanvasInteraction.ts'
 import { useDesignoFiles } from './composables/useDesignoFiles.ts'
+import { useEditor } from './composables/useEditor.ts'
+import { useEditorShortcuts } from './composables/useEditorShortcuts.ts'
 
 const DOCS_SELF_HOSTING_URL = 'https://cnotv.github.io/designo/guides/self-hosting'
 
-const { documentSummaries, selectedFileId, activeDocument, isDemo, selectFile } = useDesignoFiles()
+const files = useDesignoFiles()
+const editor = useEditor(files)
+const interaction = useCanvasInteraction(editor)
+useEditorShortcuts(editor, interaction.spaceHeld)
+provideEditorContext({ files, editor, interaction })
+
+const { documentSummaries, selectedFileId, isDemo, selectFile } = files
 </script>
 
 <template>
-  <div class="editor-layout">
-    <nav class="file-list" aria-label="Files">
-      <h1 class="file-list-title">Designo</h1>
-      <p v-if="isDemo" class="file-list-note">
-        Demo: no Designo server is behind this page, so it shows a sample. To keep files and connect
-        agents, <a :href="DOCS_SELF_HOSTING_URL">self-host Designo</a>.
-      </p>
-      <p v-if="documentSummaries.length === 0" class="file-list-note">
-        No files yet. Ask an agent to call <code>create_file</code> through the Designo MCP server.
-      </p>
-      <ul>
-        <li v-for="summary in documentSummaries" :key="summary.id">
-          <a
-            href="#"
+  <TooltipProvider :delay-duration="400">
+    <div class="grid h-screen grid-cols-[240px_1fr_260px] grid-rows-[auto_1fr] overflow-hidden">
+      <EditorToolbar class="col-span-3" />
+
+      <aside class="bg-background flex min-h-0 flex-col border-r">
+        <nav aria-label="Files" class="flex flex-col gap-0.5 p-1">
+          <h2 class="text-muted-foreground px-2 pt-2 pb-1 font-semibold">Files</h2>
+          <p v-if="isDemo" class="text-muted-foreground px-2 pb-1">
+            No Designo server is behind this page, so it shows a sample.
+            <a class="text-primary underline-offset-2 hover:underline" :href="DOCS_SELF_HOSTING_URL"
+              >Self-host Designo</a
+            >
+            to keep files and connect agents.
+          </p>
+          <p v-else-if="documentSummaries.length === 0" class="text-muted-foreground px-2 pb-1">
+            No files yet. Ask an agent to call <code>create_file</code> through the Designo MCP
+            server.
+          </p>
+          <Button
+            v-for="summary in documentSummaries"
+            :key="summary.id"
+            variant="ghost"
+            size="xs"
+            :class="
+              cn('h-7 justify-start font-normal', summary.id === selectedFileId && 'bg-accent')
+            "
             :aria-current="summary.id === selectedFileId ? 'page' : undefined"
-            @click.prevent="selectFile(summary.id)"
-            >{{ summary.name }}</a
+            @click="selectFile(summary.id)"
           >
-        </li>
-      </ul>
-    </nav>
-    <main class="canvas-area">
-      <DesignCanvas v-if="activeDocument" :document="activeDocument" />
-    </main>
-  </div>
+            <File class="text-muted-foreground" />
+            <span class="truncate">{{ summary.name }}</span>
+          </Button>
+        </nav>
+        <Separator />
+        <LayersPanel />
+      </aside>
+
+      <main class="min-h-0 min-w-0">
+        <DesignCanvas />
+      </main>
+
+      <aside class="bg-background min-h-0 overflow-y-auto border-l">
+        <PropertiesPanel />
+      </aside>
+    </div>
+  </TooltipProvider>
 </template>
-
-<style scoped>
-.editor-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  height: 100vh;
-}
-
-.file-list {
-  padding: 16px;
-  border-right: 1px solid color-mix(in srgb, currentColor 15%, transparent);
-  overflow-y: auto;
-}
-
-.file-list-title {
-  font-size: 16px;
-  margin: 0 0 12px;
-}
-
-.file-list-note {
-  font-size: 13px;
-  opacity: 0.7;
-}
-
-.file-list ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.file-list li a {
-  display: block;
-  padding: 6px 8px;
-  border-radius: 6px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.file-list li a[aria-current='page'] {
-  background: color-mix(in srgb, currentColor 10%, transparent);
-}
-
-.canvas-area {
-  min-width: 0;
-}
-</style>
