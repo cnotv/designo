@@ -114,7 +114,11 @@ as a GIF, because a GIF renders inline from a link and an MP4 shows as a bare on
   the same operations through `applyOperations`, so undo, validation and multiplayer have one
   path. Never write `document.nodes` directly.
 - **Validate at the edges.** Data from disk, the network or an agent goes through the zod schemas
-  in `@designo/storage` or `@designo/mcp` before it is typed.
+  in `@designo/storage` before it is typed.
+- **Editor logic that can be pure lives in `packages/editor/src/editing/`** and is unit tested
+  there; components and composables wire it to the DOM.
+- **UI comes from shadcn-vue** (`packages/editor/src/components/ui`, added from the shadcn-vue
+  repository as its CLI would), styled through the theme variables in `src/style.css`.
 - **A new MCP tool** gets a test in `packages/mcp/src/tools.test.ts` and a line in
   `documentation/docs/guides/mcp.md`.
 - **Relative imports carry the `.ts` extension**, because Vite loads its config through Node,
@@ -156,6 +160,7 @@ as a GIF, because a GIF renders inline from a link and an MP4 shows as a bare on
 
 ### Done checklist
 
+- [ ] A change to editing or shortcuts is reflected in `documentation/docs/guides/editor.md`
 - [ ] A new MCP tool is registered in `packages/mcp/src/server.ts`, tested, and listed in
       `documentation/docs/guides/mcp.md`
 - [ ] A new package is in `documentation/docs/architecture.md`

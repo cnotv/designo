@@ -1,5 +1,5 @@
 import { getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
-import type { Viewport } from './types.ts'
+import type { Viewport } from '../editing/types.ts'
 
 const LINE_HEIGHT_RATIO = 1.25
 
