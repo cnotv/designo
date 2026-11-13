@@ -1,13 +1,41 @@
 import { getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
-import { boundsIntersect, containsPoint, getNodeBounds } from './geometry.ts'
+import { boundsIntersect, getNodeBounds } from './geometry.ts'
+import { rotatedBoundsContainPoint } from './rotation.ts'
 import type { Bounds, Point } from './types.ts'
 
 // Groups have no box of their own yet: their size is their children's, which the model does not
 // track, so they are picked through the layers panel rather than on the canvas.
 const isPickable = (node: DesignNode): boolean => node.type !== 'page' && node.type !== 'group'
 
+// Outermost first.
+const ancestorIds = (document: DesignDocument, nodeId: string): string[] => {
+  const parentId = document.nodes[nodeId]?.parentId
+  return parentId ? [...ancestorIds(document, parentId), parentId] : []
+}
+
 /**
- * Finds the node drawn on top at a point: the last one in paint order whose box holds it.
+ * Lists the frames whose bounds clip a node's drawing, outermost first.
+ * @param document - The document.
+ * @param nodeId - The node.
+ * @returns The ancestor frames.
+ */
+export const getClippingFrames = (document: DesignDocument, nodeId: string): DesignNode[] =>
+  ancestorIds(document, nodeId).flatMap((ancestorId) => {
+    const ancestor = document.nodes[ancestorId]
+    return ancestor?.type === 'frame' ? [ancestor] : []
+  })
+
+const nodeContainsPoint = (node: DesignNode, point: Point): boolean =>
+  rotatedBoundsContainPoint(getNodeBounds(node), node.rotation, point)
+
+// A point outside a clipping frame shows none of what the frame holds, so it cannot pick it.
+const isShownAtPoint = (document: DesignDocument, node: DesignNode, point: Point): boolean =>
+  nodeContainsPoint(node, point) &&
+  getClippingFrames(document, node.id).every((frame) => nodeContainsPoint(frame, point))
+
+/**
+ * Finds the node drawn on top at a point: the last one in paint order whose box holds it,
+ * counting rotation and the frames that clip it.
  * @param document - The document.
  * @param point - The point in world units.
  * @returns The node, or undefined over empty canvas.
@@ -15,7 +43,7 @@ const isPickable = (node: DesignNode): boolean => node.type !== 'page' && node.t
 export const findNodeAtPoint = (document: DesignDocument, point: Point): DesignNode | undefined =>
   getPaintOrder(document)
     .filter(isPickable)
-    .findLast((node) => containsPoint(getNodeBounds(node), point))
+    .findLast((node) => isShownAtPoint(document, node, point))
 
 /**
  * Finds the frame a new shape drawn at a point should go into: the topmost frame holding it.
@@ -26,12 +54,7 @@ export const findNodeAtPoint = (document: DesignDocument, point: Point): DesignN
 export const findContainerAtPoint = (document: DesignDocument, point: Point): string =>
   getPaintOrder(document)
     .filter((node) => node.type === 'frame')
-    .findLast((node) => containsPoint(getNodeBounds(node), point))?.id ?? document.rootId
-
-const ancestorIds = (document: DesignDocument, nodeId: string): string[] => {
-  const parentId = document.nodes[nodeId]?.parentId
-  return parentId ? [parentId, ...ancestorIds(document, parentId)] : []
-}
+    .findLast((node) => isShownAtPoint(document, node, point))?.id ?? document.rootId
 
 /**
  * Drops every id whose ancestor is also in the list, so an action on a frame is not applied

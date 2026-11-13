@@ -1,6 +1,7 @@
-import type { DesignDocument } from '@designo/core'
-import { getHandlePositions, getNodeBounds, unionBounds } from '../editing/geometry.ts'
-import type { Bounds, Viewport } from '../editing/types.ts'
+import type { DesignDocument, DesignNode } from '@designo/core'
+import { getNodeBounds, unionBounds } from '../editing/geometry.ts'
+import { getRotatedCorners, getRotatedHandlePositions } from '../editing/rotation.ts'
+import type { Bounds, Point, Viewport } from '../editing/types.ts'
 import { worldToScreen } from '../editing/viewport.ts'
 import type { OverlayState } from './types.ts'
 
@@ -31,9 +32,41 @@ const strokeScreenRect = (context: CanvasRenderingContext2D, box: Bounds): void 
   )
 }
 
-const drawHandles = (context: CanvasRenderingContext2D, box: Bounds): void => {
+// Outlines follow the node's rotation, so they are traced corner to corner rather than as a box.
+const strokeScreenPolygon = (
+  context: CanvasRenderingContext2D,
+  corners: readonly Point[]
+): void => {
+  context.beginPath()
+  corners.forEach((corner, index) => {
+    const x = Math.round(corner.x) + PIXEL_CENTER
+    const y = Math.round(corner.y) + PIXEL_CENTER
+    if (index === 0) context.moveTo(x, y)
+    else context.lineTo(x, y)
+  })
+  context.closePath()
+  context.stroke()
+}
+
+const toScreenCorners = (viewport: Viewport, node: DesignNode): Point[] =>
+  getRotatedCorners(getNodeBounds(node), node.rotation).map((corner) =>
+    worldToScreen(viewport, corner)
+  )
+
+const boundsOfPoints = (points: readonly Point[]): Bounds => {
+  const left = Math.min(...points.map((point) => point.x))
+  const top = Math.min(...points.map((point) => point.y))
+  return {
+    x: left,
+    y: top,
+    width: Math.max(...points.map((point) => point.x)) - left,
+    height: Math.max(...points.map((point) => point.y)) - top
+  }
+}
+
+const drawHandles = (context: CanvasRenderingContext2D, points: readonly Point[]): void => {
   context.fillStyle = '#ffffff'
-  getHandlePositions(box).forEach(({ point }) => {
+  points.forEach((point) => {
     const left = Math.round(point.x - HANDLE_SIZE / 2) + PIXEL_CENTER
     const top = Math.round(point.y - HANDLE_SIZE / 2) + PIXEL_CENTER
     context.fillRect(left, top, HANDLE_SIZE, HANDLE_SIZE)
@@ -80,18 +113,31 @@ export const drawOverlay = (
   context.lineWidth = 1
   const hovered = overlay.hoveredId ? document.nodes[overlay.hoveredId] : undefined
   if (hovered && !overlay.selection.includes(hovered.id)) {
-    strokeScreenRect(context, toScreenBounds(viewport, getNodeBounds(hovered)))
+    strokeScreenPolygon(context, toScreenCorners(viewport, hovered))
   }
-  const selectedBoxes = overlay.selection.flatMap((nodeId) => {
+  const selectedNodes = overlay.selection.flatMap((nodeId) => {
     const node = document.nodes[nodeId]
-    return node ? [getNodeBounds(node)] : []
+    return node ? [node] : []
   })
-  selectedBoxes.forEach((box) => strokeScreenRect(context, toScreenBounds(viewport, box)))
-  const selectionBox = unionBounds(selectedBoxes)
-  if (selectionBox) {
-    const screenBox = toScreenBounds(viewport, selectionBox)
-    if (selectedBoxes.length > 1) strokeScreenRect(context, screenBox)
-    if (overlay.showHandles) drawHandles(context, screenBox)
+  const selectedCorners = selectedNodes.map((node) => toScreenCorners(viewport, node))
+  selectedCorners.forEach((corners) => strokeScreenPolygon(context, corners))
+  const [single] = selectedNodes
+  if (selectedNodes.length === 1 && single) {
+    const screenBox = boundsOfPoints(selectedCorners.flat())
+    if (overlay.showHandles) {
+      drawHandles(
+        context,
+        getRotatedHandlePositions(getNodeBounds(single), single.rotation).map(({ point }) =>
+          worldToScreen(viewport, point)
+        )
+      )
+    }
+    drawSizeLabel(context, getNodeBounds(single), screenBox, overlay.color)
+  }
+  const selectionBox = unionBounds(selectedNodes.map((node) => getNodeBounds(node)))
+  if (selectedNodes.length > 1 && selectionBox) {
+    const screenBox = boundsOfPoints(selectedCorners.flat())
+    strokeScreenRect(context, screenBox)
     drawSizeLabel(context, selectionBox, screenBox, overlay.color)
   }
   if (overlay.marquee) {

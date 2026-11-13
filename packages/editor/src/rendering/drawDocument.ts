@@ -1,4 +1,6 @@
 import { getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
+import { getBoundsCenter } from '../editing/rotation.ts'
+import { getClippingFrames } from '../editing/selection.ts'
 import type { Viewport } from '../editing/types.ts'
 
 const LINE_HEIGHT_RATIO = 1.25
@@ -42,12 +44,33 @@ const paintText = (context: CanvasRenderingContext2D, node: DesignNode): void =>
   })
 }
 
-const paintNode = (context: CanvasRenderingContext2D, node: DesignNode): void => {
+// Rotation turns a node around its centre, so its box stays where it is while the node spins.
+const moveToNodeOrigin = (context: CanvasRenderingContext2D, node: DesignNode): void => {
+  const center = getBoundsCenter(node)
+  context.translate(center.x, center.y)
+  context.rotate((node.rotation * Math.PI) / 180)
+  context.translate(-node.width / 2, -node.height / 2)
+}
+
+// A clip stays until the surrounding save is restored, so the caller restores after painting.
+const clipToFrame = (context: CanvasRenderingContext2D, frame: DesignNode): void => {
+  const worldTransform = context.getTransform()
+  moveToNodeOrigin(context, frame)
+  traceShape(context, frame)
+  context.setTransform(worldTransform)
+  context.clip()
+}
+
+const paintNode = (
+  context: CanvasRenderingContext2D,
+  document: DesignDocument,
+  node: DesignNode
+): void => {
   if (node.type === 'group') return
   context.save()
+  getClippingFrames(document, node.id).forEach((frame) => clipToFrame(context, frame))
   context.globalAlpha = node.opacity
-  context.translate(node.x, node.y)
-  context.rotate((node.rotation * Math.PI) / 180)
+  moveToNodeOrigin(context, node)
   if (node.type === 'text') paintText(context, node)
   else paintShape(context, node)
   context.restore()
@@ -67,6 +90,6 @@ export const drawDocument = (
   context.save()
   context.translate(viewport.offsetX, viewport.offsetY)
   context.scale(viewport.scale, viewport.scale)
-  getPaintOrder(document).forEach((node) => paintNode(context, node))
+  getPaintOrder(document).forEach((node) => paintNode(context, document, node))
   context.restore()
 }
