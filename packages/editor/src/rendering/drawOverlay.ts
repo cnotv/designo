@@ -12,6 +12,28 @@ const SIZE_LABEL_PADDING = 6
 const MARQUEE_FILL_ALPHA = 0.08
 const PIXEL_CENTER = 0.5
 
+const drawGuides = (
+  context: CanvasRenderingContext2D,
+  viewport: Viewport,
+  overlay: OverlayState
+): void => {
+  context.strokeStyle = overlay.guideColor
+  overlay.guides.forEach((guide) => {
+    const from =
+      guide.orientation === 'vertical'
+        ? worldToScreen(viewport, { x: guide.position, y: guide.start })
+        : worldToScreen(viewport, { x: guide.start, y: guide.position })
+    const to =
+      guide.orientation === 'vertical'
+        ? worldToScreen(viewport, { x: guide.position, y: guide.end })
+        : worldToScreen(viewport, { x: guide.end, y: guide.position })
+    context.beginPath()
+    context.moveTo(Math.round(from.x) + PIXEL_CENTER, Math.round(from.y) + PIXEL_CENTER)
+    context.lineTo(Math.round(to.x) + PIXEL_CENTER, Math.round(to.y) + PIXEL_CENTER)
+    context.stroke()
+  })
+}
+
 const toScreenBounds = (viewport: Viewport, bounds: Bounds): Bounds => {
   const topLeft = worldToScreen(viewport, { x: bounds.x, y: bounds.y })
   return {
@@ -148,5 +170,6 @@ export const drawOverlay = (
     context.globalAlpha = 1
     strokeScreenRect(context, screenBox)
   }
+  drawGuides(context, viewport, overlay)
   context.restore()
 }

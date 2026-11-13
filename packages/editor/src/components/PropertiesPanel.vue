@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
 
 const { editor } = useEditorContext()
@@ -67,6 +68,8 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
 <template>
   <section class="flex flex-col gap-3 p-3" aria-label="Properties">
     <template v-if="node">
+      <AlignmentControls />
+      <Separator />
       <div class="flex flex-col gap-1.5">
         <Label for="property-name">Name</Label>
         <Input
@@ -227,6 +230,7 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
 
     <div v-else-if="editor.selection.value.length > 1" class="flex flex-col gap-2">
       <p>{{ editor.selection.value.length }} layers selected</p>
+      <AlignmentControls />
       <Button variant="outline" size="sm" @click="editor.deleteSelection"><Trash2 /> Delete</Button>
     </div>
     <p v-else class="text-muted-foreground">Select a layer to edit its properties.</p>

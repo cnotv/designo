@@ -1,7 +1,16 @@
 import type { DesignDocument, DesignNodePatch, DesignOperation } from '@designo/core'
 import type { DocumentSummary } from '@designo/storage'
 import type { ComputedRef, Ref } from 'vue'
-import type { Bounds, HistoryState, LayerOrderMode, Tool, Viewport } from '../editing/types.ts'
+import type {
+  AlignKind,
+  Bounds,
+  DistributeAxis,
+  HistoryState,
+  LayerOrderMode,
+  SnapGuide,
+  Tool,
+  Viewport
+} from '../editing/types.ts'
 
 export interface DesignoFiles {
   documentSummaries: Ref<DocumentSummary[]>
@@ -39,6 +48,8 @@ export interface Editor {
   groupSelection: () => void
   ungroupSelection: () => void
   reorderSelection: (mode: LayerOrderMode) => void
+  alignSelection: (kind: AlignKind) => void
+  distributeSelection: (axis: DistributeAxis) => void
   undo: () => void
   redo: () => void
   zoomToFit: () => void
@@ -48,6 +59,8 @@ export interface Editor {
 export interface CanvasInteraction {
   /** The document with the running drag's preview applied. */
   shownDocument: ComputedRef<DesignDocument | undefined>
+  /** The snap lines the running drag is on. */
+  guides: ComputedRef<readonly SnapGuide[]>
   hoveredId: Ref<string | undefined>
   marquee: ComputedRef<Bounds | undefined>
   isBusy: ComputedRef<boolean>

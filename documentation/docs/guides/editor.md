@@ -38,6 +38,15 @@ circle. After drawing, the editor returns to Move.
   The selection outline and handles turn with the node.
 - **Clipping:** a frame clips what it holds to its bounds, corner radius and rotation included.
   What sticks out of a frame is not drawn there, and cannot be picked outside it.
+- **Snap:** while you move or resize, the edges and centres of what you drag jump to the edges
+  and centres of nearby siblings and of the frame they sit in, within 6 screen pixels at any zoom.
+  A red guide line shows what it caught. Hold Ctrl/Cmd while dragging to turn snapping off. A
+  rotated layer does not snap while it is resized along its own axes.
+- **Align and distribute:** the row of buttons at the top of the properties panel. With two or
+  more layers selected, align moves them to the left, horizontal centre, right, top, vertical
+  centre or bottom of the selection's bounds. A single layer inside a frame aligns to that frame.
+  With three or more, distribute leaves equal gaps horizontally or vertically, keeping the two
+  outermost in place. A frame carries what it holds. Each is one undo step.
 - **Properties:** position, size, rotation, opacity, corner radius, fill, stroke, and text with
   its size. A field applies when you press Enter or leave it; Escape leaves the field.
 - **Hide and show:** the eye beside a layer in the layers panel.
