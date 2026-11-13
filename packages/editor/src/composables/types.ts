@@ -5,6 +5,7 @@ import type {
   AlignKind,
   Bounds,
   DistributeAxis,
+  ExportSettings,
   HistoryState,
   LayerOrderMode,
   SnapGuide,
@@ -71,4 +72,12 @@ export interface CanvasInteraction {
   onPointerUp: (event: PointerEvent) => void
   onPointerLeave: () => void
   onWheel: (event: WheelEvent) => void
+}
+
+export interface ExportController {
+  settings: Ref<ExportSettings>
+  isExporting: Ref<boolean>
+  error: Ref<string | undefined>
+  /** Downloads the selection, or the page, with the current settings. */
+  run: () => Promise<void>
 }

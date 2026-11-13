@@ -12,6 +12,7 @@ import { provideEditorContext } from './composables/editorContext.ts'
 import { useCanvasInteraction } from './composables/useCanvasInteraction.ts'
 import { useDesignoFiles } from './composables/useDesignoFiles.ts'
 import { useEditor } from './composables/useEditor.ts'
+import { useExport } from './composables/useExport.ts'
 import { useEditorShortcuts } from './composables/useEditorShortcuts.ts'
 
 const DOCS_SELF_HOSTING_URL = 'https://cnotv.github.io/designo/guides/self-hosting'
@@ -19,8 +20,9 @@ const DOCS_SELF_HOSTING_URL = 'https://cnotv.github.io/designo/guides/self-hosti
 const files = useDesignoFiles()
 const editor = useEditor(files)
 const interaction = useCanvasInteraction(editor)
-useEditorShortcuts(editor, interaction.spaceHeld)
-provideEditorContext({ files, editor, interaction })
+const exporter = useExport(editor)
+useEditorShortcuts(editor, interaction.spaceHeld, exporter.run)
+provideEditorContext({ files, editor, interaction, exporter })
 
 const { documentSummaries, selectedFileId, isDemo, selectFile } = files
 </script>

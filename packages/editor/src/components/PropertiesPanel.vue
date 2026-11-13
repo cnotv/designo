@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
+import ExportSection from './ExportSection.vue'
 
 const { editor } = useEditorContext()
 
@@ -234,5 +235,8 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
       <Button variant="outline" size="sm" @click="editor.deleteSelection"><Trash2 /> Delete</Button>
     </div>
     <p v-else class="text-muted-foreground">Select a layer to edit its properties.</p>
+
+    <Separator />
+    <ExportSection />
   </section>
 </template>

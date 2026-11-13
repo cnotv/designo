@@ -134,3 +134,16 @@ export interface SelectionChange {
 export type LayerOrderMode = 'forward' | 'backward' | 'front' | 'back'
 
 export type NodeIdFactory = (prefix: string) => string
+
+export type ExportFormat = 'svg' | 'png'
+
+export interface ExportSettings {
+  format: ExportFormat
+  /** Pixel density of a PNG; an SVG is vector and ignores it. */
+  scale: number
+}
+
+export interface PixelSize {
+  width: number
+  height: number
+}

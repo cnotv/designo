@@ -64,6 +64,9 @@ importers:
       '@designo/core':
         specifier: workspace:*
         version: link:../core
+      '@designo/exporter':
+        specifier: workspace:*
+        version: link:../exporter
       '@designo/storage':
         specifier: workspace:*
         version: link:../storage

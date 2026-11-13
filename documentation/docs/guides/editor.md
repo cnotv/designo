@@ -65,6 +65,24 @@ circle. After drawing, the editor returns to Move.
 - **Layer order:** Ctrl/Cmd ] and [ move the selection one step forward or backward among its
   siblings; add Shift to send it to the front or the back.
 
+## Export
+
+![The Export section of the properties panel](/img/export.png)
+
+The Export section sits at the bottom of the properties panel.
+
+- **What it exports:** each selected layer, one file apiece, or the whole page when nothing is
+  selected. A layer is drawn with everything inside it.
+- **SVG:** a vector file named `<layer name>.svg`. Text is plain SVG text, so it may differ from
+  the canvas where fonts differ.
+- **PNG:** pick 1x, 2x or 3x; the file is `<layer name>@<scale>x.png`. The browser draws the SVG
+  onto a canvas, so nothing is uploaded. A very large layer is shrunk to fit the browser's canvas
+  limit of 8192 pixels on the long side.
+- **Shortcut:** Shift Ctrl/Cmd E exports again with the last-used format and scale.
+
+Characters a file name cannot hold (such as `/` or `:`) in a layer name become `-`. Agents get the
+same SVG, and a PNG made in Node, through the MCP `export_svg` and `get_screenshot` tools.
+
 ## Shortcuts
 
 | Keys                     | Does                |
@@ -84,6 +102,7 @@ circle. After drawing, the editor returns to Move.
 | Ctrl/Cmd scroll, pinch   | Zoom at the pointer |
 | Shift 1                  | Zoom to fit         |
 | Shift 0                  | Zoom to 100%        |
+| Shift Ctrl/Cmd E         | Export again        |
 
 Undo covers your own edits. If an agent changed a layer since, a step that no longer applies is
 skipped rather than half-applied.
