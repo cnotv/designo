@@ -5,7 +5,7 @@ import {
   type OperationResult
 } from '@designo/core'
 import { describe, expect, it } from 'vitest'
-import { resizeBounds, estimateTextSize } from './geometry.ts'
+import { resizeBounds, estimateTextSize, getTextBaselineOffset } from './geometry.ts'
 import { getLayerRows } from './layers.ts'
 import { EMPTY_HISTORY, recordHistoryEntry, takeRedo, takeUndo } from './history.ts'
 import {
@@ -105,6 +105,17 @@ describe('selection', () => {
   it('toggles an id in and out', () => {
     expect(toggleInSelection(['box'], 'dot')).toEqual(['box', 'dot'])
     expect(toggleInSelection(['box', 'dot'], 'box')).toEqual(['dot'])
+  })
+})
+
+describe('getTextBaselineOffset', () => {
+  it('centres the font in the line height, as CSS does', () => {
+    // 20px text: a 25px line, 18 + 4 of font, so 1.5 above the ascent.
+    expect(getTextBaselineOffset(0, 20, 18, 4)).toBe(19.5)
+  })
+
+  it('steps one line height per line', () => {
+    expect(getTextBaselineOffset(2, 20, 18, 4)).toBe(69.5)
   })
 })
 

@@ -1,11 +1,8 @@
 import type { DesignDocument, DesignNode, DesignOperation } from '@designo/core'
-import { estimateTextSize } from './geometry.ts'
+import { estimateTextSize, TEXT_LINE_HEIGHT } from './geometry.ts'
 import { createDeleteOperations, createPropertyOperations } from './operations.ts'
 import type { TextEditSession, TextOverlayLayout, Viewport } from './types.ts'
 import { worldToScreen } from './viewport.ts'
-
-// Matches the line spacing drawDocument paints, so the overlay lines up with the canvas text.
-const LINE_HEIGHT_RATIO = 1.25
 
 /**
  * Works out where the text editor overlay goes so the text appears edited on the canvas. The box
@@ -28,7 +25,7 @@ export const getTextOverlayLayout = (
     width: Math.max(node.width, fitted.width) * viewport.scale,
     height: fitted.height * viewport.scale,
     fontSize: node.fontSize * viewport.scale,
-    lineHeight: node.fontSize * LINE_HEIGHT_RATIO * viewport.scale,
+    lineHeight: node.fontSize * TEXT_LINE_HEIGHT * viewport.scale,
     rotation: node.rotation
   }
 }

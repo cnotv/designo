@@ -1,9 +1,8 @@
 import { getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
+import { getTextBaselineOffset } from '../editing/geometry.ts'
 import { getBoundsCenter } from '../editing/rotation.ts'
 import { getClippingFrames } from '../editing/selection.ts'
 import type { Viewport } from '../editing/types.ts'
-
-const LINE_HEIGHT_RATIO = 1.25
 
 const traceShape = (context: CanvasRenderingContext2D, node: DesignNode): void => {
   context.beginPath()
@@ -38,9 +37,17 @@ const paintShape = (context: CanvasRenderingContext2D, node: DesignNode): void =
 const paintText = (context: CanvasRenderingContext2D, node: DesignNode): void => {
   context.fillStyle = node.fill ?? '#000000'
   context.font = `${node.fontSize}px ${node.fontFamily}`
-  context.textBaseline = 'top'
+  context.textBaseline = 'alphabetic'
+  // The font's own ascent and descent, not the glyphs', so every line sits where CSS puts it.
+  const metrics = context.measureText(node.text)
   node.text.split('\n').forEach((line, lineIndex) => {
-    context.fillText(line, 0, lineIndex * node.fontSize * LINE_HEIGHT_RATIO)
+    const baseline = getTextBaselineOffset(
+      lineIndex,
+      node.fontSize,
+      metrics.fontBoundingBoxAscent,
+      metrics.fontBoundingBoxDescent
+    )
+    context.fillText(line, 0, baseline)
   })
 }
 
