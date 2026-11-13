@@ -10,7 +10,8 @@ RUN pnpm --filter @designo/editor build
 
 FROM node:24-alpine
 WORKDIR /app
-RUN corepack enable
+# Fonts for get_screenshot: resvg draws text with system fonts, and the Alpine image has none.
+RUN corepack enable && apk add --no-cache font-dejavu
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=3000 \

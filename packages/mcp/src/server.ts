@@ -11,11 +11,14 @@ import {
 import {
   applyOperationsTool,
   createFileTool,
+  exportSvgTool,
   getDocumentTreeTool,
   getNodeTool,
+  getScreenshotTool,
   listFilesTool
 } from './tools.ts'
-import type { DesignoToolContext } from './types.ts'
+import { MAX_SCREENSHOT_SCALE, MIN_SCREENSHOT_SCALE } from './rasterize.ts'
+import type { DesignoToolContext, ScreenshotImage } from './types.ts'
 
 const SERVER_VERSION = '0.0.0'
 const MAX_TREE_DEPTH = 50
@@ -24,6 +27,16 @@ const toToolResult = async (work: () => Promise<unknown>): Promise<CallToolResul
   try {
     const value = await work()
     return { content: [{ type: 'text', text: JSON.stringify(value, undefined, 2) }] }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { isError: true, content: [{ type: 'text', text: message }] }
+  }
+}
+
+const toImageResult = async (work: () => Promise<ScreenshotImage>): Promise<CallToolResult> => {
+  try {
+    const { data, mimeType } = await work()
+    return { content: [{ type: 'image', data, mimeType }] }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return { isError: true, content: [{ type: 'text', text: message }] }
@@ -60,6 +73,37 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
       annotations: READ_ONLY
     },
     (input) => toToolResult(() => getNodeTool(context, input))
+  )
+  server.registerTool(
+    'get_screenshot',
+    {
+      description:
+        'Render the page, or one node, to a PNG image so you can see the design. Text is drawn without shaping, so it differs slightly from the editor. scale is pixels per design unit (default 1).',
+      inputSchema: {
+        fileId: fileIdSchema,
+        nodeId: nodeIdSchema.optional(),
+        scale: z.number().min(MIN_SCREENSHOT_SCALE).max(MAX_SCREENSHOT_SCALE).optional()
+      },
+      annotations: READ_ONLY
+    },
+    (input) => toImageResult(() => getScreenshotTool(context, input))
+  )
+  server.registerTool(
+    'export_svg',
+    {
+      description:
+        'Export the page, or one node, as standalone SVG text. Coordinates are absolute on the page and the viewBox is the node bounds.',
+      inputSchema: { fileId: fileIdSchema, nodeId: nodeIdSchema.optional() },
+      annotations: READ_ONLY
+    },
+    async (input) => {
+      try {
+        return { content: [{ type: 'text', text: await exportSvgTool(context, input) }] }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return { isError: true, content: [{ type: 'text', text: message }] }
+      }
+    }
   )
 }
 

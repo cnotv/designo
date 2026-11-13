@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@designo/core": "workspace:*",
+    "@designo/exporter": "workspace:*",
+    "@designo/storage": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "@resvg/resvg-js": "^2.6.2",
     "tsx": "^4.23.15",
-    "zod": "^4.6.7",
-    "@designo/storage": "workspace:*"
+    "zod": "^4.6.7"
   }
 }
