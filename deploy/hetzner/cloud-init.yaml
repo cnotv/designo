@@ -29,4 +29,3 @@ runcmd:
   - ufw allow 80/tcp
   - ufw allow 443
   - ufw --force enable
-  - install -d -o deploy -g deploy -m 750 /opt/designo

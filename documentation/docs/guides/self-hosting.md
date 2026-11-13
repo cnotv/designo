@@ -155,22 +155,24 @@ Add `A` (and `AAAA`) records for your domain with the server's addresses.
 
 ### 4. Tell GitHub about the server
 
-In the repository's **Settings → Secrets and variables → Actions**:
+The deploy goes into Designo's own folder, `~/designo` by default, which it creates; it never
+copies into the SSH user's home or beside another app. In the repository's
+**Settings → Secrets and variables → Actions**:
 
-| Kind     | Name                    | Value                                           |
-| -------- | ----------------------- | ----------------------------------------------- |
-| Secret   | `HETZNER_HOST`          | The server's IP address                         |
-| Secret   | `HETZNER_USERNAME`      | `deploy`                                        |
-| Secret   | `HETZNER_SSH_KEY`       | The private key, `~/.ssh/designo-deploy`        |
-| Secret   | `HETZNER_TARGET_DIR`    | `/opt/designo`                                  |
-| Secret   | `HETZNER_PORT`          | Only if SSH is not on 22                        |
-| Variable | `DESIGNO_PORT`          | Only to publish on another port than 3020       |
-| Variable | `DESIGNO_BIND`          | Only to bind another address than 127.0.0.1     |
-| Variable | `DESIGNO_CADDY`         | `true` to start the bundled Caddy on 80 and 443 |
-| Secret   | `DESIGNO_DOMAIN`        | With Caddy: your domain                         |
-| Secret   | `DESIGNO_USER`          | With Caddy: the username to sign in with        |
-| Secret   | `DESIGNO_PASSWORD_HASH` | With Caddy: the hash from `caddy hash-password` |
-| Variable | `HETZNER_DEPLOY`        | `true`, which switches the deploy workflow on   |
+| Kind     | Name                    | Value                                            |
+| -------- | ----------------------- | ------------------------------------------------ |
+| Secret   | `HETZNER_HOST`          | The server's IP address                          |
+| Secret   | `HETZNER_USERNAME`      | `deploy`                                         |
+| Secret   | `HETZNER_SSH_KEY`       | The private key, `~/.ssh/designo-deploy`         |
+| Variable | `DEPLOY_DIRECTORY`      | Only to change Designo's folder from `~/designo` |
+| Secret   | `HETZNER_PORT`          | Only if SSH is not on 22                         |
+| Variable | `DESIGNO_PORT`          | Only to publish on another port than 3020        |
+| Variable | `DESIGNO_BIND`          | Only to bind another address than 127.0.0.1      |
+| Variable | `DESIGNO_CADDY`         | `true` to start the bundled Caddy on 80 and 443  |
+| Secret   | `DESIGNO_DOMAIN`        | With Caddy: your domain                          |
+| Secret   | `DESIGNO_USER`          | With Caddy: the username to sign in with         |
+| Secret   | `DESIGNO_PASSWORD_HASH` | With Caddy: the hash from `caddy hash-password`  |
+| Variable | `HETZNER_DEPLOY`        | `true`, which switches the deploy workflow on    |
 
 ### 5. Deploy
 
