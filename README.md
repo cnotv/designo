@@ -3,16 +3,12 @@
 A personal, self-hosted design tool in the spirit of Figma, with its own MCP server, so you and
 your agents can design without usage limits. Local-first: your files live on your disk.
 
-![The Designo editor showing a colour palette an agent built through the MCP server](docs/images/editor.png)
-
 ## Plan
 
-The plan lives on a whiteboard: architecture, MCP tools, milestones and risks.
+[![The Designo plan: architecture, MCP tools, milestones and risks](docs/images/plan.svg)](https://claude.ai/artifact/V8reHYNtJRQpuMm3M6diRx)
 
-**[Designo plan whiteboard](https://claude.ai/artifact/V8reHYNtJRQpuMm3M6diRx)**
-
-The same plan in the repository: [architecture](docs/architecture.md) and
-[roadmap](docs/roadmap.md).
+The image links to the [plan whiteboard](https://claude.ai/artifact/V8reHYNtJRQpuMm3M6diRx). In
+the repository: [architecture](docs/architecture.md) and [roadmap](docs/roadmap.md).
 
 ## Quick start
 

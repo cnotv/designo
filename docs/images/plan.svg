@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -20 1560 1330" width="1560" height="1330" font-family="Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#555"/></marker></defs>
+<rect x="-40" y="-20" width="1560" height="1330" fill="#ffffff"/>
+<text x="0" y="52" font-size="44" font-weight="800" fill="#1f1f1f" text-anchor="start">Designo: self-hosted Figma clone + MCP</text>
+<text x="0" y="96" font-size="24" font-weight="400" fill="#555" text-anchor="start">Your own design tool: local-first editor plus MCP, no limits.</text>
+<rect x="0" y="180" width="816" height="440" rx="18" fill="#fafafa" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="4" y="166" font-size="20" font-weight="700" fill="#1f1f1f" text-anchor="start">Architecture (monorepo packages)</text>
+<rect x="40" y="212" width="200" height="100" rx="14" fill="#e6f4ea" stroke="#9cc9a8" stroke-width="1.5"/>
+<text x="58" y="244" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">editor</text>
+<text x="58" y="270" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">Vue 3 canvas and panels</text>
+<rect x="304" y="212" width="200" height="100" rx="14" fill="#e6f4ea" stroke="#9cc9a8" stroke-width="1.5"/>
+<text x="322" y="244" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">core</text>
+<text x="322" y="270" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">node tree, ops, Yjs, layout</text>
+<rect x="568" y="212" width="200" height="100" rx="14" fill="#e6f4ea" stroke="#9cc9a8" stroke-width="1.5"/>
+<text x="586" y="244" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">server</text>
+<text x="586" y="270" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">Yjs sync + SQLite</text>
+<rect x="40" y="456" width="200" height="100" rx="14" fill="#e6f4ea" stroke="#9cc9a8" stroke-width="1.5"/>
+<text x="58" y="488" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">renderer</text>
+<text x="58" y="514" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">WebGL2 to WebGPU,</text>
+<text x="58" y="536" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">HarfBuzz text</text>
+<rect x="304" y="456" width="200" height="100" rx="14" fill="#e6f4ea" stroke="#9cc9a8" stroke-width="1.5"/>
+<text x="322" y="488" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">exporter</text>
+<text x="322" y="514" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">SVG, PNG, PDF, Vue/HTML</text>
+<rect x="568" y="456" width="200" height="100" rx="14" fill="#fde7d4" stroke="#e8a46a" stroke-width="1.5"/>
+<text x="586" y="488" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">mcp</text>
+<text x="586" y="514" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">stdio, used by Claude</text>
+<line x1="240" y1="262" x2="302" y2="262" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="568" y1="262" x2="506" y2="262" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="140" y1="312" x2="140" y2="454" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="150.0" y="388.0" font-size="13" font-weight="400" fill="#555" text-anchor="start">draws scene</text>
+<line x1="404" y1="312" x2="404" y2="454" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="414.0" y="388.0" font-size="13" font-weight="400" fill="#555" text-anchor="start">exports</text>
+<line x1="668" y1="456" x2="668" y2="314" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="678.0" y="390.0" font-size="13" font-weight="400" fill="#555" text-anchor="start">headless Yjs client</text>
+<rect x="880" y="180" width="588" height="440" rx="18" fill="#fafafa" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="884" y="166" font-size="20" font-weight="700" fill="#1f1f1f" text-anchor="start">MCP tools</text>
+<rect x="904" y="204" width="540" height="40" rx="8" fill="#efefef" stroke="none" stroke-width="1.5"/>
+<text x="922" y="230" font-size="15" font-weight="700" fill="#1f1f1f" text-anchor="start">Read</text>
+<text x="1192" y="230" font-size="15" font-weight="700" fill="#1f1f1f" text-anchor="start">Write</text>
+<line x1="904" y1="244" x2="1444" y2="244" stroke="#e2e2e2"/>
+<text x="922" y="272" font-size="14" font-weight="400" fill="#333" text-anchor="start">list_files, get_document_tree</text>
+<text x="1192" y="272" font-size="14" font-weight="400" fill="#333" text-anchor="start">create_file, create_node</text>
+<line x1="904" y1="288" x2="1444" y2="288" stroke="#e2e2e2"/>
+<text x="922" y="316" font-size="14" font-weight="400" fill="#333" text-anchor="start">get_node, get_selection</text>
+<text x="1192" y="316" font-size="14" font-weight="400" fill="#333" text-anchor="start">update_node, delete_node</text>
+<line x1="904" y1="332" x2="1444" y2="332" stroke="#e2e2e2"/>
+<text x="922" y="360" font-size="14" font-weight="400" fill="#333" text-anchor="start">get_screenshot</text>
+<text x="1192" y="360" font-size="14" font-weight="400" fill="#333" text-anchor="start">apply_ops (batch, one undo)</text>
+<line x1="904" y1="376" x2="1444" y2="376" stroke="#e2e2e2"/>
+<text x="922" y="404" font-size="14" font-weight="400" fill="#333" text-anchor="start">get_variables, search_components</text>
+<text x="1192" y="404" font-size="14" font-weight="400" fill="#333" text-anchor="start">create_component, instantiate</text>
+<line x1="904" y1="420" x2="1444" y2="420" stroke="#e2e2e2"/>
+<text x="922" y="448" font-size="14" font-weight="400" fill="#333" text-anchor="start">export_code (vue / html / tailwind)</text>
+<text x="1192" y="448" font-size="14" font-weight="400" fill="#333" text-anchor="start">set_variable, bind_variable</text>
+<line x1="904" y1="464" x2="1444" y2="464" stroke="#e2e2e2"/>
+<text x="922" y="492" font-size="14" font-weight="400" fill="#333" text-anchor="start"></text>
+<text x="1192" y="492" font-size="14" font-weight="400" fill="#333" text-anchor="start">import_svg, import_html</text>
+<line x1="1174" y1="204" x2="1174" y2="508" stroke="#e2e2e2"/>
+<text x="904" y="560" font-size="13" font-weight="400" fill="#555" text-anchor="start">Agent edits carry origin: "agent", so the editor highlights them</text>
+<text x="904" y="580" font-size="13" font-weight="400" fill="#555" text-anchor="start">and undoes them as one group.</text>
+<rect x="0" y="700" width="1480" height="332" rx="18" fill="#fafafa" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="4" y="686" font-size="20" font-weight="700" fill="#1f1f1f" text-anchor="start">Milestones</text>
+<rect x="24" y="724" width="300" height="110" rx="14" fill="#e3eefc" stroke="#94b6e6" stroke-width="1.5"/>
+<text x="42" y="756" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">0  Core  (1-2 wks)</text>
+<text x="42" y="782" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">Node model, ops, Yjs binding, tests</text>
+<rect x="388" y="724" width="300" height="110" rx="14" fill="#e3eefc" stroke="#94b6e6" stroke-width="1.5"/>
+<text x="406" y="756" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">1  Canvas MVP  (3-4 wks)</text>
+<text x="406" y="782" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">Pan/zoom, shapes, text, select/resize,</text>
+<text x="406" y="804" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">layers + properties</text>
+<rect x="752" y="724" width="300" height="110" rx="14" fill="#fde7d4" stroke="#e8a46a" stroke-width="1.5"/>
+<text x="770" y="756" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">2  MCP v1  (1-2 wks)</text>
+<text x="770" y="782" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">Read/write tools, screenshots,</text>
+<text x="770" y="804" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">Claude config</text>
+<rect x="1116" y="724" width="300" height="110" rx="14" fill="#e3eefc" stroke="#94b6e6" stroke-width="1.5"/>
+<text x="1134" y="756" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">3  Real design work  (6-8 wks)</text>
+<text x="1134" y="782" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">Pen + booleans, images, auto-layout,</text>
+<text x="1134" y="804" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">components, variables</text>
+<rect x="24" y="898" width="300" height="110" rx="14" fill="#e3eefc" stroke="#94b6e6" stroke-width="1.5"/>
+<text x="42" y="930" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">4  Export  (2-3 wks)</text>
+<text x="42" y="956" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">SVG/PNG/PDF, Vue/HTML codegen</text>
+<rect x="388" y="898" width="300" height="110" rx="14" fill="#e3eefc" stroke="#94b6e6" stroke-width="1.5"/>
+<text x="406" y="930" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">5  Multiplayer  (2-3 wks)</text>
+<text x="406" y="956" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">Presence, cursors, comments, auth</text>
+<rect x="752" y="898" width="300" height="110" rx="14" fill="#e3eefc" stroke="#94b6e6" stroke-width="1.5"/>
+<text x="770" y="930" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">6  Polish  (ongoing)</text>
+<text x="770" y="956" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">WebGPU backend, sandboxed plugin API</text>
+<line x1="324" y1="779" x2="386" y2="779" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="688" y1="779" x2="750" y2="779" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="1052" y1="779" x2="1114" y2="779" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="324" y1="953" x2="386" y2="953" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<line x1="688" y1="953" x2="750" y2="953" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<rect x="0" y="1100" width="1480" height="148" rx="18" fill="#fafafa" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="4" y="1086" font-size="20" font-weight="700" fill="#1f1f1f" text-anchor="start">Risks and notes</text>
+<rect x="24" y="1124" width="338" height="100" rx="14" fill="#fff6cc" stroke="#e0c45c" stroke-width="1.5"/>
+<text x="42" y="1156" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">Text is hardest</text>
+<text x="42" y="1182" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">shaping, line breaks, rich spans,</text>
+<text x="42" y="1204" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">fonts. Budget extra time.</text>
+<rect x="386" y="1124" width="338" height="100" rx="14" fill="#fff6cc" stroke="#e0c45c" stroke-width="1.5"/>
+<text x="404" y="1156" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">Pen and booleans</text>
+<text x="404" y="1182" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">reuse proven libs (paper.js,</text>
+<text x="404" y="1204" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">lyon/kurbo via WASM).</text>
+<rect x="748" y="1124" width="338" height="100" rx="14" fill="#fff6cc" stroke="#e0c45c" stroke-width="1.5"/>
+<text x="766" y="1156" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">Legal</text>
+<text x="766" y="1182" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">copy features, not Figma's branding,</text>
+<text x="766" y="1204" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">icons or .fig internals.</text>
+<rect x="1110" y="1124" width="338" height="100" rx="14" fill="#fff6cc" stroke="#e0c45c" stroke-width="1.5"/>
+<text x="1128" y="1156" font-size="17" font-weight="700" fill="#1f1f1f" text-anchor="start">Shortcut</text>
+<text x="1128" y="1182" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">self-hosted Penpot already</text>
+<text x="1128" y="1204" font-size="14" font-weight="400" fill="#3d3d3d" text-anchor="start">gives unlimited use today.</text>
+</svg>
