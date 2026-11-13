@@ -1,11 +1,18 @@
 import { applyOperations, type DesignDocument, type DesignOperation } from '@designo/core'
 import { computed, ref, type Ref } from 'vue'
-import { boundsFromPoints, getHandlePositions, getNodeBounds } from '../editing/geometry.ts'
+import { boundsFromPoints, getNodeBounds } from '../editing/geometry.ts'
 import {
   createDrawOperation,
   createMoveOperations,
-  createResizeOperations
+  createResizeOperations,
+  createRotateOperations
 } from '../editing/operations.ts'
+import {
+  computeRotation,
+  getBoundsCenter,
+  getRotatedHandlePositions,
+  rotatedBoundsContainPoint
+} from '../editing/rotation.ts'
 import {
   findContainerAtPoint,
   findNodeAtPoint,
@@ -17,6 +24,7 @@ import { panBy, screenToWorld, worldToScreen, zoomAt } from '../editing/viewport
 import type { CanvasInteraction, Editor } from './types.ts'
 
 const HANDLE_HIT_RADIUS = 6
+const ROTATE_ZONE_RADIUS = 22
 const WHEEL_ZOOM_SPEED = 0.002
 const MIDDLE_BUTTON = 1
 const SHORT_ID_LENGTH = 8
@@ -32,10 +40,20 @@ const CURSOR_BY_HANDLE: Record<ResizeHandle, string> = {
   w: 'ew-resize'
 }
 
+// A corner's outer ring rotates instead of resizing; the cursor hints which one is under the pointer.
+type HandleTarget = ResizeHandle | 'rotate'
+
+const CORNER_HANDLES: readonly ResizeHandle[] = ['nw', 'ne', 'se', 'sw']
+
+const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path d="M15 6a7 7 0 1 0 1 6" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/><path d="M15 6a7 7 0 1 0 1 6" fill="none" stroke="black" stroke-width="2" stroke-linecap="round"/><path d="M11 5h5V0" fill="none" stroke="white" stroke-width="4"/><path d="M11 5h5V0" fill="none" stroke="black" stroke-width="2"/></svg>'
+)}") 10 10, crosshair`
+
 interface HandleHit {
-  handle: ResizeHandle
+  target: HandleTarget
   nodeId: string
   bounds: Bounds
+  rotation: number
 }
 
 const pointerOnCanvas = (event: MouseEvent): Point => {
@@ -63,7 +81,18 @@ const previewOperations = (
   }
   if (state.kind === 'resizing') {
     const delta = difference(state.startWorld, state.currentWorld)
-    return createResizeOperations(state.nodeId, state.startBounds, state.handle, delta)
+    const { nodeId, startBounds, rotation, handle } = state
+    return createResizeOperations(nodeId, startBounds, rotation, handle, delta)
+  }
+  if (state.kind === 'rotating') {
+    const rotation = computeRotation({
+      center: state.center,
+      startPoint: state.startWorld,
+      currentPoint: state.currentWorld,
+      startRotation: state.startRotation,
+      snap: keepSquare
+    })
+    return createRotateOperations(document, state.nodeId, rotation)
   }
   if (state.kind === 'drawing') {
     const { tool, nodeId, parentId, startWorld: start, currentWorld: current } = state
@@ -72,20 +101,32 @@ const previewOperations = (
   return []
 }
 
+const distanceBetween = (first: Point, second: Point): number =>
+  Math.hypot(first.x - second.x, first.y - second.y)
+
 const findHandleAt = (editor: Editor, screenPoint: Point): HandleHit | undefined => {
   const [nodeId] = editor.selection.value
   const single = editor.selection.value.length === 1 && nodeId
   const node = single ? editor.document.value?.nodes[nodeId] : undefined
   if (!node) return undefined
   const bounds = getNodeBounds(node)
-  const hit = getHandlePositions(bounds).find(({ point }) => {
-    const onScreen = worldToScreen(editor.viewport.value, point)
-    return (
-      Math.abs(onScreen.x - screenPoint.x) <= HANDLE_HIT_RADIUS &&
-      Math.abs(onScreen.y - screenPoint.y) <= HANDLE_HIT_RADIUS
-    )
-  })
-  return hit ? { handle: hit.handle, nodeId: node.id, bounds } : undefined
+  const viewport = editor.viewport.value
+  const distances = getRotatedHandlePositions(bounds, node.rotation).map(({ handle, point }) => ({
+    handle,
+    distance: distanceBetween(worldToScreen(viewport, point), screenPoint)
+  }))
+  const resize = distances.find(({ distance }) => distance <= HANDLE_HIT_RADIUS)
+  const outsideNode = !rotatedBoundsContainPoint(
+    bounds,
+    node.rotation,
+    screenToWorld(viewport, screenPoint)
+  )
+  const rotate = distances.find(
+    ({ handle, distance }) =>
+      CORNER_HANDLES.includes(handle) && distance <= ROTATE_ZONE_RADIUS && outsideNode
+  )
+  const target = resize?.handle ?? (rotate ? 'rotate' : undefined)
+  return target ? { target, nodeId: node.id, bounds, rotation: node.rotation } : undefined
 }
 
 const startSelectToolDrag = (
@@ -96,12 +137,25 @@ const startSelectToolDrag = (
 ): Interaction => {
   const handle = findHandleAt(editor, pointerOnCanvas(event))
   if (handle) {
-    const { nodeId, bounds: startBounds } = handle
+    const { nodeId, bounds: startBounds, rotation, target } = handle
+    if (target === 'rotate') {
+      const center = getBoundsCenter(startBounds)
+      const startRotation = rotation
+      return {
+        kind: 'rotating',
+        nodeId,
+        center,
+        startRotation,
+        startWorld: world,
+        currentWorld: world
+      }
+    }
     return {
       kind: 'resizing',
       nodeId,
-      handle: handle.handle,
+      handle: target,
       startBounds,
+      rotation,
       startWorld: world,
       currentWorld: world
     }
@@ -143,12 +197,14 @@ const pickCursor = (
   editor: Editor,
   state: Interaction,
   spaceHeld: boolean,
-  hoveredHandle: ResizeHandle | undefined
+  hoveredHandle: HandleTarget | undefined
 ): string => {
   if (state.kind === 'panning') return 'grabbing'
   if (spaceHeld) return 'grab'
   if (editor.tool.value !== 'select') return 'crosshair'
+  if (state.kind === 'rotating') return ROTATE_CURSOR
   if (state.kind === 'resizing') return CURSOR_BY_HANDLE[state.handle]
+  if (hoveredHandle === 'rotate') return ROTATE_CURSOR
   return hoveredHandle ? CURSOR_BY_HANDLE[hoveredHandle] : 'default'
 }
 
@@ -182,7 +238,7 @@ const zoomOrPan = (editor: Editor, event: WheelEvent): void => {
 export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
   const interaction = ref<Interaction>({ kind: 'idle' })
   const hoveredId = ref<string>()
-  const hoveredHandle = ref<ResizeHandle>()
+  const hoveredHandle = ref<HandleTarget>()
   const spaceHeld = ref(false)
   const shiftHeld = ref(false)
 
@@ -191,7 +247,7 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
 
   const updateHover = (event: PointerEvent): void => {
     const document = editor.document.value
-    hoveredHandle.value = findHandleAt(editor, pointerOnCanvas(event))?.handle
+    hoveredHandle.value = findHandleAt(editor, pointerOnCanvas(event))?.target
     const canHover = document && editor.tool.value === 'select'
     hoveredId.value = canHover ? findNodeAtPoint(document, worldAt(event))?.id : undefined
   }

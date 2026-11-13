@@ -30,7 +30,14 @@ circle. After drawing, the editor returns to Move.
 - **Move:** drag the selection, or nudge with the arrow keys (Shift for 10). A frame moves with
   everything in it.
 - **Resize:** drag one of the eight handles of a single selection. Dragging past the opposite
-  edge flips the shape.
+  edge flips the shape. A rotated node resizes along its own axes, and the edge opposite the
+  handle stays put.
+- **Rotate:** with a single selection, drag just outside a corner handle; the cursor turns into a
+  rotate cursor. The node turns around its centre, and Shift snaps to 15 degree steps. A frame
+  takes what it holds along, though rotating through the properties panel turns only that node.
+  The selection outline and handles turn with the node.
+- **Clipping:** a frame clips what it holds to its bounds, corner radius and rotation included.
+  What sticks out of a frame is not drawn there, and cannot be picked outside it.
 - **Properties:** position, size, rotation, opacity, corner radius, fill, stroke, and text with
   its size. A field applies when you press Enter or leave it; Escape leaves the field.
 - **Hide and show:** the eye beside a layer in the layers panel.
@@ -55,6 +62,6 @@ skipped rather than half-applied.
 
 ## Not yet
 
-Rotation handles, inline text editing on the canvas, and frames clipping their contents. The
-canvas is drawn with Canvas 2D for now; a WebGL renderer is tracked in
+Inline text editing on the canvas. The canvas
+is drawn with Canvas 2D for now; a WebGL renderer is tracked in
 [issue #5](https://github.com/cnotv/designo/issues/5).

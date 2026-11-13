@@ -35,6 +35,15 @@ export type Interaction =
       nodeId: string
       handle: ResizeHandle
       startBounds: Bounds
+      rotation: number
+      startWorld: Point
+      currentWorld: Point
+    }
+  | {
+      kind: 'rotating'
+      nodeId: string
+      center: Point
+      startRotation: number
       startWorld: Point
       currentWorld: Point
     }

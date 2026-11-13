@@ -4,7 +4,8 @@ import {
   type DesignNodePatch,
   type DesignOperation
 } from '@designo/core'
-import { boundsFromPoints, estimateTextSize, resizeBounds } from './geometry.ts'
+import { boundsFromPoints, estimateTextSize } from './geometry.ts'
+import { getBoundsCenter, normalizeRotation, resizeRotatedBounds, rotatePoint } from './rotation.ts'
 import { getTopmostIds } from './selection.ts'
 import type { Bounds, DrawingTool, DrawRequest, Point, ResizeHandle } from './types.ts'
 
@@ -59,7 +60,8 @@ export const createMoveOperations = (
 /**
  * Builds the update that resizes a node by dragging a handle.
  * @param nodeId - The node.
- * @param startBounds - Its box when the drag began.
+ * @param startBounds - Its box when the drag began, before rotation.
+ * @param rotation - Its rotation, so the drag follows the node's own axes.
  * @param handle - The handle being dragged.
  * @param delta - How far the pointer moved, in world units.
  * @returns The update.
@@ -67,11 +69,52 @@ export const createMoveOperations = (
 export const createResizeOperations = (
   nodeId: string,
   startBounds: Bounds,
+  rotation: number,
   handle: ResizeHandle,
   delta: Point
 ): DesignOperation[] => [
-  { kind: 'update', id: nodeId, patch: resizeBounds(startBounds, handle, delta.x, delta.y) }
+  {
+    kind: 'update',
+    id: nodeId,
+    patch: resizeRotatedBounds(startBounds, rotation, handle, delta)
+  }
 ]
+
+/**
+ * Builds the updates that rotate a node to an angle. What the node holds turns with it around
+ * the node's centre, because children keep absolute coordinates and would otherwise be left behind.
+ * @param document - The document, as it was before the rotation.
+ * @param nodeId - The node being rotated.
+ * @param rotation - The new rotation in degrees.
+ * @returns One update per node that turns; none when the angle is unchanged.
+ */
+export const createRotateOperations = (
+  document: DesignDocument,
+  nodeId: string,
+  rotation: number
+): DesignOperation[] => {
+  const node = document.nodes[nodeId]
+  if (!node || rotation === node.rotation) return []
+  const delta = rotation - node.rotation
+  const pivot = getBoundsCenter(node)
+  const descendantUpdates = getSubtreeIds(document, nodeId).flatMap((id): DesignOperation[] => {
+    const descendant = document.nodes[id]
+    if (!descendant || id === nodeId) return []
+    const center = rotatePoint(getBoundsCenter(descendant), pivot, delta)
+    return [
+      {
+        kind: 'update',
+        id,
+        patch: {
+          x: center.x - descendant.width / 2,
+          y: center.y - descendant.height / 2,
+          rotation: normalizeRotation(descendant.rotation + delta)
+        }
+      }
+    ]
+  })
+  return [{ kind: 'update', id: nodeId, patch: { rotation } }, ...descendantUpdates]
+}
 
 const drawnBounds = (start: Point, current: Point, keepSquare: boolean): Bounds => {
   const box = boundsFromPoints(start, current)
