@@ -80,14 +80,14 @@ jobs:
             esac
             mkdir -p "$DEPLOY_DIRECTORY"
 
-      - name: Copy the compose files and Caddyfile to the server
+      - name: Copy the compose file to the server
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USERNAME }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_PORT || '22' }}
-          source: docker-compose.yml,docker-compose.caddy.yml,Caddyfile
+          source: docker-compose.yml
           target: ${{ env.DEPLOY_DIRECTORY }}
       - name: Start the new image
         uses: appleboy/ssh-action@v1
@@ -103,25 +103,13 @@ jobs:
             set -e
             cd "$DEPLOY_DIRECTORY"
 
-            # Single quotes keep the bcrypt hash's $ signs away from Compose interpolation.
-            umask 077
             cat > .env <<'ENV'
             DESIGNO_PORT='${{ vars.DESIGNO_PORT || '3020' }}'
             DESIGNO_BIND='${{ vars.DESIGNO_BIND || '127.0.0.1' }}'
-            DESIGNO_DOMAIN='${{ secrets.DESIGNO_DOMAIN }}'
-            DESIGNO_USER='${{ secrets.DESIGNO_USER }}'
-            DESIGNO_PASSWORD_HASH='${{ secrets.DESIGNO_PASSWORD_HASH }}'
             ENV
 
-            # The server's own reverse proxy routes to Designo by default; the bundled Caddy,
-            # which takes 80 and 443, joins only when DESIGNO_CADDY is true.
-            COMPOSE="docker compose -f docker-compose.yml"
-            if [ '${{ vars.DESIGNO_CADDY }}' = 'true' ]; then
-              COMPOSE="$COMPOSE -f docker-compose.caddy.yml"
-            fi
-
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            $COMPOSE pull
-            $COMPOSE up -d --no-build --remove-orphans
+            docker compose pull
+            docker compose up -d --no-build --remove-orphans
             docker logout ghcr.io
             docker image prune -f

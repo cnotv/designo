@@ -7,7 +7,7 @@ import { FILES_ROUTE, handleFilesRequest } from './filesApi.ts'
 
 const DEFAULT_PORT = 3000
 // Loopback by default: the files API has no authentication of its own, so exposing it is an
-// explicit choice (HOST=0.0.0.0 in the container, behind Caddy's basic auth).
+// explicit choice (HOST=0.0.0.0 in the container, behind a reverse proxy that adds a login).
 const DEFAULT_HOST = '127.0.0.1'
 
 const distributionDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')

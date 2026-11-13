@@ -9,7 +9,7 @@ MCP server for agents. Files are plain `.designo.json` files in one folder, so a
 of that folder.
 
 The files API has no login of its own. Locally it listens only on your machine; on a server,
-Caddy sits in front of it with HTTPS and a password.
+your reverse proxy sits in front of it with HTTPS and a login.
 
 ## On your machine
 
@@ -56,28 +56,6 @@ The files API has no login of its own, so **the reverse proxy must add one**.
 Route your domain to `127.0.0.1:3020`, with a login in front. Pass the `Host` header through as
 the browser sent it: the editor's write endpoint refuses requests whose `Origin` does not match
 it, which is how it stops other sites posting with your login.
-
-### With the bundled Caddy
-
-On a server with nothing on ports 80 and 443, `docker-compose.caddy.yml` adds Caddy, which fetches
-an HTTPS certificate for your domain and asks for a password.
-
-1. Point an `A` record (and `AAAA` for IPv6) for your domain at the server.
-2. Put `docker-compose.yml`, `docker-compose.caddy.yml`, `Caddyfile` and a `.env` in one folder.
-   Copy `.env.example` to `.env` and fill it in. Make the password hash with:
-
-   ```sh
-   docker run --rm caddy:2-alpine caddy hash-password --plaintext 'your-password'
-   ```
-
-3. Start both:
-
-   ```sh
-   docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
-   ```
-
-The image comes from `ghcr.io/cnotv/designo`, which the deploy workflow publishes. To build on
-the server instead, copy the whole repository and add `--build`.
 
 ### Agents on a remote server
 
@@ -135,27 +113,23 @@ The deploy goes into Designo's own folder, `~/designo` by default, which it crea
 copies into the SSH user's home or beside another app. In the repository's
 **Settings → Secrets and variables → Actions**:
 
-| Kind     | Name                    | Value                                            |
-| -------- | ----------------------- | ------------------------------------------------ |
-| Secret   | `HETZNER_HOST`          | The server's IP address                          |
-| Secret   | `HETZNER_USERNAME`      | `deploy`                                         |
-| Secret   | `HETZNER_SSH_KEY`       | The private key, `~/.ssh/designo-deploy`         |
-| Variable | `DEPLOY_DIRECTORY`      | Only to change Designo's folder from `~/designo` |
-| Secret   | `HETZNER_PORT`          | Only if SSH is not on 22                         |
-| Variable | `DESIGNO_PORT`          | Only to publish on another port than 3020        |
-| Variable | `DESIGNO_BIND`          | Only to bind another address than 127.0.0.1      |
-| Variable | `DESIGNO_CADDY`         | `true` to start the bundled Caddy on 80 and 443  |
-| Secret   | `DESIGNO_DOMAIN`        | With Caddy: your domain                          |
-| Secret   | `DESIGNO_USER`          | With Caddy: the username to sign in with         |
-| Secret   | `DESIGNO_PASSWORD_HASH` | With Caddy: the hash from `caddy hash-password`  |
-| Variable | `HETZNER_DEPLOY`        | `true`, which switches the deploy workflow on    |
+| Kind     | Name               | Value                                            |
+| -------- | ------------------ | ------------------------------------------------ |
+| Secret   | `HETZNER_HOST`     | The server's IP address                          |
+| Secret   | `HETZNER_USERNAME` | `deploy`                                         |
+| Secret   | `HETZNER_SSH_KEY`  | The private key, `~/.ssh/designo-deploy`         |
+| Variable | `DEPLOY_DIRECTORY` | Only to change Designo's folder from `~/designo` |
+| Secret   | `HETZNER_PORT`     | Only if SSH is not on 22                         |
+| Variable | `DESIGNO_PORT`     | Only to publish on another port than 3020        |
+| Variable | `DESIGNO_BIND`     | Only to bind another address than 127.0.0.1      |
+| Variable | `HETZNER_DEPLOY`   | `true`, which switches the deploy workflow on    |
 
 ### 5. Deploy
 
 Run **Actions → Deploy to Hetzner → Run workflow**, or push to `main`. The workflow runs the
-tests, publishes the image to `ghcr.io/cnotv/designo`, copies the Compose files and the
-`Caddyfile` to the server, writes `.env` from the secrets and restarts the containers. Open your
-domain, sign in, and connect an agent over SSH as above.
+tests, publishes the image to `ghcr.io/cnotv/designo`, copies the Compose file to the server,
+writes `.env` from the variables and restarts the container. Route your reverse proxy to it as
+above, then open your domain and connect an agent over SSH.
 
 ### Backups
 
