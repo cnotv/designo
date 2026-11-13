@@ -81,15 +81,19 @@ const paintNode = (
  * @param context - The canvas to draw on, already cleared and sized.
  * @param document - The document to draw.
  * @param viewport - Pan and zoom to apply.
+ * @param hiddenNodeId - A node to leave out, because an overlay is editing it.
  */
 export const drawDocument = (
   context: CanvasRenderingContext2D,
   document: DesignDocument,
-  viewport: Viewport
+  viewport: Viewport,
+  hiddenNodeId?: string
 ): void => {
   context.save()
   context.translate(viewport.offsetX, viewport.offsetY)
   context.scale(viewport.scale, viewport.scale)
-  getPaintOrder(document).forEach((node) => paintNode(context, document, node))
+  getPaintOrder(document)
+    .filter((node) => node.id !== hiddenNodeId)
+    .forEach((node) => paintNode(context, document, node))
   context.restore()
 }

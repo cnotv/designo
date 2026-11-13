@@ -36,6 +36,7 @@ import type {
 import { fitViewportToContent, getContentBounds, zoomAt } from '../editing/viewport.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
 import type { DesignoFiles, Editor } from './types.ts'
+import { useTextEditing } from './useTextEditing.ts'
 
 const FIT_MARGIN = 64
 
@@ -132,6 +133,7 @@ export const useEditor = (files: DesignoFiles): Editor => {
   const tool = ref<Tool>('select')
   const { viewport, canvasSize, zoomToFit, zoomTo } = useViewport(document)
   const { history, commit, undo, redo } = useHistory(document, files)
+  const { editingText, startTextEdit, commitTextEdit } = useTextEditing(document, commit)
 
   const clipboard = ref<ClipboardState>()
 
@@ -179,6 +181,9 @@ export const useEditor = (files: DesignoFiles): Editor => {
     canUndo: computed(() => history.value.undoStack.length > 0),
     canRedo: computed(() => history.value.redoStack.length > 0),
     commit,
+    editingText,
+    startTextEdit,
+    commitTextEdit,
     undo,
     redo,
     zoomToFit,

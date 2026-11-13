@@ -27,7 +27,7 @@ const redraw = (): void => {
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
   context.clearRect(0, 0, width, height)
   if (!document) return
-  drawDocument(context, document, editor.viewport.value)
+  drawDocument(context, document, editor.viewport.value, editor.editingText.value?.nodeId)
   drawOverlay(context, document, editor.viewport.value, {
     selection: editor.selection.value,
     hoveredId: interaction.hoveredId.value,
@@ -73,6 +73,7 @@ watchEffect(redraw)
       @pointermove="interaction.onPointerMove"
       @pointerup="interaction.onPointerUp"
       @pointerleave="interaction.onPointerLeave"
+      @dblclick="interaction.onDoubleClick"
     />
   </EditorContextMenu>
 </template>
