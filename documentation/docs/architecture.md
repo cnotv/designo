@@ -75,13 +75,14 @@ flowchart LR
 - **Development:** `pnpm dev` runs Vite, whose `designoFilesPlugin` answers `/api/files`.
 - **Self-hosted:** `pnpm start` runs `packages/editor/server/productionServer.ts`, which serves
   the built editor and the same `/api/files` handler (`server/filesApi.ts`). Node runs it
-  straight from TypeScript. It listens on loopback unless `HOST` says otherwise; in the Docker
-  image Caddy puts HTTPS and basic auth in front.
+  straight from TypeScript. It listens on loopback unless `HOST` says otherwise. On a server, Compose
+  publishes it on `127.0.0.1:3020` for the host's reverse proxy, which adds HTTPS and a login;
+  `docker-compose.caddy.yml` brings Caddy for a server without one.
 - **Static demo:** with no files API (Netlify), `useDesignoFiles` falls back to a bundled sample.
 - **MCP:** stdio only. A remote agent reaches it through `ssh` and `docker exec`, so it needs no
   network listener or login of its own.
 
-Deployment files: `Dockerfile`, `docker-compose.yml`, `Caddyfile`, `netlify.toml`,
+Deployment files: `Dockerfile`, `docker-compose.yml`, `docker-compose.caddy.yml`, `Caddyfile`, `netlify.toml`,
 `deploy/hetzner/cloud-init.yaml`, and the workflows in `.github/workflows`. How to use them:
 the self-hosting guide.
 

@@ -31,7 +31,7 @@ change the port. Connect an agent as in [Connecting an agent](./mcp.md).
 
 ```sh
 git clone https://github.com/cnotv/designo && cd designo
-docker compose up -d --build     # http://localhost:3000
+docker compose up -d --build     # http://localhost:3020
 ```
 
 Files live in the `designo-data` volume. The port is bound to `127.0.0.1`, so only this machine
@@ -43,22 +43,61 @@ claude mcp add designo -- docker exec -i designo node packages/mcp/src/main.ts
 
 ## On a cloud server
 
-Any Linux server with Docker works: you need a domain name pointing at it, and ports 80 and 443
-open. The `public` Compose profile adds Caddy, which fetches an HTTPS certificate for your domain
-and asks for a username and password before anything reaches Designo.
+Any Linux server with Docker works. `docker compose up -d` publishes Designo on
+`127.0.0.1:3020`, reachable only from the server itself, for a reverse proxy there to route to.
+Port 3020 stays clear of apps that commonly take 3000 and 3001; set `DESIGNO_PORT` in `.env` to
+use another, and `DESIGNO_BIND` if your proxy runs in a container that cannot reach the host's
+loopback.
+
+The files API has no login of its own, so **the reverse proxy must add one**.
+
+### Behind your reverse proxy
+
+Route your domain to `127.0.0.1:3020` and put a login in front. With Caddy:
+
+```text
+designo.example.com {
+	basic_auth {
+		me $2a$14$...
+	}
+	reverse_proxy 127.0.0.1:3020
+}
+```
+
+With nginx:
+
+```nginx
+server {
+    server_name designo.example.com;
+    auth_basic "Designo";
+    auth_basic_user_file /etc/nginx/designo.htpasswd;
+    location / {
+        proxy_pass http://127.0.0.1:3020;
+        proxy_set_header Host $host;
+    }
+}
+```
+
+Keep the `Host` header as the browser sent it: the editor's write endpoint refuses requests whose
+`Origin` does not match it, which is how it stops other sites posting with your login.
+
+### With the bundled Caddy
+
+On a server with nothing on ports 80 and 443, `docker-compose.caddy.yml` adds Caddy, which fetches
+an HTTPS certificate for your domain and asks for a password.
 
 1. Point an `A` record (and `AAAA` for IPv6) for your domain at the server.
-2. On the server, put `docker-compose.yml`, `Caddyfile` and a `.env` in one folder. Copy
-   `.env.example` to `.env` and fill it in. Make the password hash with:
+2. Put `docker-compose.yml`, `docker-compose.caddy.yml`, `Caddyfile` and a `.env` in one folder.
+   Copy `.env.example` to `.env` and fill it in. Make the password hash with:
 
    ```sh
    docker run --rm caddy:2-alpine caddy hash-password --plaintext 'your-password'
    ```
 
-3. Start it:
+3. Start both:
 
    ```sh
-   docker compose --profile public up -d
+   docker compose -f docker-compose.yml -f docker-compose.caddy.yml up -d
    ```
 
 The image comes from `ghcr.io/cnotv/designo`, which the deploy workflow publishes. To build on
@@ -118,22 +157,25 @@ Add `A` (and `AAAA`) records for your domain with the server's addresses.
 
 In the repository's **Settings → Secrets and variables → Actions**:
 
-| Kind     | Name                    | Value                                          |
-| -------- | ----------------------- | ---------------------------------------------- |
-| Secret   | `HETZNER_HOST`          | The server's IP address                        |
-| Secret   | `HETZNER_USERNAME`      | `deploy`                                       |
-| Secret   | `HETZNER_SSH_KEY`       | The private key, `~/.ssh/designo-deploy`       |
-| Secret   | `HETZNER_TARGET_DIR`    | `/opt/designo`                                 |
-| Secret   | `HETZNER_PORT`          | Only if SSH is not on 22                       |
-| Secret   | `DESIGNO_DOMAIN`        | Your domain, for example `designo.example.com` |
-| Secret   | `DESIGNO_USER`          | The username to sign in with                   |
-| Secret   | `DESIGNO_PASSWORD_HASH` | The hash from `caddy hash-password`            |
-| Variable | `HETZNER_DEPLOY`        | `true`, which switches the deploy workflow on  |
+| Kind     | Name                    | Value                                           |
+| -------- | ----------------------- | ----------------------------------------------- |
+| Secret   | `HETZNER_HOST`          | The server's IP address                         |
+| Secret   | `HETZNER_USERNAME`      | `deploy`                                        |
+| Secret   | `HETZNER_SSH_KEY`       | The private key, `~/.ssh/designo-deploy`        |
+| Secret   | `HETZNER_TARGET_DIR`    | `/opt/designo`                                  |
+| Secret   | `HETZNER_PORT`          | Only if SSH is not on 22                        |
+| Variable | `DESIGNO_PORT`          | Only to publish on another port than 3020       |
+| Variable | `DESIGNO_BIND`          | Only to bind another address than 127.0.0.1     |
+| Variable | `DESIGNO_CADDY`         | `true` to start the bundled Caddy on 80 and 443 |
+| Secret   | `DESIGNO_DOMAIN`        | With Caddy: your domain                         |
+| Secret   | `DESIGNO_USER`          | With Caddy: the username to sign in with        |
+| Secret   | `DESIGNO_PASSWORD_HASH` | With Caddy: the hash from `caddy hash-password` |
+| Variable | `HETZNER_DEPLOY`        | `true`, which switches the deploy workflow on   |
 
 ### 5. Deploy
 
 Run **Actions → Deploy to Hetzner → Run workflow**, or push to `main`. The workflow runs the
-tests, publishes the image to `ghcr.io/cnotv/designo`, copies `docker-compose.yml` and
+tests, publishes the image to `ghcr.io/cnotv/designo`, copies the Compose files and the
 `Caddyfile` to the server, writes `.env` from the secrets and restarts the containers. Open your
 domain, sign in, and connect an agent over SSH as above.
 

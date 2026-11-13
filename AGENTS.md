@@ -153,8 +153,9 @@ as a GIF, because a GIF renders inline from a link and an MP4 shows as a bare on
 - **Security:** `pnpm audit --prod`; no threat model yet
 - **Sound export:** none
 - **Glossary:** none
-- **Deploy:** `deploy.yml` to Hetzner (GHCR image, Compose and Caddy), off until the
-  `HETZNER_DEPLOY` variable is `true`; editor demo on Netlify from `netlify.toml`
+- **Deploy:** `deploy.yml` to Hetzner (GHCR image and Compose, published on `127.0.0.1:3020`
+  behind the server's reverse proxy; bundled Caddy only when `DESIGNO_CADDY` is `true`), off
+  until the `HETZNER_DEPLOY` variable is `true`; editor demo on Netlify from `netlify.toml`
 - **Scoped rules:** `.claude/rules/` (none yet)
 - **Local skills:** none
 
