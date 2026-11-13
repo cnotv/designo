@@ -77,3 +77,25 @@ export interface DrawRequest {
   current: Point
   keepSquare: boolean
 }
+
+/** Node subtrees held for pasting: every node in them, parents before children. */
+export interface ClipboardContent {
+  rootIds: readonly string[]
+  nodes: readonly DesignNode[]
+}
+
+/** A batch that adds copies, and the ids of the copies at the top of each subtree. */
+export interface CreatedNodes {
+  operations: DesignOperation[]
+  rootIds: string[]
+}
+
+/** A batch that restructures the document, and what should be selected afterwards. */
+export interface SelectionChange {
+  operations: DesignOperation[]
+  selection: string[]
+}
+
+export type LayerOrderMode = 'forward' | 'backward' | 'front' | 'back'
+
+export type NodeIdFactory = (prefix: string) => string

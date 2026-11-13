@@ -13,13 +13,13 @@ import {
   toggleInSelection
 } from '../editing/selection.ts'
 import type { Bounds, Interaction, Point, ResizeHandle } from '../editing/types.ts'
+import { createNodeId } from '../lib/nodeIds.ts'
 import { panBy, screenToWorld, worldToScreen, zoomAt } from '../editing/viewport.ts'
 import type { CanvasInteraction, Editor } from './types.ts'
 
 const HANDLE_HIT_RADIUS = 6
 const WHEEL_ZOOM_SPEED = 0.002
 const MIDDLE_BUTTON = 1
-const SHORT_ID_LENGTH = 8
 
 const CURSOR_BY_HANDLE: Record<ResizeHandle, string> = {
   nw: 'nwse-resize',
@@ -42,9 +42,6 @@ const pointerOnCanvas = (event: MouseEvent): Point => {
   const box = (event.currentTarget as HTMLElement).getBoundingClientRect()
   return { x: event.clientX - box.left, y: event.clientY - box.top }
 }
-
-const newNodeId = (prefix: string): string =>
-  `${prefix}-${crypto.randomUUID().replaceAll('-', '').slice(0, SHORT_ID_LENGTH)}`
 
 // Every drag but a pan follows the pointer in world units.
 const followPointer = (state: Interaction, world: Point): Interaction =>
@@ -135,7 +132,7 @@ const startDrag = (
   const tool = editor.tool.value
   if (tool === 'select') return startSelectToolDrag(editor, document, event, world)
   const parentId = findContainerAtPoint(document, world)
-  const nodeId = newNodeId(tool)
+  const nodeId = createNodeId(tool)
   return { kind: 'drawing', tool, nodeId, parentId, startWorld: world, currentWorld: world }
 }
 
