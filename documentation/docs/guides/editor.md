@@ -42,6 +42,10 @@ circle. After drawing, the editor returns to Move.
   inside the editor; copying also writes the layers as JSON to the system clipboard.
 - **Group:** Ctrl/Cmd G wraps the selected layers, which must share a parent, in a group sized to
   them. Shift Ctrl/Cmd G ungroups, lifting the children out in place.
+- **Context menu:** right-click a layer in the layers panel, or the canvas, for Duplicate, Copy,
+  Cut, Paste, Group, Ungroup, the four layer-order commands and Delete, each with its shortcut.
+  A right-click on a layer selects it unless it is already selected. The menu is shadcn-vue's
+  ContextMenu.
 - **Layer order:** Ctrl/Cmd ] and [ move the selection one step forward or backward among its
   siblings; add Shift to send it to the front or the back.
 

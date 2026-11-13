@@ -20,6 +20,7 @@ import type { CanvasInteraction, Editor } from './types.ts'
 const HANDLE_HIT_RADIUS = 6
 const WHEEL_ZOOM_SPEED = 0.002
 const MIDDLE_BUTTON = 1
+const SECONDARY_BUTTON = 2
 
 const CURSOR_BY_HANDLE: Record<ResizeHandle, string> = {
   nw: 'nwse-resize',
@@ -240,7 +241,8 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     spaceHeld,
     onPointerDown: (event: PointerEvent) => {
       const document = editor.document.value
-      if (!document) return
+      // A right-click opens the context menu on the current selection instead of starting a drag.
+      if (!document || event.button === SECONDARY_BUTTON) return
       ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
       shiftHeld.value = event.shiftKey
       interaction.value = startDrag(editor, document, event, spaceHeld.value)
