@@ -1,0 +1,32 @@
+#cloud-config
+# First-boot setup for a Designo server on Hetzner Cloud (Ubuntu 24.04). Replace the key below
+# with the public half of the key the deploy workflow uses (the HETZNER_SSH_KEY secret).
+package_update: true
+package_upgrade: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+
+users:
+  - default
+  - name: deploy
+    groups: [docker]
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 REPLACE_WITH_DEPLOY_PUBLIC_KEY designo-deploy
+
+ssh_pwauth: false
+disable_root: true
+
+runcmd:
+  - systemctl enable --now docker
+  # Docker publishes 80 and 443 past ufw on its own; ufw keeps everything else shut.
+  - ufw default deny incoming
+  - ufw allow OpenSSH
+  - ufw allow 80/tcp
+  - ufw allow 443
+  - ufw --force enable
+  - install -d -o deploy -g deploy -m 750 /opt/designo

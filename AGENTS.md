@@ -3,7 +3,7 @@
 A self-hosted design tool in the spirit of Figma, with its own MCP server, so agents can read
 and edit designs with no plan limits. A pnpm monorepo of Vue 3 and TypeScript packages.
 
-Architecture: `docs/architecture.md`.
+Architecture: `documentation/docs/architecture.md`.
 
 <!-- agent-base:start -->
 
@@ -116,41 +116,46 @@ as a GIF, because a GIF renders inline from a link and an MP4 shows as a bare on
 - **Validate at the edges.** Data from disk, the network or an agent goes through the zod schemas
   in `@designo/storage` or `@designo/mcp` before it is typed.
 - **A new MCP tool** gets a test in `packages/mcp/src/tools.test.ts` and a line in
-  `docs/guides/mcp.md`.
+  `documentation/docs/guides/mcp.md`.
 - **Relative imports carry the `.ts` extension**, because Vite loads its config through Node,
   which runs workspace TypeScript sources without resolving extensionless paths.
 
 ## Where output goes
 
-| What you have                                    | Where it goes          |
-| ------------------------------------------------ | ---------------------- |
-| How to use or run something                      | `docs/guides/`         |
-| How the pieces fit, or a structural change       | `docs/architecture.md` |
-| What gets built when                             | `docs/roadmap.md`      |
-| A challenge, a wrong turn, or a research finding | `docs/journey/`        |
+| What you have                                    | Where it goes                        |
+| ------------------------------------------------ | ------------------------------------ |
+| How to use or run something                      | `documentation/docs/guides/`         |
+| How the pieces fit, or a structural change       | `documentation/docs/architecture.md` |
+| What gets built when                             | `documentation/docs/roadmap.md`      |
+| A challenge, a wrong turn, or a research finding | `documentation/docs/journey/`        |
 
 ## Project facts
 
 - **Install:** `pnpm install`
 - **Dev server:** `pnpm dev --port 5320 --strictPort`, served at `http://localhost:5320`
 - **Routes:** a single page, `/`
+- **Production server:** `pnpm build && pnpm start`, on `http://127.0.0.1:3000`
 - **Verify notes:** the editor lists files from `DESIGNO_DATA_DIR` (default `~/.designo-data`);
   create one with the MCP server or `pnpm mcp` first, or the canvas is empty. The 404 for
   `/favicon.ico` in the console is harmless.
 - **Checks:** `pnpm lint:check`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit`,
   `pnpm build`
-- **Docs home:** `docs/`, homes above
-- **Docs build:** none
-- **Preview deploys:** none; the `pr-preview` workflow records the editor
+- **Docs home:** `documentation/docs/` (Docusaurus, its own lockfile outside the workspace), homes
+  above
+- **Docs build:** `pnpm --dir documentation install --ignore-workspace && pnpm docs:build`;
+  published to `https://cnotv.github.io/designo/` by `github-pages.yml`
+- **Preview deploys:** Netlify deploy previews of the editor, a static demo with a bundled sample;
+  the `pr-preview` workflow records the dev server
 - **Security:** `pnpm audit --prod`; no threat model yet
 - **Sound export:** none
 - **Glossary:** none
-- **Deploy:** none
+- **Deploy:** `deploy.yml` to Hetzner (GHCR image, Compose and Caddy), off until the
+  `HETZNER_DEPLOY` variable is `true`; editor demo on Netlify from `netlify.toml`
 - **Scoped rules:** `.claude/rules/` (none yet)
 - **Local skills:** none
 
 ### Done checklist
 
 - [ ] A new MCP tool is registered in `packages/mcp/src/server.ts`, tested, and listed in
-      `docs/guides/mcp.md`
-- [ ] A new package is in `docs/architecture.md`
+      `documentation/docs/guides/mcp.md`
+- [ ] A new package is in `documentation/docs/architecture.md`

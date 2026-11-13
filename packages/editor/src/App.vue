@@ -1,49 +1,21 @@
 <script setup lang="ts">
-import type { DesignDocument } from '@designo/core'
-import type { DocumentSummary } from '@designo/storage'
-import { documentSummaryListSchema, storedDocumentSchema } from '@designo/storage/schemas'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
 import DesignCanvas from './components/DesignCanvas.vue'
+import { useDesignoFiles } from './composables/useDesignoFiles.ts'
 
-// Polling keeps the dev loop simple until the Yjs sync server lands; MCP edits show within a second.
-const POLL_INTERVAL_MILLISECONDS = 1000
+const DOCS_SELF_HOSTING_URL = 'https://cnotv.github.io/designo/guides/self-hosting'
 
-const documentSummaries = ref<DocumentSummary[]>([])
-const selectedFileId = ref<string>()
-const activeDocument = ref<DesignDocument>()
-const lastDocumentJson = ref('')
-
-const refresh = async (): Promise<void> => {
-  const listResponse = await fetch('/api/files')
-  if (!listResponse.ok) return
-  documentSummaries.value = documentSummaryListSchema.parse(await listResponse.json())
-  selectedFileId.value ??= documentSummaries.value[0]?.id
-  if (!selectedFileId.value) return
-  const response = await fetch(`/api/files/${encodeURIComponent(selectedFileId.value)}`)
-  if (!response.ok) return
-  const documentJson = await response.text()
-  if (documentJson === lastDocumentJson.value) return
-  lastDocumentJson.value = documentJson
-  activeDocument.value = storedDocumentSchema.parse(JSON.parse(documentJson))
-}
-
-const selectFile = (fileId: string): void => {
-  selectedFileId.value = fileId
-  lastDocumentJson.value = ''
-  void refresh()
-}
-
-const pollTimer = setInterval(() => void refresh(), POLL_INTERVAL_MILLISECONDS)
-
-onMounted(() => void refresh())
-onBeforeUnmount(() => clearInterval(pollTimer))
+const { documentSummaries, selectedFileId, activeDocument, isDemo, selectFile } = useDesignoFiles()
 </script>
 
 <template>
   <div class="editor-layout">
     <nav class="file-list" aria-label="Files">
       <h1 class="file-list-title">Designo</h1>
-      <p v-if="documentSummaries.length === 0" class="file-list-empty">
+      <p v-if="isDemo" class="file-list-note">
+        Demo: no Designo server is behind this page, so it shows a sample. To keep files and connect
+        agents, <a :href="DOCS_SELF_HOSTING_URL">self-host Designo</a>.
+      </p>
+      <p v-if="documentSummaries.length === 0" class="file-list-note">
         No files yet. Ask an agent to call <code>create_file</code> through the Designo MCP server.
       </p>
       <ul>
@@ -81,7 +53,7 @@ onBeforeUnmount(() => clearInterval(pollTimer))
   margin: 0 0 12px;
 }
 
-.file-list-empty {
+.file-list-note {
   font-size: 13px;
   opacity: 0.7;
 }
@@ -92,7 +64,7 @@ onBeforeUnmount(() => clearInterval(pollTimer))
   padding: 0;
 }
 
-.file-list a {
+.file-list li a {
   display: block;
   padding: 6px 8px;
   border-radius: 6px;
@@ -100,7 +72,7 @@ onBeforeUnmount(() => clearInterval(pollTimer))
   text-decoration: none;
 }
 
-.file-list a[aria-current='page'] {
+.file-list li a[aria-current='page'] {
   background: color-mix(in srgb, currentColor 10%, transparent);
 }
 

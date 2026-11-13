@@ -15,6 +15,9 @@
     "format:check": "prettier --check .",
     "test:unit": "vitest run",
     "test:watch": "vitest",
+    "start": "pnpm --filter @designo/editor start",
+    "docs": "pnpm --dir documentation start",
+    "docs:build": "pnpm --dir documentation build",
     "prepare": "husky"
   },
   "lint-staged": {

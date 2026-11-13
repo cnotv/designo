@@ -1,0 +1,16 @@
+# The public editor is a static demo: Netlify has no Designo server behind it, so the editor
+# shows a bundled sample. Self-hosting gives it real files and the MCP server.
+[build]
+  command = "pnpm --filter @designo/editor build"
+  publish = "packages/editor/dist"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- packages/editor packages/core packages/storage pnpm-lock.yaml netlify.toml"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"

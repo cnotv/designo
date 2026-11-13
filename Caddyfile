@@ -1,0 +1,8 @@
+# The files API has no login of its own, so every request passes basic auth here first.
+{$DESIGNO_DOMAIN} {
+	encode zstd gzip
+	basic_auth {
+		{$DESIGNO_USER} {$DESIGNO_PASSWORD_HASH}
+	}
+	reverse_proxy designo:3000
+}

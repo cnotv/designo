@@ -1,3 +1,7 @@
+---
+sidebar_position: 3
+---
+
 # Architecture
 
 Designo is a pnpm workspace. Every change to a document, whoever makes it, is a
@@ -32,6 +36,21 @@ Yjs arrives. Coordinates are absolute on the page.
 `applyOperations` applies a batch atomically: if any operation fails, the document is returned
 unchanged. The MCP `apply_ops` tool relies on this, so an agent's half-finished layout never
 lands on disk.
+
+## Serving
+
+- **Development:** `pnpm dev` runs Vite, whose `designoFilesPlugin` answers `/api/files`.
+- **Self-hosted:** `pnpm start` runs `packages/editor/server/productionServer.ts`, which serves
+  the built editor and the same `/api/files` handler (`server/filesApi.ts`). Node runs it
+  straight from TypeScript. It listens on loopback unless `HOST` says otherwise; in the Docker
+  image Caddy puts HTTPS and basic auth in front.
+- **Static demo:** with no files API (Netlify), `useDesignoFiles` falls back to a bundled sample.
+- **MCP:** stdio only. A remote agent reaches it through `ssh` and `docker exec`, so it needs no
+  network listener or login of its own.
+
+Deployment files: `Dockerfile`, `docker-compose.yml`, `Caddyfile`, `netlify.toml`,
+`deploy/hetzner/cloud-init.yaml`, and the workflows in `.github/workflows`. How to use them:
+the self-hosting guide.
 
 ## Files
 

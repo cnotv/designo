@@ -1,0 +1,36 @@
+# Local: `docker compose up -d` serves Designo on http://localhost:3000, reachable only from this
+# machine. Cloud: `docker compose --profile public up -d` adds Caddy, which gets an HTTPS
+# certificate for DESIGNO_DOMAIN and asks for a password, both read from .env.
+services:
+  designo:
+    image: ghcr.io/cnotv/designo:latest
+    build: .
+    container_name: designo
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:3000:3000
+    volumes:
+      - designo-data:/data
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: [public]
+    restart: unless-stopped
+    depends_on: [designo]
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    environment:
+      DESIGNO_DOMAIN: ${DESIGNO_DOMAIN:?Set DESIGNO_DOMAIN in .env}
+      DESIGNO_USER: ${DESIGNO_USER:?Set DESIGNO_USER in .env}
+      DESIGNO_PASSWORD_HASH: ${DESIGNO_PASSWORD_HASH:?Set DESIGNO_PASSWORD_HASH in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  designo-data:
+  caddy-data:
+  caddy-config:

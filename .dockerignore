@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+documentation
+.git
+.github
+.husky
+.claude
+docs
+*.log

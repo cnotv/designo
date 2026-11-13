@@ -5,22 +5,40 @@ your agents can design without usage limits. Local-first: your files live on you
 
 ## Plan
 
-[![The Designo plan: architecture, MCP tools, milestones and risks](docs/images/plan.svg)](https://claude.ai/artifact/V8reHYNtJRQpuMm3M6diRx)
+[![The Designo plan: architecture, MCP tools, milestones and risks](documentation/static/img/plan.svg)](https://claude.ai/artifact/V8reHYNtJRQpuMm3M6diRx)
 
 The image links to the [plan whiteboard](https://claude.ai/artifact/V8reHYNtJRQpuMm3M6diRx). In
-the repository: [architecture](docs/architecture.md) and [roadmap](docs/roadmap.md).
+the docs: [architecture](https://cnotv.github.io/designo/architecture) and
+[roadmap](https://cnotv.github.io/designo/roadmap).
 
-## Quick start
+## Run it
+
+Locally, with Node 24 and pnpm:
 
 ```sh
 pnpm install
-pnpm dev        # the editor, at http://localhost:5320
+pnpm build && pnpm start     # http://127.0.0.1:3000
 ```
 
-Then connect an agent to the MCP server ([setup guide](docs/guides/mcp.md)) and ask it to design
-something. The editor shows the agent's changes within a second.
+Or with Docker: `docker compose up -d --build`, also on port 3000.
 
-Claude Code picks the server up automatically from `.mcp.json` when it runs in this repository.
+On a cloud server, `docker compose --profile public up -d` adds Caddy for HTTPS and a password.
+The repository deploys itself to Hetzner Cloud once a few secrets are set.
+
+The [self-hosting guide](https://cnotv.github.io/designo/guides/self-hosting) covers all three,
+including connecting agents to a remote server over SSH. For development, `pnpm dev` runs the
+editor with hot reload on port 5320.
+
+## Docs and demo
+
+- **Docs:** [cnotv.github.io/designo](https://cnotv.github.io/designo/), built with Docusaurus
+  from `documentation/`.
+- **Demo:** the editor on Netlify shows a sample file, since no server is behind it. Self-host to
+  keep files and connect agents.
+
+Connect an agent to the MCP server with the
+[MCP guide](https://cnotv.github.io/designo/guides/mcp). Claude Code in this repository picks the
+server up from `.mcp.json`.
 
 ## What works today
 

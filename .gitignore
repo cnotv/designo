@@ -8,3 +8,6 @@ coverage
 .idea
 /pr-preview/
 .designo-data/
+documentation/build
+documentation/.docusaurus
+.env

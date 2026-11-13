@@ -1,0 +1,95 @@
+# Deploys to a Hetzner Cloud server set up as in the self-hosting guide. It stays off until the
+# repository variable HETZNER_DEPLOY is "true", so a fork or a fresh clone never fails a deploy.
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [main]
+    paths: ['packages/**', 'pnpm-lock.yaml', 'Dockerfile', 'docker-compose.yml', 'Caddyfile']
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  run-tests:
+    if: vars.HETZNER_DEPLOY == 'true'
+    uses: ./.github/workflows/test.yml
+
+  build-and-push:
+    needs: run-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Copy the compose file and Caddyfile to the server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USERNAME }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_PORT || '22' }}
+          source: docker-compose.yml,Caddyfile
+          target: ${{ secrets.HETZNER_TARGET_DIR }}
+      - name: Start the new image
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USERNAME }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: ${{ secrets.HETZNER_PORT || '22' }}
+          script: |
+            # Without this a failed pull still reports success, and the old container keeps
+            # running behind a green deploy.
+            set -e
+            cd ${{ secrets.HETZNER_TARGET_DIR }}
+
+            # Single quotes keep the bcrypt hash's $ signs away from Compose interpolation.
+            umask 077
+            cat > .env <<'ENV'
+            DESIGNO_DOMAIN='${{ secrets.DESIGNO_DOMAIN }}'
+            DESIGNO_USER='${{ secrets.DESIGNO_USER }}'
+            DESIGNO_PASSWORD_HASH='${{ secrets.DESIGNO_PASSWORD_HASH }}'
+            ENV
+
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose --profile public pull
+            docker compose --profile public up -d --no-build --remove-orphans
+            docker logout ghcr.io
+            docker image prune -f

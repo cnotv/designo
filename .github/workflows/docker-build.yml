@@ -1,0 +1,23 @@
+name: Docker image build
+
+on:
+  pull_request:
+    paths: ['Dockerfile', '.dockerignore', 'packages/**', 'pnpm-lock.yaml']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      # The deploy workflow builds this image on main; building it here without pushing means a
+      # broken Dockerfile fails the pull request instead of the deploy.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false

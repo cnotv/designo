@@ -12,7 +12,14 @@ import vueParser from 'vue-eslint-parser'
 
 export default [
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '.claude/worktrees/**']
+    ignores: [
+      '**/build/**',
+      '**/.docusaurus/**',
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      '.claude/worktrees/**'
+    ]
   },
 
   js.configs.recommended,
