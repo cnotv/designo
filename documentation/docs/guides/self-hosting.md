@@ -53,33 +53,9 @@ The files API has no login of its own, so **the reverse proxy must add one**.
 
 ### Behind your reverse proxy
 
-Route your domain to `127.0.0.1:3020` and put a login in front. With Caddy:
-
-```text
-designo.example.com {
-	basic_auth {
-		me $2a$14$...
-	}
-	reverse_proxy 127.0.0.1:3020
-}
-```
-
-With nginx:
-
-```nginx
-server {
-    server_name designo.example.com;
-    auth_basic "Designo";
-    auth_basic_user_file /etc/nginx/designo.htpasswd;
-    location / {
-        proxy_pass http://127.0.0.1:3020;
-        proxy_set_header Host $host;
-    }
-}
-```
-
-Keep the `Host` header as the browser sent it: the editor's write endpoint refuses requests whose
-`Origin` does not match it, which is how it stops other sites posting with your login.
+Route your domain to `127.0.0.1:3020`, with a login in front. Pass the `Host` header through as
+the browser sent it: the editor's write endpoint refuses requests whose `Origin` does not match
+it, which is how it stops other sites posting with your login.
 
 ### With the bundled Caddy
 
