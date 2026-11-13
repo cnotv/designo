@@ -30,7 +30,7 @@ claude mcp add designo -- npx tsx /absolute/path/to/designo/packages/mcp/src/mai
 ```
 
 For a Designo running in Docker or on a server, see
-[self-hosting](./self-hosting.md#agents-on-a-remote-server): the same server runs inside the
+[self-hosting](./self-hosting.md#connecting-an-agent): the same server runs inside the
 container, reached over `docker exec` or SSH.
 
 ## Tools

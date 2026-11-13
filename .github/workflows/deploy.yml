@@ -1,11 +1,11 @@
-# Deploys to a Hetzner Cloud server set up as in the self-hosting guide. It stays off until the
+# Deploys to a Hetzner Cloud server set up with deploy/hetzner/cloud-init.yaml. It stays off until the
 # repository variable HETZNER_DEPLOY is "true", so a fork or a fresh clone never fails a deploy.
 name: Deploy to Hetzner
 
 on:
   push:
     branches: [main]
-    paths: ['packages/**', 'pnpm-lock.yaml', 'Dockerfile', 'docker-compose.yml', 'Caddyfile']
+    paths: ['packages/**', 'pnpm-lock.yaml', 'Dockerfile', 'docker-compose.yml']
   workflow_dispatch:
 
 env:
@@ -51,6 +51,11 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Designo's own folder, relative to the SSH user's home unless absolute. Never the home
+      # itself or a folder another app on the server uses: its docker-compose.yml would be
+      # replaced by this one.
+      DEPLOY_DIRECTORY: ${{ vars.DEPLOY_DIRECTORY || 'designo' }}
     permissions:
       contents: read
       packages: read
@@ -58,15 +63,23 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Copy the compose file and Caddyfile to the server
+      # scp-action creates the folder; this only refuses a name that is not Designo's own.
+      - name: Check Designo's folder
+        run: |
+          case "$DEPLOY_DIRECTORY" in
+            '' | . | ./ | / | '~' | '~/' | *..*)
+              echo "DEPLOY_DIRECTORY must name Designo's own folder, not '$DEPLOY_DIRECTORY'" >&2
+              exit 1 ;;
+          esac
+      - name: Copy the compose file to the server
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USERNAME }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_PORT || '22' }}
-          source: docker-compose.yml,Caddyfile
-          target: ${{ secrets.HETZNER_TARGET_DIR }}
+          source: docker-compose.yml
+          target: ${{ env.DEPLOY_DIRECTORY }}
       - name: Start the new image
         uses: appleboy/ssh-action@v1
         with:
@@ -74,22 +87,20 @@ jobs:
           username: ${{ secrets.HETZNER_USERNAME }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_PORT || '22' }}
+          envs: DEPLOY_DIRECTORY
           script: |
             # Without this a failed pull still reports success, and the old container keeps
             # running behind a green deploy.
             set -e
-            cd ${{ secrets.HETZNER_TARGET_DIR }}
+            cd "$DEPLOY_DIRECTORY"
 
-            # Single quotes keep the bcrypt hash's $ signs away from Compose interpolation.
-            umask 077
             cat > .env <<'ENV'
-            DESIGNO_DOMAIN='${{ secrets.DESIGNO_DOMAIN }}'
-            DESIGNO_USER='${{ secrets.DESIGNO_USER }}'
-            DESIGNO_PASSWORD_HASH='${{ secrets.DESIGNO_PASSWORD_HASH }}'
+            DESIGNO_PORT='${{ vars.DESIGNO_PORT || '3020' }}'
+            DESIGNO_BIND='${{ vars.DESIGNO_BIND || '127.0.0.1' }}'
             ENV
 
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose --profile public pull
-            docker compose --profile public up -d --no-build --remove-orphans
+            docker compose pull
+            docker compose up -d --no-build --remove-orphans
             docker logout ghcr.io
             docker image prune -f
