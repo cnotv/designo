@@ -26,7 +26,9 @@ export const getTextOverlayLayout = (
     height: fitted.height * viewport.scale,
     fontSize: node.fontSize * viewport.scale,
     lineHeight: node.fontSize * TEXT_LINE_HEIGHT * viewport.scale,
-    rotation: node.rotation
+    rotation: node.rotation,
+    rotationOriginX: (node.width / 2) * viewport.scale,
+    rotationOriginY: (node.height / 2) * viewport.scale
   }
 }
 

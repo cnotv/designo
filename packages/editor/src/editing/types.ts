@@ -163,4 +163,7 @@ export interface TextOverlayLayout {
   fontSize: number
   lineHeight: number
   rotation: number
+  /** The node's centre, from the box's top-left, which the box turns around as the canvas does. */
+  rotationOriginX: number
+  rotationOriginY: number
 }

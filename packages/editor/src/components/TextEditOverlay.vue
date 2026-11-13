@@ -61,7 +61,7 @@ const onKeyDown = (event: KeyboardEvent): void => {
       color: node.fill ?? '#000000',
       opacity: node.opacity,
       transform: `rotate(${layout.rotation}deg)`,
-      transformOrigin: '0 0',
+      transformOrigin: `${layout.rotationOriginX}px ${layout.rotationOriginY}px`,
       fieldSizing: 'fixed'
     }"
     @keydown="onKeyDown"

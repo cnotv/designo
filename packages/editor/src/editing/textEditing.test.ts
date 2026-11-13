@@ -37,6 +37,12 @@ describe('getTextOverlayLayout', () => {
     })
   })
 
+  it('turns around the node centre, as the canvas does, even as the draft grows', () => {
+    const viewport = { offsetX: 0, offsetY: 0, scale: 2 }
+    const grown = getTextOverlayLayout(label, viewport, 'a much longer first line\nsecond')
+    expect(grown).toMatchObject({ rotationOriginX: 40, rotationOriginY: 20 })
+  })
+
   it('grows with the draft lines and longest line', () => {
     const viewport = { offsetX: 0, offsetY: 0, scale: 1 }
     const single = getTextOverlayLayout(label, viewport, 'Hi')
