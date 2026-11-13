@@ -1,7 +1,7 @@
 import type { DesignDocument, DesignNodePatch, DesignOperation } from '@designo/core'
 import type { DocumentSummary } from '@designo/storage'
 import type { ComputedRef, Ref } from 'vue'
-import type { Bounds, HistoryState, Tool, Viewport } from '../editing/types.ts'
+import type { Bounds, HistoryState, LayerOrderMode, Tool, Viewport } from '../editing/types.ts'
 
 export interface DesignoFiles {
   documentSummaries: Ref<DocumentSummary[]>
@@ -32,6 +32,13 @@ export interface Editor {
   deleteSelection: () => void
   nudgeSelection: (deltaX: number, deltaY: number) => void
   selectAll: () => void
+  duplicateSelection: () => void
+  copySelection: () => void
+  cutSelection: () => void
+  paste: () => void
+  groupSelection: () => void
+  ungroupSelection: () => void
+  reorderSelection: (mode: LayerOrderMode) => void
   undo: () => void
   redo: () => void
   zoomToFit: () => void

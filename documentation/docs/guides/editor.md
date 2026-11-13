@@ -42,6 +42,19 @@ circle. After drawing, the editor returns to Move.
   its size. A field applies when you press Enter or leave it; Escape leaves the field.
 - **Hide and show:** the eye beside a layer in the layers panel.
 - **Delete:** Delete or Backspace.
+- **Duplicate:** Ctrl/Cmd D copies the selection with everything in it, 10 px down and right, and
+  selects the copies.
+- **Copy, cut, paste:** Ctrl/Cmd C, X and V. A paste goes into the layer's original parent, or the
+  page if that is gone, and each further paste sits another 10 px along. The clipboard is kept
+  inside the editor; copying also writes the layers as JSON to the system clipboard.
+- **Group:** Ctrl/Cmd G wraps the selected layers, which must share a parent, in a group sized to
+  them. Shift Ctrl/Cmd G ungroups, lifting the children out in place.
+- **Context menu:** right-click a layer in the layers panel, or the canvas, for Duplicate, Copy,
+  Cut, Paste, Group, Ungroup, the four layer-order commands and Delete, each with its shortcut.
+  A right-click on a layer selects it unless it is already selected. The menu is shadcn-vue's
+  ContextMenu.
+- **Layer order:** Ctrl/Cmd ] and [ move the selection one step forward or backward among its
+  siblings; add Shift to send it to the front or the back.
 
 ## Shortcuts
 
@@ -50,6 +63,12 @@ circle. After drawing, the editor returns to Move.
 | Ctrl/Cmd Z               | Undo                |
 | Shift Ctrl/Cmd Z, Ctrl Y | Redo                |
 | Ctrl/Cmd A               | Select all          |
+| Ctrl/Cmd D               | Duplicate           |
+| Ctrl/Cmd C, X, V         | Copy, cut, paste    |
+| Ctrl/Cmd G               | Group               |
+| Shift Ctrl/Cmd G         | Ungroup             |
+| Ctrl/Cmd ], [            | Forward, backward   |
+| Shift Ctrl/Cmd ], [      | To front, to back   |
 | Escape                   | Deselect            |
 | Scroll                   | Pan                 |
 | Space-drag, middle-drag  | Pan                 |

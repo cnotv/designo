@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
 import { useEditorContext } from '../composables/editorContext.ts'
+import EditorContextMenu from './EditorContextMenu.vue'
 import { drawDocument } from '../rendering/drawDocument.ts'
 import { drawOverlay } from '../rendering/drawOverlay.ts'
 
@@ -57,14 +58,16 @@ watchEffect(redraw)
 </script>
 
 <template>
-  <canvas
-    ref="canvasElement"
-    class="bg-canvas block size-full touch-none select-none"
-    :style="{ cursor: interaction.cursor.value }"
-    data-testid="design-canvas"
-    @pointerdown="interaction.onPointerDown"
-    @pointermove="interaction.onPointerMove"
-    @pointerup="interaction.onPointerUp"
-    @pointerleave="interaction.onPointerLeave"
-  />
+  <EditorContextMenu>
+    <canvas
+      ref="canvasElement"
+      class="bg-canvas block size-full touch-none select-none"
+      :style="{ cursor: interaction.cursor.value }"
+      data-testid="design-canvas"
+      @pointerdown="interaction.onPointerDown"
+      @pointermove="interaction.onPointerMove"
+      @pointerup="interaction.onPointerUp"
+      @pointerleave="interaction.onPointerLeave"
+    />
+  </EditorContextMenu>
 </template>

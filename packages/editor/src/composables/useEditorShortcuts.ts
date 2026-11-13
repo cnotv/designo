@@ -1,5 +1,5 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
-import type { Tool } from '../editing/types.ts'
+import type { LayerOrderMode, Tool } from '../editing/types.ts'
 import type { Editor } from './types.ts'
 
 const NUDGE_DISTANCE = 1
@@ -25,8 +25,38 @@ const isTypingTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLElement &&
   (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 
+const LAYER_ORDER_BY_CODE: Record<string, [LayerOrderMode, LayerOrderMode]> = {
+  BracketRight: ['forward', 'front'],
+  BracketLeft: ['backward', 'back']
+}
+
+const handleArrangeKey = (editor: Editor, event: KeyboardEvent): boolean => {
+  const modes = LAYER_ORDER_BY_CODE[event.code]
+  if (modes) {
+    editor.reorderSelection(modes[event.shiftKey ? 1 : 0])
+    return true
+  }
+  if (event.key.toLowerCase() !== 'g') return false
+  if (event.shiftKey) editor.ungroupSelection()
+  else editor.groupSelection()
+  return true
+}
+
+const COMMAND_ACTIONS: Record<string, (editor: Editor) => void> = {
+  d: (editor) => editor.duplicateSelection(),
+  c: (editor) => editor.copySelection(),
+  x: (editor) => editor.cutSelection(),
+  v: (editor) => editor.paste()
+}
+
 const handleCommandKey = (editor: Editor, event: KeyboardEvent): boolean => {
   const key = event.key.toLowerCase()
+  const action = COMMAND_ACTIONS[key]
+  if (action && !event.shiftKey) {
+    action(editor)
+    return true
+  }
+  if (handleArrangeKey(editor, event)) return true
   if (key === 'z') {
     if (event.shiftKey) editor.redo()
     else editor.undo()
