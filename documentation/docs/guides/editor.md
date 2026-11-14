@@ -47,7 +47,6 @@ circle. After drawing, the editor returns to Move.
   centre or bottom of the selection's bounds. A single layer inside a frame aligns to that frame.
   With three or more, distribute leaves equal gaps horizontally or vertically, keeping the two
   outermost in place. A frame carries what it holds. Each is one undo step.
-
 - **Edit text:** double-click a text layer, or press Enter with one text layer selected, to type
   in place; a new text layer opens the same way. Enter adds a line, and the layer grows to fit
   its lines. Escape, Cmd/Ctrl+Enter or a click outside commits it as one undo step, and a new

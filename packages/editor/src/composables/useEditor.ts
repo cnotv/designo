@@ -121,20 +121,27 @@ const writeSystemClipboard = (content: ClipboardContent): void => {
   navigator.clipboard?.writeText(JSON.stringify(content.nodes)).catch(() => undefined)
 }
 
-/**
- * Holds the editing state for the open file: selection, tool, viewport and history. Every change
- * goes through `commit`, which applies it locally, records its inverse for undo and saves it.
- * @param files - The open file and how to save it.
- * @returns The editor.
- */
-export const useEditor = (files: DesignoFiles): Editor => {
-  const document = files.activeDocument
-  const selection = ref<string[]>([])
-  const tool = ref<Tool>('select')
-  const { viewport, canvasSize, zoomToFit, zoomTo } = useViewport(document)
-  const { history, commit, undo, redo } = useHistory(document, files)
-  const { editingText, startTextEdit, commitTextEdit } = useTextEditing(document, commit)
+type SelectionActions = Pick<
+  Editor,
+  | 'deleteSelection'
+  | 'nudgeSelection'
+  | 'duplicateSelection'
+  | 'copySelection'
+  | 'cutSelection'
+  | 'paste'
+  | 'groupSelection'
+  | 'ungroupSelection'
+  | 'reorderSelection'
+  | 'alignSelection'
+  | 'distributeSelection'
+>
 
+// What the editor does to the selected layers, each a batch committed as one undo step.
+const useSelectionActions = (
+  document: Ref<DesignDocument | undefined>,
+  selection: Ref<string[]>,
+  commit: Editor['commit']
+): SelectionActions => {
   const clipboard = ref<ClipboardState>()
 
   const withDocument = (action: (current: DesignDocument) => void): void => {
@@ -159,6 +166,64 @@ export const useEditor = (files: DesignoFiles): Editor => {
       commit(createDeleteOperations(current, selection.value))
       selection.value = []
     })
+
+  return {
+    deleteSelection,
+    nudgeSelection: (deltaX: number, deltaY: number) =>
+      withDocument((current) =>
+        commit(createMoveOperations(current, selection.value, deltaX, deltaY))
+      ),
+    duplicateSelection: () =>
+      withDocument((current) =>
+        commitAndSelect(createDuplicateOperations(current, selection.value, createNodeId))
+      ),
+    copySelection: () => {
+      copySelection()
+    },
+    cutSelection: () => {
+      if (copySelection()) deleteSelection()
+    },
+    paste: () =>
+      withDocument((current) => {
+        const held = clipboard.value
+        if (!held) return
+        commitAndSelect(createPasteOperations(current, held.content, held.pasteCount, createNodeId))
+        clipboard.value = { ...held, pasteCount: held.pasteCount + 1 }
+      }),
+    groupSelection: () =>
+      withDocument((current) =>
+        commitAndSelect(createGroupOperations(current, selection.value, createNodeId('group')))
+      ),
+    ungroupSelection: () =>
+      withDocument((current) => commitAndSelect(createUngroupOperations(current, selection.value))),
+    reorderSelection: (mode: LayerOrderMode) =>
+      withDocument((current) => commit(createLayerOrderOperations(current, selection.value, mode))),
+    alignSelection: (kind: AlignKind) =>
+      withDocument((current) => commit(createAlignOperations(current, selection.value, kind))),
+    distributeSelection: (axis: DistributeAxis) =>
+      withDocument((current) => commit(createDistributeOperations(current, selection.value, axis)))
+  }
+}
+
+/**
+ * Holds the editing state for the open file: selection, tool, viewport and history. Every change
+ * goes through `commit`, which applies it locally, records its inverse for undo and saves it.
+ * @param files - The open file and how to save it.
+ * @returns The editor.
+ */
+export const useEditor = (files: DesignoFiles): Editor => {
+  const document = files.activeDocument
+  const selection = ref<string[]>([])
+  const tool = ref<Tool>('select')
+  const { viewport, canvasSize, zoomToFit, zoomTo } = useViewport(document)
+  const { history, commit, undo, redo } = useHistory(document, files)
+  const { editingText, startTextEdit, commitTextEdit } = useTextEditing(document, commit)
+
+  const selectionActions = useSelectionActions(document, selection, commit)
+
+  const withDocument = (action: (current: DesignDocument) => void): void => {
+    if (document.value) action(document.value)
+  }
 
   watch(files.selectedFileId, () => {
     selection.value = []
@@ -199,40 +264,7 @@ export const useEditor = (files: DesignoFiles): Editor => {
     },
     updateNode: (nodeId: string, patch: DesignNodePatch) =>
       withDocument((current) => commit(createPropertyOperations(current, nodeId, patch))),
-    deleteSelection,
-    nudgeSelection: (deltaX: number, deltaY: number) =>
-      withDocument((current) =>
-        commit(createMoveOperations(current, selection.value, deltaX, deltaY))
-      ),
-    duplicateSelection: () =>
-      withDocument((current) =>
-        commitAndSelect(createDuplicateOperations(current, selection.value, createNodeId))
-      ),
-    copySelection: () => {
-      copySelection()
-    },
-    cutSelection: () => {
-      if (copySelection()) deleteSelection()
-    },
-    paste: () =>
-      withDocument((current) => {
-        const held = clipboard.value
-        if (!held) return
-        commitAndSelect(createPasteOperations(current, held.content, held.pasteCount, createNodeId))
-        clipboard.value = { ...held, pasteCount: held.pasteCount + 1 }
-      }),
-    groupSelection: () =>
-      withDocument((current) =>
-        commitAndSelect(createGroupOperations(current, selection.value, createNodeId('group')))
-      ),
-    ungroupSelection: () =>
-      withDocument((current) => commitAndSelect(createUngroupOperations(current, selection.value))),
-    reorderSelection: (mode: LayerOrderMode) =>
-      withDocument((current) => commit(createLayerOrderOperations(current, selection.value, mode))),
-    alignSelection: (kind: AlignKind) =>
-      withDocument((current) => commit(createAlignOperations(current, selection.value, kind))),
-    distributeSelection: (axis: DistributeAxis) =>
-      withDocument((current) => commit(createDistributeOperations(current, selection.value, axis))),
+    ...selectionActions,
     selectAll: () =>
       withDocument((current) => {
         selection.value = getChildren(current, current.rootId).map((node) => node.id)
