@@ -13,6 +13,15 @@ export type OperationInput = z.infer<typeof operationInputSchema>
 
 export type GenerateId = (prefix: string) => string
 
+/** One raw JSON object, before it is known to match any schema. */
+export type RawDocument = Record<string, unknown>
+
+/** Turns a raw document of one format version into the next version up. */
+export type MigrationStep = (raw: RawDocument) => RawDocument
+
+/** Migration steps keyed by the version they upgrade from. */
+export type MigrationSteps = Readonly<Record<number, MigrationStep>>
+
 export interface AppliedBatch {
   document: DesignDocument
   createdNodeIds: string[]

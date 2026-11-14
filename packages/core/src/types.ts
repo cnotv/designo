@@ -1,3 +1,4 @@
+import type { CURRENT_FORMAT_VERSION } from './defaults.ts'
 export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text'
 
 export interface DesignNodeProperties {
@@ -27,7 +28,7 @@ export interface DesignNode extends DesignNodeProperties {
 }
 
 export interface DesignDocument {
-  formatVersion: 1
+  formatVersion: typeof CURRENT_FORMAT_VERSION
   id: string
   name: string
   rootId: string

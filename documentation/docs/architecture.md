@@ -91,6 +91,24 @@ Files are `<id>.designo.json` in `DESIGNO_DATA_DIR`, by default `~/.designo-data
 a temporary file and are renamed into place, so the editor never reads half a file. File ids
 are validated before they become paths.
 
+Every file carries a `formatVersion`. `CURRENT_FORMAT_VERSION` in `@designo/core` is the one
+place that names the version this code writes; the zod schema and `createDocument` read it.
+`readDocument` (used by the editor's files API and the MCP server alike) runs the raw JSON
+through `parseStoredDocument` in `@designo/storage`: it detects the file's version, applies each
+step from that version up to the current one in order, then validates with the current schema. A
+file newer than the code fails with an error asking for an update, and a gap in the steps fails
+rather than guessing.
+
+To bump the format: change the schema, raise `CURRENT_FORMAT_VERSION` from N to N + 1, and add
+the entry `N` to `MIGRATION_STEPS` in `packages/storage/src/migrations.ts`, a pure function from
+the raw version-N object to a version-(N + 1) one. The pipeline sets `formatVersion` itself. Add a
+test in `migrations.test.ts` with a sample of the old file.
+
+| Version | Change                                                                                       | Step                      |
+| ------- | -------------------------------------------------------------------------------------------- | ------------------------- |
+| 1       | First format; a node turns around its top-left corner                                        |                           |
+| 2       | A node turns around its centre; rotated nodes move so they are drawn exactly where they were | `migrateRotationPivot.ts` |
+
 ## Decisions
 
 - **UI library:** shadcn-vue, on Reka UI, with Tailwind CSS v4. Its components are copied into
