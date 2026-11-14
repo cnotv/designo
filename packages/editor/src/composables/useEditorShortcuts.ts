@@ -90,6 +90,12 @@ const handleArrowKey = (editor: Editor, event: KeyboardEvent): boolean => {
 }
 
 const handleEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
+  const [selectedId] = editor.selection.value
+  const selected = selectedId ? editor.document.value?.nodes[selectedId] : undefined
+  if (event.key === 'Enter' && editor.selection.value.length === 1 && selected?.type === 'text') {
+    editor.startTextEdit(selected.id, false)
+    return true
+  }
   if (event.key === 'Delete' || event.key === 'Backspace') {
     editor.deleteSelection()
     return true

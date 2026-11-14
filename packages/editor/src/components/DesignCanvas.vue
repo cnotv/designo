@@ -27,9 +27,11 @@ const redraw = (): void => {
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
   context.clearRect(0, 0, width, height)
   if (!document) return
-  drawDocument(context, document, editor.viewport.value)
+  drawDocument(context, document, editor.viewport.value, editor.editingText.value?.nodeId)
+  // While text is edited in place, the editor box is the selection: the node keeps its old height
+  // until the edit commits, so its outline and size label would sit over the growing text.
   drawOverlay(context, document, editor.viewport.value, {
-    selection: editor.selection.value,
+    selection: editor.editingText.value ? [] : editor.selection.value,
     hoveredId: interaction.hoveredId.value,
     marquee: interaction.marquee.value,
     showHandles: editor.selection.value.length === 1 && !interaction.isBusy.value,
@@ -73,6 +75,7 @@ watchEffect(redraw)
       @pointermove="interaction.onPointerMove"
       @pointerup="interaction.onPointerUp"
       @pointerleave="interaction.onPointerLeave"
+      @dblclick="interaction.onDoubleClick"
     />
   </EditorContextMenu>
 </template>

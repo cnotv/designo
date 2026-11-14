@@ -36,6 +36,7 @@ import type {
 import { fitViewportToContent, getContentBounds, zoomAt } from '../editing/viewport.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
 import type { DesignoFiles, Editor } from './types.ts'
+import { useTextEditing } from './useTextEditing.ts'
 
 const FIT_MARGIN = 64
 
@@ -120,19 +121,27 @@ const writeSystemClipboard = (content: ClipboardContent): void => {
   navigator.clipboard?.writeText(JSON.stringify(content.nodes)).catch(() => undefined)
 }
 
-/**
- * Holds the editing state for the open file: selection, tool, viewport and history. Every change
- * goes through `commit`, which applies it locally, records its inverse for undo and saves it.
- * @param files - The open file and how to save it.
- * @returns The editor.
- */
-export const useEditor = (files: DesignoFiles): Editor => {
-  const document = files.activeDocument
-  const selection = ref<string[]>([])
-  const tool = ref<Tool>('select')
-  const { viewport, canvasSize, zoomToFit, zoomTo } = useViewport(document)
-  const { history, commit, undo, redo } = useHistory(document, files)
+type SelectionActions = Pick<
+  Editor,
+  | 'deleteSelection'
+  | 'nudgeSelection'
+  | 'duplicateSelection'
+  | 'copySelection'
+  | 'cutSelection'
+  | 'paste'
+  | 'groupSelection'
+  | 'ungroupSelection'
+  | 'reorderSelection'
+  | 'alignSelection'
+  | 'distributeSelection'
+>
 
+// What the editor does to the selected layers, each a batch committed as one undo step.
+const useSelectionActions = (
+  document: Ref<DesignDocument | undefined>,
+  selection: Ref<string[]>,
+  commit: Editor['commit']
+): SelectionActions => {
   const clipboard = ref<ClipboardState>()
 
   const withDocument = (action: (current: DesignDocument) => void): void => {
@@ -158,42 +167,7 @@ export const useEditor = (files: DesignoFiles): Editor => {
       selection.value = []
     })
 
-  watch(files.selectedFileId, () => {
-    selection.value = []
-    history.value = EMPTY_HISTORY
-  })
-
-  // Nodes an agent or an undo removed drop out of the selection.
-  watch(document, (current) => {
-    const remaining = selection.value.filter((nodeId) => current?.nodes[nodeId])
-    if (remaining.length !== selection.value.length) selection.value = remaining
-  })
-
   return {
-    document,
-    selection,
-    tool,
-    viewport,
-    canvasSize,
-    history,
-    canUndo: computed(() => history.value.undoStack.length > 0),
-    canRedo: computed(() => history.value.redoStack.length > 0),
-    commit,
-    undo,
-    redo,
-    zoomToFit,
-    zoomTo,
-    select: (nodeIds: readonly string[]) => {
-      selection.value = [...nodeIds]
-    },
-    setTool: (next: Tool) => {
-      tool.value = next
-    },
-    setCanvasSize: (size: { width: number; height: number }) => {
-      canvasSize.value = size
-    },
-    updateNode: (nodeId: string, patch: DesignNodePatch) =>
-      withDocument((current) => commit(createPropertyOperations(current, nodeId, patch))),
     deleteSelection,
     nudgeSelection: (deltaX: number, deltaY: number) =>
       withDocument((current) =>
@@ -227,7 +201,70 @@ export const useEditor = (files: DesignoFiles): Editor => {
     alignSelection: (kind: AlignKind) =>
       withDocument((current) => commit(createAlignOperations(current, selection.value, kind))),
     distributeSelection: (axis: DistributeAxis) =>
-      withDocument((current) => commit(createDistributeOperations(current, selection.value, axis))),
+      withDocument((current) => commit(createDistributeOperations(current, selection.value, axis)))
+  }
+}
+
+/**
+ * Holds the editing state for the open file: selection, tool, viewport and history. Every change
+ * goes through `commit`, which applies it locally, records its inverse for undo and saves it.
+ * @param files - The open file and how to save it.
+ * @returns The editor.
+ */
+export const useEditor = (files: DesignoFiles): Editor => {
+  const document = files.activeDocument
+  const selection = ref<string[]>([])
+  const tool = ref<Tool>('select')
+  const { viewport, canvasSize, zoomToFit, zoomTo } = useViewport(document)
+  const { history, commit, undo, redo } = useHistory(document, files)
+  const { editingText, startTextEdit, commitTextEdit } = useTextEditing(document, commit)
+
+  const selectionActions = useSelectionActions(document, selection, commit)
+
+  const withDocument = (action: (current: DesignDocument) => void): void => {
+    if (document.value) action(document.value)
+  }
+
+  watch(files.selectedFileId, () => {
+    selection.value = []
+    history.value = EMPTY_HISTORY
+  })
+
+  // Nodes an agent or an undo removed drop out of the selection.
+  watch(document, (current) => {
+    const remaining = selection.value.filter((nodeId) => current?.nodes[nodeId])
+    if (remaining.length !== selection.value.length) selection.value = remaining
+  })
+
+  return {
+    document,
+    selection,
+    tool,
+    viewport,
+    canvasSize,
+    history,
+    canUndo: computed(() => history.value.undoStack.length > 0),
+    canRedo: computed(() => history.value.redoStack.length > 0),
+    commit,
+    editingText,
+    startTextEdit,
+    commitTextEdit,
+    undo,
+    redo,
+    zoomToFit,
+    zoomTo,
+    select: (nodeIds: readonly string[]) => {
+      selection.value = [...nodeIds]
+    },
+    setTool: (next: Tool) => {
+      tool.value = next
+    },
+    setCanvasSize: (size: { width: number; height: number }) => {
+      canvasSize.value = size
+    },
+    updateNode: (nodeId: string, patch: DesignNodePatch) =>
+      withDocument((current) => commit(createPropertyOperations(current, nodeId, patch))),
+    ...selectionActions,
     selectAll: () =>
       withDocument((current) => {
         selection.value = getChildren(current, current.rootId).map((node) => node.id)

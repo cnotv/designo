@@ -8,6 +8,7 @@ import DesignCanvas from './components/DesignCanvas.vue'
 import EditorToolbar from './components/EditorToolbar.vue'
 import LayersPanel from './components/LayersPanel.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
+import TextEditOverlay from './components/TextEditOverlay.vue'
 import { provideEditorContext } from './composables/editorContext.ts'
 import { useCanvasInteraction } from './composables/useCanvasInteraction.ts'
 import { useDesignoFiles } from './composables/useDesignoFiles.ts'
@@ -65,8 +66,9 @@ const { documentSummaries, selectedFileId, isDemo, selectFile } = files
         <LayersPanel />
       </aside>
 
-      <main class="min-h-0 min-w-0">
+      <main class="relative min-h-0 min-w-0">
         <DesignCanvas />
+        <TextEditOverlay />
       </main>
 
       <aside class="bg-background min-h-0 overflow-y-auto border-l">

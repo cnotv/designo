@@ -3,7 +3,28 @@ import type { Bounds, Point, ResizeHandle } from './types.ts'
 
 const MIN_SIZE = 1
 const TEXT_WIDTH_PER_CHARACTER = 0.56
-const TEXT_LINE_HEIGHT = 1.25
+/** Line spacing as a multiple of the font size, shared by the canvas, the text editor and sizing. */
+export const TEXT_LINE_HEIGHT = 1.25
+
+/**
+ * Finds where a line of text sits, the way CSS lays out a line box: the font's ascent and descent
+ * are centred in the line height. The canvas uses it so its text lines up with the editor's
+ * textarea, which CSS lays out.
+ * @param lineIndex - Which line, from 0.
+ * @param fontSize - The font size.
+ * @param fontAscent - The font's ascent at that size, above the baseline.
+ * @param fontDescent - The font's descent at that size, below the baseline.
+ * @returns The baseline's distance from the top of the text box.
+ */
+export const getTextBaselineOffset = (
+  lineIndex: number,
+  fontSize: number,
+  fontAscent: number,
+  fontDescent: number
+): number => {
+  const lineHeight = fontSize * TEXT_LINE_HEIGHT
+  return lineIndex * lineHeight + (lineHeight - fontAscent - fontDescent) / 2 + fontAscent
+}
 
 /**
  * Reads a node's box, ignoring rotation.

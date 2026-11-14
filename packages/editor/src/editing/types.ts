@@ -147,3 +147,23 @@ export interface PixelSize {
   width: number
   height: number
 }
+
+/** The text node being edited in place; a new one is deleted again when committed empty. */
+export interface TextEditSession {
+  nodeId: string
+  isNew: boolean
+}
+
+/** Where the text editor overlay sits on the canvas, in CSS pixels. */
+export interface TextOverlayLayout {
+  left: number
+  top: number
+  width: number
+  height: number
+  fontSize: number
+  lineHeight: number
+  rotation: number
+  /** The node's centre, from the box's top-left, which the box turns around as the canvas does. */
+  rotationOriginX: number
+  rotationOriginY: number
+}

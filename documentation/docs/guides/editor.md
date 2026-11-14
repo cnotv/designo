@@ -12,13 +12,13 @@ same way.
 
 ## Tools
 
-| Tool      | Key | Does                                                      |
-| --------- | --- | --------------------------------------------------------- |
-| Move      | V   | Select, move and resize                                   |
-| Frame     | F   | Draw a frame; shapes drawn inside it belong to it         |
-| Rectangle | R   | Draw a rectangle                                          |
-| Ellipse   | O   | Draw an ellipse                                           |
-| Text      | T   | Click to place text, then edit it in the properties panel |
+| Tool      | Key | Does                                              |
+| --------- | --- | ------------------------------------------------- |
+| Move      | V   | Select, move and resize                           |
+| Frame     | F   | Draw a frame; shapes drawn inside it belong to it |
+| Rectangle | R   | Draw a rectangle                                  |
+| Ellipse   | O   | Draw an ellipse                                   |
+| Text      | T   | Click to place text, then type it on the canvas   |
 
 Drag to draw; a click without a drag draws at a default size. Hold Shift for a square or a
 circle. After drawing, the editor returns to Move.
@@ -47,6 +47,10 @@ circle. After drawing, the editor returns to Move.
   centre or bottom of the selection's bounds. A single layer inside a frame aligns to that frame.
   With three or more, distribute leaves equal gaps horizontally or vertically, keeping the two
   outermost in place. A frame carries what it holds. Each is one undo step.
+- **Edit text:** double-click a text layer, or press Enter with one text layer selected, to type
+  in place; a new text layer opens the same way. Enter adds a line, and the layer grows to fit
+  its lines. Escape, Cmd/Ctrl+Enter or a click outside commits it as one undo step, and a new
+  text layer left empty is removed. Shortcuts are paused while you type.
 - **Properties:** position, size, rotation, opacity, corner radius, fill, stroke, and text with
   its size. A field applies when you press Enter or leave it; Escape leaves the field.
 - **Hide and show:** the eye beside a layer in the layers panel.
@@ -109,6 +113,5 @@ skipped rather than half-applied.
 
 ## Not yet
 
-Inline text editing on the canvas. The canvas
-is drawn with Canvas 2D for now; a WebGL renderer is tracked in
+The canvas is drawn with Canvas 2D for now; a WebGL renderer is tracked in
 [issue #5](https://github.com/cnotv/designo/issues/5).

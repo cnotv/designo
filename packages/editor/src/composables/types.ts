@@ -9,6 +9,7 @@ import type {
   HistoryState,
   LayerOrderMode,
   SnapGuide,
+  TextEditSession,
   Tool,
   Viewport
 } from '../editing/types.ts'
@@ -35,6 +36,11 @@ export interface Editor {
   canRedo: ComputedRef<boolean>
   /** Applies a batch locally, records it for undo and saves it. False when it cannot apply. */
   commit: (operations: readonly DesignOperation[]) => boolean
+  /** The text node being edited in place on the canvas. */
+  editingText: Ref<TextEditSession | undefined>
+  startTextEdit: (nodeId: string, isNew: boolean) => void
+  /** Ends the edit with the typed text: one update, or a delete for a new node left empty. */
+  commitTextEdit: (draftText: string) => void
   select: (nodeIds: readonly string[]) => void
   setTool: (tool: Tool) => void
   setCanvasSize: (size: { width: number; height: number }) => void
@@ -71,6 +77,7 @@ export interface CanvasInteraction {
   onPointerMove: (event: PointerEvent) => void
   onPointerUp: (event: PointerEvent) => void
   onPointerLeave: () => void
+  onDoubleClick: (event: MouseEvent) => void
   onWheel: (event: WheelEvent) => void
 }
 

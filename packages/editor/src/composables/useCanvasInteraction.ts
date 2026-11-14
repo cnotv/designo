@@ -318,6 +318,15 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     if (state.kind !== 'drawing') return
     editor.select([state.nodeId])
     editor.setTool('select')
+    if (state.tool === 'text') editor.startTextEdit(state.nodeId, true)
+  }
+
+  const onDoubleClick = (event: MouseEvent): void => {
+    const document = editor.document.value
+    const hit = document && findNodeAtPoint(document, worldAt(event))
+    if (!hit || hit.type !== 'text') return
+    editor.select([hit.id])
+    editor.startTextEdit(hit.id, false)
   }
 
   return {
@@ -350,6 +359,7 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     },
     onPointerMove,
     onPointerUp,
+    onDoubleClick,
     onPointerLeave: () => {
       hoveredId.value = undefined
     },
