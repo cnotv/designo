@@ -1,4 +1,4 @@
-import type { Bounds } from '../editing/types.ts'
+import type { Bounds, SnapGuide } from '../editing/types.ts'
 
 export interface OverlayState {
   selection: readonly string[]
@@ -6,4 +6,6 @@ export interface OverlayState {
   marquee: Bounds | undefined
   showHandles: boolean
   color: string
+  guides: readonly SnapGuide[]
+  guideColor: string
 }

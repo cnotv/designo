@@ -1,5 +1,5 @@
 import { applyOperations, type DesignDocument, type DesignOperation } from '@designo/core'
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import { boundsFromPoints, getNodeBounds } from '../editing/geometry.ts'
 import {
   createDrawOperation,
@@ -11,7 +11,8 @@ import {
   computeRotation,
   getBoundsCenter,
   getRotatedHandlePositions,
-  rotatedBoundsContainPoint
+  rotatedBoundsContainPoint,
+  normalizeRotation
 } from '../editing/rotation.ts'
 import {
   findContainerAtPoint,
@@ -19,7 +20,8 @@ import {
   findNodesInBounds,
   toggleInSelection
 } from '../editing/selection.ts'
-import type { Bounds, Interaction, Point, ResizeHandle } from '../editing/types.ts'
+import { SNAP_THRESHOLD_PX, snapMove, snapResize } from '../editing/snapping.ts'
+import type { Bounds, Interaction, Point, ResizeHandle, SnapResult } from '../editing/types.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
 import { panBy, screenToWorld, worldToScreen, zoomAt } from '../editing/viewport.ts'
 import type { CanvasInteraction, Editor } from './types.ts'
@@ -68,17 +70,36 @@ const followPointer = (state: Interaction, world: Point): Interaction =>
 
 const difference = (from: Point, to: Point): Point => ({ x: to.x - from.x, y: to.y - from.y })
 
+// Snapping applies to moves and resizes only, and only while the threshold is given.
+const resolveSnap = (
+  document: DesignDocument,
+  state: Interaction,
+  snapThreshold: number | undefined
+): SnapResult | undefined => {
+  if (snapThreshold === undefined) return undefined
+  if (state.kind !== 'moving' && state.kind !== 'resizing') return undefined
+  const delta = difference(state.startWorld, state.currentWorld)
+  if (state.kind === 'moving') return snapMove(document, state.nodeIds, delta, snapThreshold)
+  if (state.kind !== 'resizing') return undefined
+  // A rotated node resizes along its own axes, which page-aligned guides cannot line up with.
+  if (normalizeRotation(state.rotation) !== 0) return undefined
+  const { nodeId, startBounds, handle } = state
+  return snapResize(document, { nodeId, startBounds, handle, delta, threshold: snapThreshold })
+}
+
 const previewOperations = (
   document: DesignDocument,
   state: Interaction,
-  keepSquare: boolean
+  keepSquare: boolean,
+  snapThreshold: number | undefined
 ): DesignOperation[] => {
+  const snapped = resolveSnap(document, state, snapThreshold)
   if (state.kind === 'moving') {
-    const delta = difference(state.startWorld, state.currentWorld)
+    const delta = snapped?.delta ?? difference(state.startWorld, state.currentWorld)
     return createMoveOperations(document, state.nodeIds, delta.x, delta.y)
   }
   if (state.kind === 'resizing') {
-    const delta = difference(state.startWorld, state.currentWorld)
+    const delta = snapped?.delta ?? difference(state.startWorld, state.currentWorld)
     const { nodeId, startBounds, rotation, handle } = state
     return createResizeOperations(nodeId, startBounds, rotation, handle, delta)
   }
@@ -206,11 +227,21 @@ const pickCursor = (
   return hoveredHandle ? CURSOR_BY_HANDLE[hoveredHandle] : 'default'
 }
 
-const usePreview = (editor: Editor, interaction: Ref<Interaction>, shiftHeld: Ref<boolean>) =>
+const usePreview = (
+  editor: Editor,
+  interaction: Ref<Interaction>,
+  shiftHeld: Ref<boolean>,
+  snapThreshold: ComputedRef<number | undefined>
+) =>
   computed(() => {
     const document = editor.document.value
     if (!document) return undefined
-    const operations = previewOperations(document, interaction.value, shiftHeld.value)
+    const operations = previewOperations(
+      document,
+      interaction.value,
+      shiftHeld.value,
+      snapThreshold.value
+    )
     if (operations.length === 0) return document
     const result = applyOperations(document, operations)
     return result.ok ? result.document : document
@@ -239,6 +270,11 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
   const hoveredHandle = ref<HandleTarget>()
   const spaceHeld = ref(false)
   const shiftHeld = ref(false)
+  const snapDisabled = ref(false)
+  // The threshold is a screen distance, so it shrinks in world units as the view zooms in.
+  const snapThreshold = computed(() =>
+    snapDisabled.value ? undefined : SNAP_THRESHOLD_PX / editor.viewport.value.scale
+  )
 
   const worldAt = (event: MouseEvent): Point =>
     screenToWorld(editor.viewport.value, pointerOnCanvas(event))
@@ -252,6 +288,7 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
 
   const onPointerMove = (event: PointerEvent): void => {
     shiftHeld.value = event.shiftKey
+    snapDisabled.value = event.ctrlKey || event.metaKey
     const state = interaction.value
     const document = editor.document.value
     if (state.kind === 'idle') {
@@ -275,7 +312,8 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     const document = editor.document.value
     interaction.value = { kind: 'idle' }
     if (!document) return
-    const operations = previewOperations(document, state, shiftHeld.value)
+    snapDisabled.value = event.ctrlKey || event.metaKey
+    const operations = previewOperations(document, state, shiftHeld.value, snapThreshold.value)
     if (operations.length === 0 || !editor.commit(operations)) return
     if (state.kind !== 'drawing') return
     editor.select([state.nodeId])
@@ -283,7 +321,13 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
   }
 
   return {
-    shownDocument: usePreview(editor, interaction, shiftHeld),
+    shownDocument: usePreview(editor, interaction, shiftHeld, snapThreshold),
+    guides: computed(() => {
+      const document = editor.document.value
+      return document
+        ? (resolveSnap(document, interaction.value, snapThreshold.value)?.guides ?? [])
+        : []
+    }),
     hoveredId,
     marquee: computed(() =>
       interaction.value.kind === 'marquee'
@@ -301,6 +345,7 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
       if (!document || event.button === SECONDARY_BUTTON) return
       ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
       shiftHeld.value = event.shiftKey
+      snapDisabled.value = event.ctrlKey || event.metaKey
       interaction.value = startDrag(editor, document, event, spaceHeld.value)
     },
     onPointerMove,

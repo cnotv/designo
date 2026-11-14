@@ -8,6 +8,7 @@ import {
   type DesignOperation
 } from '@designo/core'
 import { computed, ref, watch, type Ref } from 'vue'
+import { createAlignOperations, createDistributeOperations } from '../editing/alignment.ts'
 import { EMPTY_HISTORY, recordHistoryEntry, takeRedo, takeUndo } from '../editing/history.ts'
 import {
   copySubtrees,
@@ -22,8 +23,10 @@ import {
   createPropertyOperations
 } from '../editing/operations.ts'
 import type {
+  AlignKind,
   ClipboardContent,
   CreatedNodes,
+  DistributeAxis,
   HistoryState,
   LayerOrderMode,
   SelectionChange,
@@ -221,6 +224,10 @@ export const useEditor = (files: DesignoFiles): Editor => {
       withDocument((current) => commitAndSelect(createUngroupOperations(current, selection.value))),
     reorderSelection: (mode: LayerOrderMode) =>
       withDocument((current) => commit(createLayerOrderOperations(current, selection.value, mode))),
+    alignSelection: (kind: AlignKind) =>
+      withDocument((current) => commit(createAlignOperations(current, selection.value, kind))),
+    distributeSelection: (axis: DistributeAxis) =>
+      withDocument((current) => commit(createDistributeOperations(current, selection.value, axis))),
     selectAll: () =>
       withDocument((current) => {
         selection.value = getChildren(current, current.rootId).map((node) => node.id)

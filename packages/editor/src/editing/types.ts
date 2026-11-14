@@ -78,6 +78,32 @@ export interface LayerRow {
   depth: number
 }
 
+export type AlignKind = 'left' | 'centerX' | 'right' | 'top' | 'centerY' | 'bottom'
+
+export type DistributeAxis = 'horizontal' | 'vertical'
+
+/** A line the dragged bounds snapped to, in world units. A vertical guide is a line of equal x. */
+export interface SnapGuide {
+  orientation: 'vertical' | 'horizontal'
+  position: number
+  start: number
+  end: number
+}
+
+export interface SnapResult {
+  /** The pointer distance to apply instead of the raw one. */
+  delta: Point
+  guides: readonly SnapGuide[]
+}
+
+export interface ResizeSnapRequest {
+  nodeId: string
+  startBounds: Bounds
+  handle: ResizeHandle
+  delta: Point
+  threshold: number
+}
+
 export interface DrawRequest {
   tool: DrawingTool
   nodeId: string

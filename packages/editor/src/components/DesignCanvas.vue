@@ -12,6 +12,9 @@ const canvasElement = ref<HTMLCanvasElement>()
 const readSelectionColor = (canvas: HTMLCanvasElement): string =>
   getComputedStyle(canvas).getPropertyValue('--selection').trim() || '#0d99ff'
 
+const readGuideColor = (canvas: HTMLCanvasElement): string =>
+  getComputedStyle(canvas).getPropertyValue('--guide').trim() || '#f24822'
+
 const redraw = (): void => {
   const canvas = canvasElement.value
   const context = canvas?.getContext('2d')
@@ -30,7 +33,9 @@ const redraw = (): void => {
     hoveredId: interaction.hoveredId.value,
     marquee: interaction.marquee.value,
     showHandles: editor.selection.value.length === 1 && !interaction.isBusy.value,
-    color: readSelectionColor(canvas)
+    color: readSelectionColor(canvas),
+    guides: interaction.guides.value,
+    guideColor: readGuideColor(canvas)
   })
 }
 
