@@ -45,7 +45,7 @@ const distributeEnabled = computed(() => {
 </script>
 
 <template>
-  <div class="flex items-center gap-0.5" role="group" aria-label="Align and distribute">
+  <div class="flex flex-wrap items-center gap-0.5" role="group" aria-label="Align and distribute">
     <Tooltip v-for="entry in alignments" :key="entry.kind">
       <TooltipTrigger as-child>
         <Button

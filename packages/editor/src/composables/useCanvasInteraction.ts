@@ -1,6 +1,6 @@
 import { applyOperations, type DesignDocument, type DesignOperation } from '@designo/core'
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
-import { boundsFromPoints, getHandlePositions, getNodeBounds } from '../editing/geometry.ts'
+import { boundsFromPoints, getNodeBounds } from '../editing/geometry.ts'
 import {
   createDrawOperation,
   createMoveOperations,
@@ -11,7 +11,8 @@ import {
   computeRotation,
   getBoundsCenter,
   getRotatedHandlePositions,
-  rotatedBoundsContainPoint
+  rotatedBoundsContainPoint,
+  normalizeRotation
 } from '../editing/rotation.ts'
 import {
   findContainerAtPoint,
@@ -81,7 +82,7 @@ const resolveSnap = (
   if (state.kind === 'moving') return snapMove(document, state.nodeIds, delta, snapThreshold)
   if (state.kind !== 'resizing') return undefined
   // A rotated node resizes along its own axes, which page-aligned guides cannot line up with.
-  if (state.rotation % 360 !== 0) return undefined
+  if (normalizeRotation(state.rotation) !== 0) return undefined
   const { nodeId, startBounds, handle } = state
   return snapResize(document, { nodeId, startBounds, handle, delta, threshold: snapThreshold })
 }
