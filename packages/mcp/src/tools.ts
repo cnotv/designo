@@ -1,3 +1,4 @@
+import { exportNodeToSvg } from '@designo/exporter'
 import { createDocument, getNodeTree, type DesignNode, type DesignNodeTree } from '@designo/core'
 import {
   applyOperationsToFile,
@@ -7,7 +8,8 @@ import {
   type DocumentSummary,
   type OperationInput
 } from '@designo/storage'
-import type { DesignoToolContext } from './types.ts'
+import { rasterizeSvgToPng } from './rasterize.ts'
+import type { DesignoToolContext, ScreenshotImage } from './types.ts'
 
 /**
  * Lists the files an agent can open.
@@ -82,4 +84,35 @@ export const applyOperationsTool = async (
     context.generateId
   )
   return { createdNodeIds }
+}
+
+/**
+ * Draws a node (the page by default) as standalone SVG text.
+ * @param context - Where files live and how ids are made.
+ * @param input - The file and an optional node.
+ * @returns The SVG source.
+ */
+export const exportSvgTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string; nodeId?: string }
+): Promise<string> => {
+  const document = await readDocument(context.dataDirectory, input.fileId)
+  return exportNodeToSvg(document, input.nodeId ?? document.rootId)
+}
+
+/**
+ * Renders a node (the page by default) to a PNG so an agent can see what it made.
+ * @param context - Where files live and how ids are made.
+ * @param input - The file, an optional node and an optional scale factor.
+ * @returns The PNG as base64 with its MIME type.
+ */
+export const getScreenshotTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string; nodeId?: string; scale?: number }
+): Promise<ScreenshotImage> => {
+  const svg = await exportSvgTool(context, input)
+  return {
+    mimeType: 'image/png',
+    data: rasterizeSvgToPng(svg, input.scale ?? 1).toString('base64')
+  }
 }

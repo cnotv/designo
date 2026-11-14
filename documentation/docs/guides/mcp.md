@@ -41,6 +41,8 @@ container, reached over `docker exec` or SSH.
 | `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                 |
 | `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3) |
 | `get_node`          | Reads one node with every property                                                 |
+| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)        |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                              |
 | `create_node`       | Creates one frame, group, rectangle, ellipse or text node                          |
 | `update_node`       | Changes some properties of one node                                                |
 | `delete_node`       | Deletes a node and everything inside it                                            |
@@ -48,6 +50,10 @@ container, reached over `docker exec` or SSH.
 
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in
 the same batch can nest inside them. If any operation fails, nothing is saved.
+
+`get_screenshot` lets an agent check its own work. It draws SVG in Node with resvg, no browser, so
+text is plain SVG text with no shaping and differs slightly from the editor's canvas. It uses the
+fonts installed on the machine running the server.
 
 Colours are `#rrggbb` or `#rrggbbaa`. Coordinates are absolute on the page.
 

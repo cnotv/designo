@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@designo/core": "workspace:*",
+    "@designo/exporter": "workspace:*",
     "@designo/storage": "workspace:*",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",

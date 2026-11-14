@@ -17,15 +17,16 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 
 ## Packages
 
-| Package            | Status  | Role                                                                                      |
-| ------------------ | ------- | ----------------------------------------------------------------------------------------- |
-| `@designo/core`    | built   | Document model, operations, queries. Pure: no DOM, no I/O                                 |
-| `@designo/storage` | built   | Validated, atomic file reads and writes; the operation schema; applying a batch to a file |
-| `@designo/mcp`     | built   | MCP server for agents (stdio)                                                             |
-| `@designo/editor`  | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
-| `renderer`         | #5      | WebGL2 scene renderer, WebGPU later; replaces the Canvas 2D stopgap                       |
-| `server`           | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
-| `exporter`         | phase 4 | SVG, PNG, PDF and Vue/HTML code                                                           |
+| Package             | Status  | Role                                                                                      |
+| ------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `@designo/core`     | built   | Document model, operations, queries. Pure: no DOM, no I/O                                 |
+| `@designo/storage`  | built   | Validated, atomic file reads and writes; the operation schema; applying a batch to a file |
+| `@designo/mcp`      | built   | MCP server for agents (stdio)                                                             |
+| `@designo/exporter` | built   | Pure SVG export of a node; the MCP server rasterizes it to PNG with resvg                 |
+| `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
+| `renderer`          | #5      | WebGL2 scene renderer, WebGPU later; replaces the Canvas 2D stopgap                       |
+| `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
+| `exporter` (rest)   | phase 4 | PDF and Vue/HTML code, in-editor PNG                                                      |
 
 ## Document model
 

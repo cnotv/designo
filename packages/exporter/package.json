@@ -1,0 +1,16 @@
+{
+  "name": "@designo/exporter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Exports Designo documents to other formats. Pure: no DOM, no I/O.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@designo/core": "workspace:*"
+  }
+}

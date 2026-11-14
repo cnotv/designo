@@ -49,8 +49,16 @@ const COMMAND_ACTIONS: Record<string, (editor: Editor) => void> = {
   v: (editor) => editor.paste()
 }
 
-const handleCommandKey = (editor: Editor, event: KeyboardEvent): boolean => {
+const handleCommandKey = (
+  editor: Editor,
+  event: KeyboardEvent,
+  exportSelection: () => void
+): boolean => {
   const key = event.key.toLowerCase()
+  if (key === 'e' && event.shiftKey) {
+    exportSelection()
+    return true
+  }
   const action = COMMAND_ACTIONS[key]
   if (action && !event.shiftKey) {
     action(editor)
@@ -114,11 +122,16 @@ const handlePlainKey = (editor: Editor, event: KeyboardEvent): boolean =>
 
 /**
  * Wires the editor's keyboard shortcuts to the window: tools, undo and redo, delete, nudge,
- * select all, zoom, and space to pan.
+ * select all, zoom, export, and space to pan.
  * @param editor - The editor state.
  * @param spaceHeld - Set while the space bar is down, which turns a drag into a pan.
+ * @param exportSelection - Exports with the last-used settings.
  */
-export const useEditorShortcuts = (editor: Editor, spaceHeld: Ref<boolean>): void => {
+export const useEditorShortcuts = (
+  editor: Editor,
+  spaceHeld: Ref<boolean>,
+  exportSelection: () => void
+): void => {
   const onKeyDown = (event: KeyboardEvent): void => {
     if (isTypingTarget(event.target)) {
       // Escape leaves a panel field, as in Figma, so the next shortcut reaches the canvas.
@@ -131,7 +144,9 @@ export const useEditorShortcuts = (editor: Editor, spaceHeld: Ref<boolean>): voi
       return
     }
     const commandHeld = event.metaKey || event.ctrlKey
-    const handled = commandHeld ? handleCommandKey(editor, event) : handlePlainKey(editor, event)
+    const handled = commandHeld
+      ? handleCommandKey(editor, event, exportSelection)
+      : handlePlainKey(editor, event)
     if (handled) event.preventDefault()
   }
 
