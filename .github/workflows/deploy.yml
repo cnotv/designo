@@ -1,5 +1,5 @@
-# Deploys to a Hetzner Cloud server set up with deploy/hetzner/cloud-init.yaml. It stays off until the
-# repository variable HETZNER_DEPLOY is "true", so a fork or a fresh clone never fails a deploy.
+# Deploys to a Hetzner Cloud server set up with deploy/hetzner/cloud-init.yaml, on every push to
+# main that touches the app, like generative-art. It needs the HETZNER_HOST, HETZNER_USERNAME and HETZNER_SSH_KEY secrets.
 name: Deploy to Hetzner
 
 on:
@@ -14,7 +14,6 @@ env:
 
 jobs:
   run-tests:
-    if: vars.HETZNER_DEPLOY == 'true'
     uses: ./.github/workflows/test.yml
 
   build-and-push:
