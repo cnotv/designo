@@ -1,0 +1,19 @@
+{
+  "name": "@designo/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Accounts, approval rules, signed session cookies and the Google identity provider. Shared by the editor's production server and the MCP server.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/fakeIdentityProvider.ts"
+  },
+  "scripts": {
+    "type-check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "jose": "^6.2.15",
+    "openid-client": "^6.8.0",
+    "zod": "^4.6.7"
+  }
+}

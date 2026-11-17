@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { text } from 'node:stream/consumers'
 import {
   applyOperationsToFile,
   createShortId,
@@ -9,57 +8,20 @@ import {
   readDocument
 } from '@designo/storage'
 import { z } from 'zod'
+import { MAX_BODY_BYTES, jsonRequestProblem, readJsonBody, sendError, sendJson } from './http.ts'
 
 export const FILES_ROUTE = '/api/files'
 
 const HTTP_OK = 200
 const HTTP_BAD_REQUEST = 400
-const HTTP_FORBIDDEN = 403
 const HTTP_NOT_FOUND = 404
 const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_CONFLICT = 409
 const HTTP_PAYLOAD_TOO_LARGE = 413
-const HTTP_UNSUPPORTED_MEDIA_TYPE = 415
-const MAX_BODY_BYTES = 1_048_576
 
 const OPERATIONS_SUFFIX = '/operations'
 
 const operationsBodySchema = z.object({ operations: operationBatchSchema })
-
-const sendJson = (response: ServerResponse, status: number, body: unknown): void => {
-  response.statusCode = status
-  response.setHeader('Content-Type', 'application/json')
-  response.setHeader('Cache-Control', 'no-store')
-  response.end(JSON.stringify(body))
-}
-
-const sendError = (response: ServerResponse, status: number, error: string): void =>
-  sendJson(response, status, { error })
-
-// On a public deploy the browser sends the basic-auth login with every request to the site,
-// including ones another site triggers. Requiring JSON forces a CORS preflight, which this server
-// never approves, and a present Origin header must name this host.
-const crossSiteProblem = (
-  request: IncomingMessage
-): { status: number; message: string } | undefined => {
-  if (!(request.headers['content-type'] ?? '').startsWith('application/json')) {
-    return {
-      status: HTTP_UNSUPPORTED_MEDIA_TYPE,
-      message: 'Send the operations as application/json'
-    }
-  }
-  const origin = request.headers.origin
-  if (origin && (!URL.canParse(origin) || new URL(origin).host !== request.headers.host)) {
-    return { status: HTTP_FORBIDDEN, message: 'Cross-site requests are refused' }
-  }
-  return undefined
-}
-
-const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
-  const body = await text(request)
-  if (Buffer.byteLength(body) > MAX_BODY_BYTES) throw new RangeError('Body too large')
-  return JSON.parse(body)
-}
 
 const handleOperationsPost = async (
   dataDirectory: string,
@@ -67,7 +29,7 @@ const handleOperationsPost = async (
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
-  const problem = crossSiteProblem(request)
+  const problem = jsonRequestProblem(request)
   if (problem) {
     sendError(response, problem.status, problem.message)
     return

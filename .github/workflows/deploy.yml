@@ -1,5 +1,7 @@
 # Deploys to a Hetzner Cloud server set up with deploy/hetzner/cloud-init.yaml, on every push to
 # main that touches the app, like generative-art. It needs the HETZNER_HOST, HETZNER_USERNAME and HETZNER_SSH_KEY secrets.
+# Sign-in with Google is off unless the DESIGNO_AUTH variable is google; the settings it needs are
+# listed in documentation/docs/guides/self-hosting.md.
 name: Deploy to Hetzner
 
 on:
@@ -81,22 +83,60 @@ jobs:
           target: ${{ env.DEPLOY_DIRECTORY }}
       - name: Start the new image
         uses: appleboy/ssh-action@v1
+        env:
+          # Sign-in with Google: all of it is off unless DESIGNO_AUTH is google. The secrets reach
+          # the server through the SSH session, never through a command line or a log.
+          DESIGNO_AUTH: ${{ vars.DESIGNO_AUTH }}
+          DESIGNO_GOOGLE_CLIENT_ID: ${{ vars.DESIGNO_GOOGLE_CLIENT_ID }}
+          DESIGNO_PUBLIC_URL: ${{ vars.DESIGNO_PUBLIC_URL }}
+          DESIGNO_AUTO_APPROVE_DOMAINS: ${{ vars.DESIGNO_AUTO_APPROVE_DOMAINS }}
+          DESIGNO_GOOGLE_CLIENT_SECRET: ${{ secrets.DESIGNO_GOOGLE_CLIENT_SECRET }}
+          DESIGNO_ADMIN_EMAILS: ${{ secrets.DESIGNO_ADMIN_EMAILS }}
+          DESIGNO_AUTO_APPROVE_EMAILS: ${{ secrets.DESIGNO_AUTO_APPROVE_EMAILS }}
+          DESIGNO_SESSION_SECRET: ${{ secrets.DESIGNO_SESSION_SECRET }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USERNAME }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_PORT || '22' }}
-          envs: DEPLOY_DIRECTORY
+          envs: DEPLOY_DIRECTORY,DESIGNO_AUTH,DESIGNO_GOOGLE_CLIENT_ID,DESIGNO_PUBLIC_URL,DESIGNO_AUTO_APPROVE_DOMAINS,DESIGNO_GOOGLE_CLIENT_SECRET,DESIGNO_ADMIN_EMAILS,DESIGNO_AUTO_APPROVE_EMAILS,DESIGNO_SESSION_SECRET
           script: |
             # Without this a failed pull still reports success, and the old container keeps
             # running behind a green deploy.
             set -e
             cd "$DEPLOY_DIRECTORY"
 
+            # The file can hold secrets, so it is private before anything is written to it, and
+            # nothing below prints a value or turns on tracing.
+            set +x
+            umask 077
+            touch .env
+            chmod 600 .env
             cat > .env <<'ENV'
             DESIGNO_PORT='${{ vars.DESIGNO_PORT || '3020' }}'
             DESIGNO_BIND='${{ vars.DESIGNO_BIND || '127.0.0.1' }}'
             ENV
+
+            # Only when sign-in is on, and only the settings that have a value, so a server
+            # without sign-in gets exactly the two lines above. Plain sh, whatever shell the SSH
+            # user has.
+            if [ -n "$DESIGNO_AUTH" ]; then
+              newline='
+            '
+              for name in DESIGNO_AUTH DESIGNO_GOOGLE_CLIENT_ID DESIGNO_GOOGLE_CLIENT_SECRET \
+                DESIGNO_PUBLIC_URL DESIGNO_SESSION_SECRET DESIGNO_ADMIN_EMAILS \
+                DESIGNO_AUTO_APPROVE_EMAILS DESIGNO_AUTO_APPROVE_DOMAINS; do
+                eval "value=\${$name}"
+                [ -n "$value" ] || continue
+                # Single quotes keep a value literal in .env, so one inside it would break out.
+                case "$value" in
+                  *\'* | *"$newline"*)
+                    echo "$name must not contain a quote or a line break" >&2
+                    exit 1 ;;
+                esac
+                printf "%s='%s'\n" "$name" "$value" >> .env
+              done
+            fi
 
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull

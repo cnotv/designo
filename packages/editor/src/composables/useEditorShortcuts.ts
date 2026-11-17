@@ -25,6 +25,13 @@ const isTypingTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLElement &&
   (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
 
+// A dialog or menu owns its keys: the editor handling Escape first would stop it closing,
+// and a letter typed there must not switch tools.
+const OVERLAY_SELECTOR = '[role="dialog"], [role="alertdialog"], [role="menu"]'
+
+const isInsideOverlay = (target: EventTarget | null): boolean =>
+  target instanceof Element && target.closest(OVERLAY_SELECTOR) !== null
+
 const LAYER_ORDER_BY_CODE: Record<string, [LayerOrderMode, LayerOrderMode]> = {
   BracketRight: ['forward', 'front'],
   BracketLeft: ['backward', 'back']
@@ -144,6 +151,7 @@ export const useEditorShortcuts = (
       if (event.key === 'Escape' && event.target instanceof HTMLElement) event.target.blur()
       return
     }
+    if (isInsideOverlay(event.target)) return
     if (event.code === 'Space') {
       spaceHeld.value = true
       event.preventDefault()

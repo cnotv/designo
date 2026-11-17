@@ -2,10 +2,14 @@ import type { DesignDocument, DesignNodePatch, DesignOperation } from '@designo/
 import type { DocumentSummary } from '@designo/storage'
 import type { ComputedRef, Ref } from 'vue'
 import type {
+  AccountAction,
+  AccountSummary,
   AlignKind,
   Bounds,
+  ConnectedAgent,
   DistributeAxis,
   ExportSettings,
+  GateScreen,
   HistoryState,
   LayerOrderMode,
   SnapGuide,
@@ -87,4 +91,34 @@ export interface ExportController {
   error: Ref<string | undefined>
   /** Downloads the selection, or the page, with the current settings. */
   run: () => Promise<void>
+}
+
+export interface AccessGate {
+  screen: Ref<GateScreen>
+  /** Asks the server again who is visiting, for when it refuses a request mid-session. */
+  recheck: () => Promise<void>
+  /** Ends the session on the server, then reloads so the app starts signed out. */
+  signOut: () => Promise<void>
+}
+
+export interface AccountAdministration {
+  /** Pending first, so what needs a decision is on top. */
+  accounts: Ref<readonly AccountSummary[]>
+  isLoading: Ref<boolean>
+  /** The account whose change is on its way, so its buttons wait. */
+  busyAccountId: Ref<string | undefined>
+  error: Ref<string | undefined>
+  load: () => Promise<void>
+  changeAccount: (accountId: string, action: AccountAction) => Promise<void>
+}
+
+export interface ConnectedAgents {
+  /** Newest first. */
+  agents: Ref<readonly ConnectedAgent[]>
+  isLoading: Ref<boolean>
+  /** The agent whose disconnect is on its way, so its button waits. */
+  busyAgentId: Ref<string | undefined>
+  error: Ref<string | undefined>
+  load: () => Promise<void>
+  disconnect: (agentId: string) => Promise<void>
 }

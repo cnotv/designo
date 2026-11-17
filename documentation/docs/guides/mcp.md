@@ -7,6 +7,8 @@ sidebar_position: 2
 The MCP server runs over stdio. It reads and writes files in `DESIGNO_DATA_DIR`
 (default `~/.designo-data`), the same folder the editor shows.
 
+When the server uses Google sign-in (`DESIGNO_AUTH=google`), set `DESIGNO_ACCOUNT` to the email of an approved account: the MCP server then works on that account's designs and refuses to start if the account is missing, pending or blocked. A Designo that is reachable over the network also has a remote endpoint, which agents sign in to with their own browser: see [Remote login](#remote-login).
+
 ## Get it running
 
 Needs Node 24 and pnpm. Clone the repository and install once:
@@ -78,6 +80,37 @@ claude mcp add designo -- npx tsx /absolute/path/to/designo/packages/mcp/src/mai
 For a Designo running in Docker or on a server, see
 [self-hosting](./self-hosting.md#connecting-an-agent): the same server runs inside the
 container, reached over `docker exec` or SSH.
+
+## Remote login
+
+A Designo with [Sign in with Google](./self-hosting.md#sign-in-with-google) turned on also serves
+its MCP tools over HTTP at `/mcp`, and an agent signs in as you do, in the browser. Nothing is
+installed on the server's side of the connection and no key is copied around:
+
+```sh
+claude mcp add --transport http designo https://<your-host>/mcp
+```
+
+The first time the agent uses the server, its client opens your browser:
+
+1. If you are not signed in to Designo, you sign in with Google first.
+2. A page says which program wants to edit your designs and where you are sent back to. **Allow**
+   connects it; **Deny** tells it no. A pending or blocked account cannot connect an agent.
+3. The browser goes back to the program, which now holds a token for your account.
+
+From then on every tool call works on your designs and nobody else's: the token names one account
+and the server opens only that account's folder. The tools are the ones listed [below](#tools).
+Tokens last an hour and renew themselves for 30 days at a time, so an agent that stays in use
+stays connected. Blocking the account cuts its agents off at once, and unblocking it lets them
+carry on.
+
+**Disconnecting an agent.** Open the account menu in the editor and choose **Connected agents**.
+Each agent you approved is listed with **Disconnect**, which ends it at once; it has to sign in
+again to come back. Signing out of the browser does not disconnect agents.
+
+This is OAuth 2.1 with PKCE, so any MCP client that supports remote servers with OAuth works, not
+only Claude Code. Without `DESIGNO_AUTH=google` there is no `/mcp`: use the stdio server instead,
+which also still works with sign-in on (set `DESIGNO_ACCOUNT`, as above).
 
 ## Tools
 

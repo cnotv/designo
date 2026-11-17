@@ -186,3 +186,66 @@ export interface SpatialIndex {
   depth: number
   size: number
 }
+
+export type AccountStatus = 'pending' | 'approved' | 'blocked'
+
+/** Who is signed in, for the account menu. */
+export interface SignedInAccount {
+  email: string
+  name: string
+  isAdmin: boolean
+}
+
+/** One row of the Accounts screen, as the admin route lists it. */
+export interface AccountSummary {
+  id: string
+  email: string
+  name: string
+  status: AccountStatus
+  /** ISO 8601. */
+  createdAt: string
+  isAdmin: boolean
+}
+
+/** One agent the signed-in account has approved, as `/api/connections` lists it. */
+export interface ConnectedAgent {
+  id: string
+  clientName: string
+  /** ISO 8601. */
+  connectedAt: string
+  /** ISO 8601. */
+  expiresAt: string
+}
+
+/** What the server said to a request to disconnect an agent. */
+export type DisconnectOutcome = 'removed' | 'refused' | 'failed'
+
+export type AccountAction = 'approve' | 'block' | 'unblock'
+
+export interface AccountActionButton {
+  action: AccountAction
+  label: string
+  variant: 'outline' | 'destructive'
+}
+
+/** What the server says about who is asking, from `/api/me`. */
+export type AccessAnswer =
+  /** Sign-in is off, or there is no Designo server (a static host): the editor needs no gate. */
+  | { kind: 'not-required' }
+  | { kind: 'signed-out' }
+  | {
+      kind: 'account'
+      email: string
+      name: string
+      status: AccountStatus
+      isAdmin: boolean
+    }
+
+/** Which screen the app shows: the editor itself, or a gate in front of it. */
+export type GateScreen =
+  | { screen: 'loading' }
+  /** `account` is set only when sign-in is on: it is who the account menu shows. */
+  | { screen: 'editor'; account?: SignedInAccount }
+  | { screen: 'signed-out'; signInFailed: boolean }
+  | { screen: 'pending'; email: string }
+  | { screen: 'blocked'; email: string }

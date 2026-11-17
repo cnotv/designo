@@ -7,11 +7,15 @@
   "bin": {
     "designo-mcp": "./src/main.ts"
   },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "start": "tsx src/main.ts",
     "type-check": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@designo/auth": "workspace:*",
     "@designo/core": "workspace:*",
     "@designo/exporter": "workspace:*",
     "@designo/storage": "workspace:*",
