@@ -22,6 +22,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/core`     | built   | Document model, operations, queries. Pure: no DOM, no I/O                                 |
 | `@designo/storage`  | built   | Validated, atomic file reads and writes; the operation schema; applying a batch to a file |
 | `@designo/mcp`      | built   | MCP server for agents (stdio)                                                             |
+| `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP         |
 | `@designo/exporter` | built   | Pure SVG export of a node; the MCP server rasterizes it to PNG with resvg                 |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
 | `renderer`          | partial | WebGL2 shapes in the editor (#9); text shaping (#10) and hit testing (#11) next           |
@@ -106,6 +107,28 @@ scanned all nodes per node, and a flat page of 5,000 layers took over five secon
 
 Deployment files: `Dockerfile`, `docker-compose.yml`, `netlify.toml` and the workflows in
 `.github/workflows`. How to use them: the self-hosting guide.
+
+## Accounts
+
+With `DESIGNO_AUTH=google`, `@designo/auth` adds accounts to the production server; unset, nothing
+below exists and the server is single-user as before. An account is a record in `accounts.json`
+in the data folder (zod-validated on every read, written atomically with mode 0600): Google's
+`sub` it is matched on, the email, whether Google verified it, a status of `pending`, `approved`
+or `blocked`, and a random id. A first sign-in is approved at once only for a verified admin or
+a verified auto-approved address, and a verified admin is approved again at every sign-in, so the
+admin list can never lock anyone out. The id names the account's folder,
+`DESIGNO_DATA_DIR/accounts/<id>/`; it is validated before it becomes a path, `/api/files` works
+inside that folder only, and `@designo/core` does not know accounts exist. Designs in the data
+folder's root stay on disk, visible to no account.
+
+A session is a signed, `HttpOnly` cookie holding the account id, an expiry and the account's
+**session epoch**. The account is read from the store on every request, so approval and blocking
+apply at once, and a cookie counts only while its epoch equals the stored one. Signing out raises
+the epoch, which ends every session of that account, including a copied cookie. The stdio MCP
+server takes the account's folder from `DESIGNO_ACCOUNT` (an email) and refuses one that is
+missing, pending or blocked. The editor asks `/api/me` first and shows a sign-in, waiting or
+blocked screen in front of the editor; with sign-in off the answer is `{ authEnabled: false }`
+and no screen appears.
 
 ## Files
 

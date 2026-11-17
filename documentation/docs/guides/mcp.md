@@ -7,6 +7,8 @@ sidebar_position: 2
 The MCP server runs over stdio. It reads and writes files in `DESIGNO_DATA_DIR`
 (default `~/.designo-data`), the same folder the editor shows.
 
+When the server uses Google sign-in (`DESIGNO_AUTH=google`), set `DESIGNO_ACCOUNT` to the email of an approved account: the MCP server then works on that account's designs and refuses to start if the account is missing, pending or blocked.
+
 ## Get it running
 
 Needs Node 24 and pnpm. Clone the repository and install once:
