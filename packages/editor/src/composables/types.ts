@@ -2,6 +2,8 @@ import type { DesignDocument, DesignNodePatch, DesignOperation } from '@designo/
 import type { DocumentSummary } from '@designo/storage'
 import type { ComputedRef, Ref } from 'vue'
 import type {
+  AccountAction,
+  AccountSummary,
   AlignKind,
   Bounds,
   DistributeAxis,
@@ -96,4 +98,15 @@ export interface AccessGate {
   recheck: () => Promise<void>
   /** Ends the session on the server, then reloads so the app starts signed out. */
   signOut: () => Promise<void>
+}
+
+export interface AccountAdministration {
+  /** Pending first, so what needs a decision is on top. */
+  accounts: Ref<readonly AccountSummary[]>
+  isLoading: Ref<boolean>
+  /** The account whose change is on its way, so its buttons wait. */
+  busyAccountId: Ref<string | undefined>
+  error: Ref<string | undefined>
+  load: () => Promise<void>
+  changeAccount: (accountId: string, action: AccountAction) => Promise<void>
 }

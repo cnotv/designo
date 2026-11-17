@@ -9,6 +9,11 @@ const { screen, recheck, signOut } = useAccessGate()
 <template>
   <div v-if="screen.screen === 'loading'" class="bg-background h-screen" />
   <!-- The workspace only exists once access is settled, so it never polls the files API signed out. -->
-  <EditorWorkspace v-else-if="screen.screen === 'editor'" @access-refused="recheck" />
+  <EditorWorkspace
+    v-else-if="screen.screen === 'editor'"
+    :account="screen.account"
+    @access-refused="recheck"
+    @sign-out="signOut"
+  />
   <AccessGate v-else :screen="screen" @sign-out="signOut" />
 </template>

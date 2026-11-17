@@ -15,10 +15,12 @@ import { useDesignoFiles } from '../composables/useDesignoFiles.ts'
 import { useEditor } from '../composables/useEditor.ts'
 import { useExport } from '../composables/useExport.ts'
 import { useEditorShortcuts } from '../composables/useEditorShortcuts.ts'
+import type { SignedInAccount } from '../editing/types.ts'
 
 const DOCS_SELF_HOSTING_URL = 'https://cnotv.github.io/designo/guides/self-hosting'
 
-const emit = defineEmits<{ accessRefused: [] }>()
+defineProps<{ account?: SignedInAccount }>()
+const emit = defineEmits<{ accessRefused: []; signOut: [] }>()
 
 const files = useDesignoFiles(() => emit('accessRefused'))
 const editor = useEditor(files)
@@ -33,7 +35,12 @@ const { documentSummaries, selectedFileId, isDemo, selectFile } = files
 <template>
   <TooltipProvider :delay-duration="400">
     <div class="grid h-screen grid-cols-[240px_1fr_260px] grid-rows-[auto_1fr] overflow-hidden">
-      <EditorToolbar class="col-span-3" />
+      <EditorToolbar
+        class="col-span-3"
+        :account="account"
+        @sign-out="emit('signOut')"
+        @access-refused="emit('accessRefused')"
+      />
 
       <aside class="bg-background flex min-h-0 flex-col border-r">
         <nav aria-label="Files" class="flex flex-col gap-0.5 p-1">

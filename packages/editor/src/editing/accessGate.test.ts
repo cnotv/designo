@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { decideGateScreen, isAccessRefusal, readAccessAnswer } from './accessGate.ts'
 import type { AccessAnswer } from './types.ts'
 
-const account = (status: 'pending' | 'approved' | 'blocked'): AccessAnswer => ({
+const account = (status: 'pending' | 'approved' | 'blocked', isAdmin = false): AccessAnswer => ({
   kind: 'account',
   email: 'sam@example.com',
   name: 'Sam',
-  status
+  status,
+  isAdmin
 })
 
 describe('readAccessAnswer', () => {
@@ -28,7 +29,16 @@ describe('readAccessAnswer', () => {
     ['a static host answering with HTML', 200, undefined],
     ['a missing route', 404, { error: 'Not found' }],
     ['a server error', 500, { error: 'Internal error' }],
-    ['an unknown status', 200, { email: 'a@example.com', name: 'A', status: 'root' }],
+    [
+      'an unknown status',
+      200,
+      { email: 'a@example.com', name: 'A', status: 'root', isAdmin: false }
+    ],
+    [
+      'an answer that does not say whether the account is an admin',
+      200,
+      { email: 'a@example.com', name: 'A', status: 'approved' }
+    ],
     ['a body of the wrong shape', 200, ['nope']]
   ])('treats %s as nothing to gate, never an error', (_label, status, body) => {
     expect(readAccessAnswer(status, body)).toEqual({ kind: 'not-required' })
@@ -73,8 +83,22 @@ describe('decideGateScreen', () => {
     })
   })
 
-  it('shows the editor for an approved account', () => {
-    expect(decideGateScreen(account('approved'), '')).toEqual({ screen: 'editor' })
+  it('shows the editor with who is signed in for an approved account', () => {
+    expect(decideGateScreen(account('approved'), '')).toEqual({
+      screen: 'editor',
+      account: { email: 'sam@example.com', name: 'Sam', isAdmin: false }
+    })
+  })
+
+  it('tells the editor an approved admin is one, which opens the Accounts screen', () => {
+    expect(decideGateScreen(account('approved', true), '')).toMatchObject({
+      screen: 'editor',
+      account: { isAdmin: true }
+    })
+  })
+
+  it('shows no account menu when sign-in is not required', () => {
+    expect(decideGateScreen({ kind: 'not-required' }, '')).not.toHaveProperty('account')
   })
 })
 

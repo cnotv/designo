@@ -14,7 +14,8 @@ const SIGN_IN_FAILED_VALUE = 'failed'
 const accountAnswerSchema = z.object({
   email: z.string(),
   name: z.string(),
-  status: z.enum(['pending', 'approved', 'blocked'])
+  status: z.enum(['pending', 'approved', 'blocked']),
+  isAdmin: z.boolean()
 })
 
 /**
@@ -57,5 +58,8 @@ export const decideGateScreen = (answer: AccessAnswer, search: string): GateScre
   }
   if (answer.status === 'pending') return { screen: 'pending', email: answer.email }
   if (answer.status === 'blocked') return { screen: 'blocked', email: answer.email }
-  return { screen: 'editor' }
+  return {
+    screen: 'editor',
+    account: { email: answer.email, name: answer.name, isAdmin: answer.isAdmin }
+  }
 }

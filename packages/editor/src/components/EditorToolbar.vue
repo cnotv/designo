@@ -7,7 +7,11 @@ import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEditorContext } from '../composables/editorContext.ts'
-import type { Tool } from '../editing/types.ts'
+import type { SignedInAccount, Tool } from '../editing/types.ts'
+import AccountMenu from './AccountMenu.vue'
+
+defineProps<{ account?: SignedInAccount }>()
+const emit = defineEmits<{ signOut: []; accessRefused: [] }>()
 
 const { editor, files } = useEditorContext()
 const { isDemo, saveError } = files
@@ -91,6 +95,12 @@ const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PER
         </TooltipTrigger>
         <TooltipContent>Zoom to fit <Kbd>Shift 1</Kbd></TooltipContent>
       </Tooltip>
+      <AccountMenu
+        v-if="account"
+        :account="account"
+        @sign-out="emit('signOut')"
+        @access-refused="emit('accessRefused')"
+      />
     </div>
   </header>
 </template>
