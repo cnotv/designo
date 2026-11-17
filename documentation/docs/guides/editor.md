@@ -10,6 +10,19 @@ The editor saves every change as you make it: there is no save button. An agent 
 same file through the MCP server shows up within a second, and your edits reach the agent the
 same way.
 
+## Signing in and accounts
+
+On a server with [Sign in with Google](./self-hosting.md#sign-in-with-google) turned on, the editor
+opens on a sign-in page. A new account waits on a "Waiting for approval" screen until an admin
+approves it, and a blocked account sees "Access refused". Once approved, your name sits at the
+right of the toolbar: its menu shows who you are and has **Sign out**, which also ends the
+account's other sessions. Without sign-in, nothing of this appears.
+
+Admins also get **Accounts** in that menu. It lists everyone who has signed in, with the accounts
+waiting for a decision first, and each row has **Approve**, **Block** or **Unblock**. A change
+applies on that person's next request. Admins themselves have no Block button: their addresses
+come from the server's settings.
+
 ## Tools
 
 | Tool      | Key | Does                                              |

@@ -130,6 +130,21 @@ missing, pending or blocked. The editor asks `/api/me` first and shows a sign-in
 blocked screen in front of the editor; with sign-in off the answer is `{ authEnabled: false }`
 and no screen appears.
 
+**Admin routes.** `GET /api/admin/accounts` lists the accounts (id, email, name, status, creation
+date and whether the account is an admin, nothing else) and
+`POST /api/admin/accounts/<id>/status` with `{ "status": "approved" | "blocked" }` approves,
+blocks or unblocks one. Admin is derived, never stored: an approved account whose verified email is
+in `DESIGNO_ADMIN_EMAILS`, so removing an address takes effect at once. Everyone else, signed out,
+pending, blocked or approved without being an admin, gets the same 404 as a path that does not
+exist, so the routes do not show themselves. The status change takes the same-origin JSON rule as
+every write, validates the id and the body with zod, and refuses to block an admin (409): the
+list re-approves an admin at every sign-in, so a block would only last until then, and the check
+also keeps an admin from blocking themselves and the last admin from being blocked. A status
+change keeps the session epoch, because the status is read on every request and a blocked person
+should see that they are blocked. The editor shows an account menu with Sign out, and for admins an
+Accounts dialog; what it offers for each status is a pure function in
+`packages/editor/src/editing/accountAdministration.ts`.
+
 ## Files
 
 Files are `<id>.designo.json` in `DESIGNO_DATA_DIR`, by default `~/.designo-data`. Writes go to
