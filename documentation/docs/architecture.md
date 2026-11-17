@@ -24,7 +24,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/mcp`      | built   | MCP server for agents (stdio)                                                             |
 | `@designo/exporter` | built   | Pure SVG export of a node; the MCP server rasterizes it to PNG with resvg                 |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
-| `renderer`          | #5      | WebGL2 scene renderer, WebGPU later; replaces the Canvas 2D stopgap                       |
+| `renderer`          | partial | WebGL2 shapes in the editor (#9); text shaping (#10) and hit testing (#11) next           |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
 | `exporter` (rest)   | phase 4 | PDF and Vue/HTML code, in-editor PNG                                                      |
 
@@ -71,6 +71,28 @@ flowchart LR
   file, each reading it fresh for every batch. Two batches landing in the same instant can still
   lose one; the Yjs sync server in phase 5 removes the race.
 
+## Rendering
+
+The canvas is two stacked layers. The scene below is drawn by a `SceneRenderer`; the overlay on
+top, always Canvas 2D, carries selection, guides and the marquee and takes the pointer.
+
+- **Scene.** `buildScene` asks a packed R-tree (`editing/spatialIndex.ts`, Sort-Tile-Recursive,
+  rebuilt once per document) for the nodes in view, sorts them back to front and records the
+  frames each one is clipped by. `batchScene` splits the list into runs of shapes and runs of
+  text, so paint order holds across both.
+- **WebGL2.** Each run of shapes is one instanced draw: a quad per node, with a signed distance
+  function for the rounded box or ellipse, its stroke and edge antialiasing in the fragment
+  shader. Colours are premultiplied. A frame clips through the stencil buffer: each frame in a
+  node's chain increments it, and the node draws where it equals the chain's length.
+- **Text, for now,** is rasterised per node with Canvas 2D into a texture, cached by content and a
+  power-of-two zoom bucket, until HarfBuzz and a glyph atlas replace it (#10).
+- **Fallback.** Without WebGL2, or with `?renderer=canvas2d`, the same scene is painted with
+  Canvas 2D. A lost WebGL context is rebuilt when the browser restores it.
+
+Tree queries in `@designo/core` group a document's children once and cache the grouping per
+document, which is safe because documents are never mutated. Before that, every traversal
+scanned all nodes per node, and a flat page of 5,000 layers took over five seconds to list.
+
 ## Serving
 
 - **Development:** `pnpm dev` runs Vite, whose `designoFilesPlugin` answers `/api/files`.
@@ -99,4 +121,4 @@ are validated before they become paths.
 
 ## Still open
 
-- **Text shaping:** HarfBuzz compiled to WebAssembly is the likely choice for the WebGL renderer.
+- **Text shaping:** HarfBuzz compiled to WebAssembly is the likely choice for the WebGL renderer (#10).

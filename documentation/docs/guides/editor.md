@@ -113,5 +113,7 @@ skipped rather than half-applied.
 
 ## Not yet
 
-The canvas is drawn with Canvas 2D for now; a WebGL renderer is tracked in
-[issue #5](https://github.com/cnotv/designo/issues/5).
+The canvas draws shapes with WebGL2 and falls back to Canvas 2D where WebGL2 is missing; add
+`?renderer=canvas2d` to the address to force the fallback. Text is still rasterised with Canvas 2D
+until text shaping lands ([issue #10](https://github.com/cnotv/designo/issues/10)), and hit testing
+does not use the spatial index yet ([issue #11](https://github.com/cnotv/designo/issues/11)).

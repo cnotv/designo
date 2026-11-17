@@ -167,3 +167,22 @@ export interface TextOverlayLayout {
   rotationOriginX: number
   rotationOriginY: number
 }
+
+/** Something placed on the canvas, as the spatial index sees it. */
+export interface SpatialEntry {
+  id: string
+  bounds: Bounds
+}
+
+export interface SpatialTreeNode {
+  bounds: Bounds
+  children: readonly SpatialTreeNode[]
+  entries: readonly SpatialEntry[]
+}
+
+/** A packed R-tree over entry bounds, built once per document and only read afterwards. */
+export interface SpatialIndex {
+  root: SpatialTreeNode | undefined
+  depth: number
+  size: number
+}
