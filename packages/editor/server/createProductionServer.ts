@@ -5,6 +5,7 @@ import {
   createReplayGuard,
   type Account
 } from '@designo/auth'
+import { handleAdminRoute, isAdminRoute } from './adminRoutes.ts'
 import { accountFromRequest } from './authentication.ts'
 import { handleAuthRoute, ME_ROUTE } from './authRoutes.ts'
 import { FILES_ROUTE, handleFilesRequest } from './filesApi.ts'
@@ -70,6 +71,10 @@ const routeWithSignIn = async (
 ): Promise<void> => {
   const pathname = pathnameOf(request)
   if (await handleAuthRoute(context, request, response, pathname)) return
+  if (isAdminRoute(pathname)) {
+    await handleAdminRoute(context, request, response, pathname)
+    return
+  }
   if (isFilesRoute(pathname)) {
     await handleAccountFiles(context, options.dataDirectory, request, response)
     return

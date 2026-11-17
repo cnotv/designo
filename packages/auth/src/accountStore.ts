@@ -73,6 +73,16 @@ const refreshAccount = (
   status: decideStatusOnSignIn(account.status, identity, rules.adminEmails)
 })
 
+// Returns the very same array when no account has the id, so the caller can tell nothing changed.
+const changeAccount = (
+  accounts: readonly Account[],
+  accountId: string,
+  change: (account: Account) => Account
+): readonly Account[] =>
+  accounts.some((account) => account.id === accountId)
+    ? accounts.map((account) => (account.id === accountId ? change(account) : account))
+    : accounts
+
 /**
  * Opens the account store in the data folder. Reads are validated against the schema every time;
  * writes go through one queue and land atomically, so two sign-ins cannot lose each other's work.
@@ -94,8 +104,10 @@ export const createAccountStore = (
     change: (accounts: readonly Account[]) => { accounts: readonly Account[]; result: Result }
   ): Promise<Result> => {
     const run = queueTail.then(async () => {
-      const { accounts, result } = change(await readAccountsFile(filePath))
-      await writeAccountsFile(filePath, accounts)
+      const current = await readAccountsFile(filePath)
+      const { accounts, result } = change(current)
+      // An unchanged list is the same array: a change that found nothing to do writes nothing.
+      if (accounts !== current) await writeAccountsFile(filePath, accounts)
       return result
     })
     queueTail = run.catch(() => undefined)
@@ -122,12 +134,16 @@ export const createAccountStore = (
       }),
     revokeSessions: (accountId) =>
       modify((accounts) => ({
-        accounts: accounts.map((account) =>
-          account.id === accountId
-            ? { ...account, sessionEpoch: account.sessionEpoch + 1 }
-            : account
-        ),
+        accounts: changeAccount(accounts, accountId, (account) => ({
+          ...account,
+          sessionEpoch: account.sessionEpoch + 1
+        })),
         result: undefined
-      }))
+      })),
+    setStatus: (accountId, status) =>
+      modify((accounts) => {
+        const changed = changeAccount(accounts, accountId, (account) => ({ ...account, status }))
+        return { accounts: changed, result: changed.find((account) => account.id === accountId) }
+      })
   }
 }

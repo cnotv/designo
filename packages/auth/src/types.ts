@@ -140,4 +140,12 @@ export interface AccountStore {
    * @returns Nothing; an unknown account is ignored.
    */
   revokeSessions: (accountId: string) => Promise<void>
+  /**
+   * Sets the status an admin chose. The session epoch stays: the server reads the status on every
+   * request, so a block takes effect at once and the person sees that they are blocked.
+   * @param accountId - The account to change.
+   * @param status - The new status.
+   * @returns The account as stored, or undefined when there is no such account.
+   */
+  setStatus: (accountId: string, status: AccountStatus) => Promise<Account | undefined>
 }

@@ -729,6 +729,229 @@ describe('designs belong to accounts', () => {
   })
 })
 
+const postStatus = (
+  cookie: string,
+  accountId: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+  server: Harness = harness
+) =>
+  request(
+    `/api/admin/accounts/${accountId}/status`,
+    {
+      method: 'POST',
+      ...withCookie(cookie, { 'Content-Type': 'application/json', ...headers }),
+      body: JSON.stringify(body)
+    },
+    server
+  )
+
+describe('the admin routes', () => {
+  it('lists every account for an approved admin, with only what the screen shows', async () => {
+    const admin = await signInAs('admin')
+    await signInAs('stranger')
+    await signInAs('friend')
+    const response = await request('/api/admin/accounts', withCookie(admin))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    const { accounts } = await response.json()
+    expect(accounts).toEqual([
+      expect.objectContaining({ email: 'admin@example.com', status: 'approved', isAdmin: true }),
+      expect.objectContaining({ email: 'stranger@example.com', status: 'pending', isAdmin: false }),
+      expect.objectContaining({
+        email: 'friend@team.example.com',
+        status: 'approved',
+        isAdmin: false
+      })
+    ])
+    expect(Object.keys(accounts[1]).sort()).toEqual(
+      ['createdAt', 'email', 'id', 'isAdmin', 'name', 'status'].sort()
+    )
+    expect(accounts[1].createdAt).toBe(new Date(START_TIME).toISOString())
+  })
+
+  it('answers 404 to everyone who is not an approved admin, so the route does not show itself', async () => {
+    const stranger = await signInAs('stranger')
+    const friend = await signInAs('friend')
+    const unverifiedAdmin = await signInAs('fake')
+    const blockedAdmin = await signInAs('admin')
+    await setStatusOnDisk('admin@example.com', 'blocked')
+    const strangerId = await accountIdOf('stranger@example.com')
+    const cases: [string, string | undefined][] = [
+      ['signed out', undefined],
+      ['pending', stranger],
+      ['approved but not an admin', friend],
+      ['an unverified address that is listed', unverifiedAdmin],
+      ['a blocked admin', blockedAdmin]
+    ]
+    const answers = await Promise.all(
+      cases.map(async ([label, cookie]) => {
+        const headers = cookie ? withCookie(cookie, { 'Content-Type': 'application/json' }) : {}
+        const read = await request('/api/admin/accounts', headers)
+        const write = await request(`/api/admin/accounts/${strangerId}/status`, {
+          method: 'POST',
+          ...headers,
+          body: JSON.stringify({ status: 'approved' })
+        })
+        const other = await request('/api/admin/anything', headers)
+        return [label, read.status, write.status, other.status]
+      })
+    )
+    expect(answers).toEqual(cases.map(([label]) => [label, 404, 404, 404]))
+    expect((await accountsOnDisk()).find((account) => account.id === strangerId)?.status).toBe(
+      'pending'
+    )
+  })
+
+  it('approves a pending account, and it opens the designs with no new sign-in', async () => {
+    const admin = await signInAs('admin')
+    const stranger = await signInAs('stranger')
+    const id = await accountIdOf('stranger@example.com')
+    expect((await request('/api/files', withCookie(stranger))).status).toBe(403)
+    const response = await postStatus(admin, id, { status: 'approved' })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ id, status: 'approved', isAdmin: false })
+    expect((await request('/api/files', withCookie(stranger))).status).toBe(200)
+  })
+
+  it('blocks an account on its very next request, and unblocks it again', async () => {
+    const admin = await signInAs('admin')
+    const friend = await signInAs('friend')
+    const id = await accountIdOf('friend@team.example.com')
+    expect((await postStatus(admin, id, { status: 'blocked' })).status).toBe(200)
+    const refused = await request('/api/files', withCookie(friend))
+    expect(refused.status).toBe(403)
+    expect((await refused.json()).error).toContain('blocked')
+    expect((await postStatus(admin, id, { status: 'approved' })).status).toBe(200)
+    expect((await request('/api/files', withCookie(friend))).status).toBe(200)
+  })
+
+  it('refuses to block an admin, whoever asks: the settings list is what removes one', async () => {
+    const both = await startHarness(
+      makeSettings({ adminEmails: ['admin@example.com', 'friend@team.example.com'] })
+    )
+    const admin = await signInAs('admin', both)
+    await signInAs('friend', both)
+    const ownId = await accountIdOf('admin@example.com')
+    const otherId = await accountIdOf('friend@team.example.com')
+    const self = await postStatus(admin, ownId, { status: 'blocked' }, {}, both)
+    expect(self.status).toBe(409)
+    expect((await self.json()).error).toContain('DESIGNO_ADMIN_EMAILS')
+    expect((await postStatus(admin, otherId, { status: 'blocked' }, {}, both)).status).toBe(409)
+    expect((await accountsOnDisk()).map((account) => account.status)).toEqual([
+      'approved',
+      'approved'
+    ])
+  })
+
+  it('lets an admin approve an admin, which changes nothing', async () => {
+    const admin = await signInAs('admin')
+    const id = await accountIdOf('admin@example.com')
+    expect((await postStatus(admin, id, { status: 'approved' })).status).toBe(200)
+  })
+
+  it('stops an admin whose address leaves the list from using the screen', async () => {
+    const admin = await signInAs('admin')
+    const afterRemoval = await startHarness(makeSettings({ adminEmails: [] }))
+    expect((await request('/api/admin/accounts', withCookie(admin), afterRemoval)).status).toBe(404)
+  })
+
+  it('refuses a change another site triggers, and one that is not JSON', async () => {
+    const admin = await signInAs('admin')
+    await signInAs('stranger')
+    const id = await accountIdOf('stranger@example.com')
+    const crossSite = await postStatus(
+      admin,
+      id,
+      { status: 'approved' },
+      {
+        Origin: 'https://evil.example'
+      }
+    )
+    expect(crossSite.status).toBe(403)
+    const notJson = await request(`/api/admin/accounts/${id}/status`, {
+      method: 'POST',
+      ...withCookie(admin, { 'Content-Type': 'text/plain' }),
+      body: JSON.stringify({ status: 'approved' })
+    })
+    expect(notJson.status).toBe(415)
+    expect((await accountsOnDisk()).find((account) => account.id === id)?.status).toBe('pending')
+  })
+
+  it.each([
+    ['an unknown status', { status: 'root' }],
+    ['pending, which an admin cannot choose', { status: 'pending' }],
+    ['no status', {}],
+    ['extra fields', { status: 'approved', email: 'x@example.com' }],
+    ['a body that is not an object', ['approved']]
+  ])('refuses %s with 400', async (_label, body) => {
+    const admin = await signInAs('admin')
+    await signInAs('stranger')
+    const id = await accountIdOf('stranger@example.com')
+    expect((await postStatus(admin, id, body)).status).toBe(400)
+    expect((await accountsOnDisk()).find((account) => account.id === id)?.status).toBe('pending')
+  })
+
+  it('refuses a body that is not JSON with 400', async () => {
+    const admin = await signInAs('admin')
+    const response = await request('/api/admin/accounts/abc/status', {
+      method: 'POST',
+      ...withCookie(admin, { 'Content-Type': 'application/json' }),
+      body: '{not json'
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('answers 404 for an account that does not exist, and for ids with path tricks', async () => {
+    const admin = await signInAs('admin')
+    expect((await postStatus(admin, 'no-such-account', { status: 'blocked' })).status).toBe(404)
+    await Promise.all(
+      ['..', '%2e%2e', 'a%2Fb', 'x'.repeat(65), '%00'].map(async (id) => {
+        expect(
+          await rawStatus(
+            'POST',
+            `/api/admin/accounts/${id}/status`,
+            admin,
+            JSON.stringify({ status: 'blocked' })
+          )
+        ).toBe(404)
+      })
+    )
+  })
+
+  it('answers 405 to a method the route does not take', async () => {
+    const admin = await signInAs('admin')
+    const id = await accountIdOf('admin@example.com')
+    expect(
+      (await request('/api/admin/accounts', { method: 'POST', ...withCookie(admin) })).status
+    ).toBe(405)
+    expect((await request(`/api/admin/accounts/${id}/status`, withCookie(admin))).status).toBe(405)
+  })
+
+  it('has no admin routes with sign-in off: they fall through to the static editor', async () => {
+    const off = await startHarness('sign-in-off')
+    const response = await request('/api/admin/accounts', {}, off)
+    expect(await response.text()).toBe('static editor')
+  })
+
+  it('keeps emails out of the log', async () => {
+    const logged: string[] = []
+    const capture = (...parts: unknown[]): void => {
+      logged.push(parts.map(String).join(' '))
+    }
+    vi.spyOn(console, 'error').mockImplementation(capture)
+    vi.spyOn(console, 'warn').mockImplementation(capture)
+    vi.spyOn(console, 'log').mockImplementation(capture)
+    const admin = await signInAs('admin')
+    await signInAs('stranger')
+    const id = await accountIdOf('stranger@example.com')
+    await request('/api/admin/accounts', withCookie(admin))
+    await postStatus(admin, id, { status: 'blocked' })
+    await postStatus(admin, id, { status: 'nonsense' })
+    expect(logged.join('\n')).not.toContain('@')
+  })
+})
+
 describe('what is never exposed', () => {
   it('keeps secrets and cookies out of every body and every log line', async () => {
     const logged: string[] = []

@@ -203,6 +203,40 @@ describe('account store sign-in', () => {
     expect((await createAccountStore(dataDirectory).findById('abc'))?.sessionEpoch).toBe(0)
   })
 
+  it('sets the status of one account and returns it, leaving the others alone', async () => {
+    const store = createAccountStore(dataDirectory)
+    const target = await store.signIn(identity('sub-1', 'one@example.com'), rules, NOW)
+    const other = await store.signIn(identity('sub-2', 'two@example.com'), rules, NOW)
+    expect(await store.setStatus(target.id, 'approved')).toEqual({ ...target, status: 'approved' })
+    expect((await store.findById(target.id))?.status).toBe('approved')
+    expect(await store.findById(other.id)).toEqual(other)
+    expect((await store.setStatus(target.id, 'blocked'))?.status).toBe('blocked')
+    expect((await store.setStatus(target.id, 'approved'))?.status).toBe('approved')
+  })
+
+  it('keeps the session epoch when the status changes, so a block shows as blocked, not signed out', async () => {
+    const store = createAccountStore(dataDirectory)
+    const account = await store.signIn(identity('sub-1', 'one@example.com'), rules, NOW)
+    await store.revokeSessions(account.id)
+    expect((await store.setStatus(account.id, 'blocked'))?.sessionEpoch).toBe(1)
+  })
+
+  it('answers undefined and writes nothing when the account to change does not exist', async () => {
+    const store = createAccountStore(dataDirectory)
+    expect(await store.setStatus('missing', 'blocked')).toBeUndefined()
+    await expect(readFile(path.join(dataDirectory, 'accounts.json'))).rejects.toThrow()
+  })
+
+  it('does not lose a status change that arrives together with a sign-in', async () => {
+    const store = createAccountStore(dataDirectory)
+    const target = await store.signIn(identity('sub-1', 'one@example.com'), rules, NOW)
+    await Promise.all([
+      store.setStatus(target.id, 'blocked'),
+      store.signIn(identity('sub-2', 'two@example.com'), rules, NOW)
+    ])
+    expect((await store.list()).map((account) => account.status)).toEqual(['blocked', 'pending'])
+  })
+
   it('writes a file only its owner can read', async () => {
     await createAccountStore(dataDirectory).signIn(identity('a', 'one@example.com'), rules, NOW)
     const { mode } = await stat(path.join(dataDirectory, 'accounts.json'))

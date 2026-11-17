@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {
+  AccountStatus,
   AccountStore,
   AuthSettings,
   Clock,
@@ -38,4 +39,15 @@ export interface AuthContext {
   accountStore: AccountStore
   replayGuard: ReplayGuard
   clock: Clock
+}
+
+/** One account as the admin screen sees it: nothing that identifies the person to Google. */
+export interface AccountSummary {
+  id: string
+  email: string
+  name: string
+  status: AccountStatus
+  /** ISO 8601. */
+  createdAt: string
+  isAdmin: boolean
 }

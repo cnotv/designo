@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { text } from 'node:stream/consumers'
 import {
   applyOperationsToFile,
   createShortId,
@@ -9,45 +8,20 @@ import {
   readDocument
 } from '@designo/storage'
 import { z } from 'zod'
-import { crossSiteProblem, sendError, sendJson } from './http.ts'
+import { MAX_BODY_BYTES, jsonRequestProblem, readJsonBody, sendError, sendJson } from './http.ts'
 
 export const FILES_ROUTE = '/api/files'
 
 const HTTP_OK = 200
 const HTTP_BAD_REQUEST = 400
-const HTTP_FORBIDDEN = 403
 const HTTP_NOT_FOUND = 404
 const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_CONFLICT = 409
 const HTTP_PAYLOAD_TOO_LARGE = 413
-const HTTP_UNSUPPORTED_MEDIA_TYPE = 415
-const MAX_BODY_BYTES = 1_048_576
 
 const OPERATIONS_SUFFIX = '/operations'
 
 const operationsBodySchema = z.object({ operations: operationBatchSchema })
-
-// On a public deploy the browser sends the basic-auth login or the session cookie with every
-// request to the site, including ones another site triggers. Requiring JSON forces a CORS
-// preflight, which this server never approves, and a present Origin header must name this host.
-const requestProblem = (
-  request: IncomingMessage
-): { status: number; message: string } | undefined => {
-  if (!(request.headers['content-type'] ?? '').startsWith('application/json')) {
-    return {
-      status: HTTP_UNSUPPORTED_MEDIA_TYPE,
-      message: 'Send the operations as application/json'
-    }
-  }
-  const message = crossSiteProblem(request)
-  return message ? { status: HTTP_FORBIDDEN, message } : undefined
-}
-
-const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
-  const body = await text(request)
-  if (Buffer.byteLength(body) > MAX_BODY_BYTES) throw new RangeError('Body too large')
-  return JSON.parse(body)
-}
 
 const handleOperationsPost = async (
   dataDirectory: string,
@@ -55,7 +29,7 @@ const handleOperationsPost = async (
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
-  const problem = requestProblem(request)
+  const problem = jsonRequestProblem(request)
   if (problem) {
     sendError(response, problem.status, problem.message)
     return
