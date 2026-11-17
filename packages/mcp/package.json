@@ -12,6 +12,7 @@
     "type-check": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@designo/auth": "workspace:*",
     "@designo/core": "workspace:*",
     "@designo/exporter": "workspace:*",
     "@designo/storage": "workspace:*",
