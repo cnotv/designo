@@ -18,6 +18,11 @@ approves it, and a blocked account sees "Access refused". Once approved, your na
 right of the toolbar: its menu shows who you are and has **Sign out**, which also ends the
 account's other sessions. Without sign-in, nothing of this appears.
 
+**Connected agents** in the same menu lists the agents you let in through the server's
+[remote MCP login](./mcp.md#remote-login), with the day each connected and a **Disconnect**
+button. Disconnecting ends the agent at once. The dialog also shows the address to give your
+agent's client.
+
 Admins also get **Accounts** in that menu. It lists everyone who has signed in, with the accounts
 waiting for a decision first, and each row has **Approve**, **Block** or **Unblock**. A change
 applies on that person's next request. Admins themselves have no Block button: their addresses

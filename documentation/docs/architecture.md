@@ -102,8 +102,9 @@ scanned all nodes per node, and a flat page of 5,000 layers took over five secon
   straight from TypeScript. It listens on loopback unless `HOST` says otherwise. On a server, Compose
   publishes it on `127.0.0.1:3020` for the host's reverse proxy, which adds HTTPS and a login.
 - **Static demo:** with no files API (Netlify), `useDesignoFiles` falls back to a bundled sample.
-- **MCP:** stdio only. A remote agent reaches it through `ssh` and `docker exec`, so it needs no
-  network listener or login of its own.
+- **MCP:** stdio, which a remote agent reaches through `ssh` and `docker exec`, and, with sign-in
+  on, `/mcp` on the production server itself: agents sign in with OAuth in the browser
+  (see Accounts below).
 
 Deployment files: `Dockerfile`, `docker-compose.yml`, `netlify.toml` and the workflows in
 `.github/workflows`. How to use them: the self-hosting guide.
@@ -144,6 +145,51 @@ change keeps the session epoch, because the status is read on every request and 
 should see that they are blocked. The editor shows an account menu with Sign out, and for admins an
 Accounts dialog; what it offers for each status is a pure function in
 `packages/editor/src/editing/accountAdministration.ts`.
+
+**Agents sign in (remote MCP).** With sign-in on, the production server is also an OAuth 2.1
+authorization server and the MCP resource server, on plain `node:http` with the MCP SDK's
+schemas and streamable HTTP transport, no web framework. An agent that opens `/mcp` unauthenticated
+gets `401` with `WWW-Authenticate: Bearer resource_metadata=...`; from there the standard flow
+runs: the protected-resource and authorization-server metadata under `/.well-known/`, dynamic
+registration at `/register` (RFC 7591, public clients only), `/authorize`, `/token` and
+`/revoke`. The issuer and every URL in the metadata come from `DESIGNO_PUBLIC_URL`, never from the
+`Host` header.
+
+- **Authorize.** The browser needs its Designo session: signed out, it goes through
+  `/auth/google` and back to the same request, the return location carried inside the signed login
+  cookie and accepted only as a plain same-site path. Only a client and a redirect URI that match
+  a registration exactly are answered by redirecting; anything else is an error page, never a
+  redirect. PKCE with S256 is required and the `resource` must be the `/mcp` URL. The consent page
+  is served by the server: its form carries a signed token tied to the account and to exactly the
+  request shown, the post must come from this origin, and the page is sent with
+  `X-Frame-Options: DENY`, `frame-ancestors 'none'` and a CSP that allows no script. Allow makes a
+  single-use authorization code, held hashed in memory for 60 seconds and bound to client,
+  redirect URI, challenge, account and resource; a code used twice also revokes what its first use
+  produced.
+- **Tokens.** Opaque, 256 random bits. `oauth.json` in the data folder keeps only their SHA-256
+  hashes, with the registered clients and the grants (zod-validated on every read, atomic writes
+  through one queue, mode 0600). An access token lasts an hour; a refresh token 30 days and is
+  traded in at every use, and a traded-in refresh token that comes back revokes the whole grant,
+  except for 30 seconds after the trade, when the same new pair is handed out again, because a
+  client with an expired token usually refreshes twice at once. Registered clients, grants per
+  account and grants overall are capped, with the oldest unused dropped first, and expired entries
+  are pruned on write. `/register` and `/token` are rate limited per remote address.
+- **`/mcp`.** Stateless: each POST builds the same server as the stdio one (`createDesignoServer`
+  from `@designo/mcp`) with `dataDirectory` set to the token's account folder, and a transport
+  that lives for that request. The bearer token is looked up, and the account read from the
+  account store, on every request, so blocking an account, revoking a grant or an hour passing
+  cuts an agent off at once. Tokens do not depend on the browser's session epoch.
+- **CORS.** Only the metadata, `/register`, `/token`, `/revoke` and `/mcp` allow other origins;
+  they answer to a bearer token and never to the cookie. `/authorize` and `/api/*` allow none.
+- **Connected agents.** `GET /api/connections` and `DELETE /api/connections/<id>` (cookie, and the
+  same-origin check on the delete) show and end the signed-in account's own grants, nothing
+  more. The editor's dialog is `ConnectedAgentsDialog.vue`; what it does with the answers is pure,
+  in `packages/editor/src/editing/connectedAgents.ts`.
+
+The pieces: `packages/auth/src/oauth/` (store, authorization codes, PKCE, redirect URI rules,
+consent token, rate limiter) holds the logic without HTTP; `packages/editor/server/` has the
+routes (`oauthRoutes.ts`, `authorizeRoute.ts`, `tokenRoutes.ts`, `registrationRoute.ts`,
+`mcpEndpoint.ts`, `connectionsRoutes.ts`).
 
 ## Files
 

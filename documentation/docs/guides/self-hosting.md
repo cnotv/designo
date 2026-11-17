@@ -55,7 +55,23 @@ move a file into an account's folder to hand it over. The agent's MCP server pic
 
 ## Connecting an agent
 
-The MCP server runs inside the same container, over stdio:
+With sign-in on, agents can sign in to `https://<your-host>/mcp` in the browser, with no SSH and
+no shell on the server: `claude mcp add --transport http designo https://<your-host>/mcp`. See
+[Remote login](./mcp.md#remote-login). Whatever sits in front of Designo must pass these paths
+through to it unchanged:
+
+- `/.well-known/*`, where clients discover how to sign in
+- `/register`, `/authorize`, `/token` and `/revoke`, the sign-in itself
+- `/mcp`, the tools, whose responses must not be buffered or cached
+- `/auth/*`, the Google sign-in
+
+Those paths must be served over `https`, at the same address as `DESIGNO_PUBLIC_URL`: it is the
+issuer the tokens are made for, so a client that reaches Designo under another name is refused.
+Agents' tokens are kept hashed in `oauth.json` in the data folder, next to `accounts.json`.
+`/register` and `/token` are open to everyone who can reach the server, so each address is limited
+in how often it can call them; behind a proxy that address is the proxy's.
+
+The MCP server also runs inside the same container, over stdio:
 
 ```sh
 claude mcp add designo -- docker exec -i designo node packages/mcp/src/main.ts
