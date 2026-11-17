@@ -22,11 +22,20 @@ export const signValue = (purpose: string, payload: unknown, secret: string): st
   return `${body}${PART_SEPARATOR}${computeSignature(body, secret).toString('base64url')}`
 }
 
-const hasValidSignature = (body: string, signature: string, secret: string): boolean => {
-  const expected = computeSignature(body, secret)
-  const given = Buffer.from(signature, 'base64url')
-  return given.length === expected.length && timingSafeEqual(given, expected)
-}
+const buffersAreEqual = (first: Buffer, second: Buffer): boolean =>
+  first.length === second.length && timingSafeEqual(first, second)
+
+/**
+ * Compares two strings without leaking, through timing, how much of them matched.
+ * @param first - One string.
+ * @param second - The other.
+ * @returns True when they are identical.
+ */
+export const constantTimeEqual = (first: string, second: string): boolean =>
+  buffersAreEqual(Buffer.from(first), Buffer.from(second))
+
+const hasValidSignature = (body: string, signature: string, secret: string): boolean =>
+  buffersAreEqual(Buffer.from(signature, 'base64url'), computeSignature(body, secret))
 
 /**
  * Checks a signed value in constant time and returns what it carries. The caller validates the

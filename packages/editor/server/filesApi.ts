@@ -9,6 +9,7 @@ import {
   readDocument
 } from '@designo/storage'
 import { z } from 'zod'
+import { crossSiteProblem, sendError, sendJson } from './http.ts'
 
 export const FILES_ROUTE = '/api/files'
 
@@ -26,20 +27,10 @@ const OPERATIONS_SUFFIX = '/operations'
 
 const operationsBodySchema = z.object({ operations: operationBatchSchema })
 
-const sendJson = (response: ServerResponse, status: number, body: unknown): void => {
-  response.statusCode = status
-  response.setHeader('Content-Type', 'application/json')
-  response.setHeader('Cache-Control', 'no-store')
-  response.end(JSON.stringify(body))
-}
-
-const sendError = (response: ServerResponse, status: number, error: string): void =>
-  sendJson(response, status, { error })
-
-// On a public deploy the browser sends the basic-auth login with every request to the site,
-// including ones another site triggers. Requiring JSON forces a CORS preflight, which this server
-// never approves, and a present Origin header must name this host.
-const crossSiteProblem = (
+// On a public deploy the browser sends the basic-auth login or the session cookie with every
+// request to the site, including ones another site triggers. Requiring JSON forces a CORS
+// preflight, which this server never approves, and a present Origin header must name this host.
+const requestProblem = (
   request: IncomingMessage
 ): { status: number; message: string } | undefined => {
   if (!(request.headers['content-type'] ?? '').startsWith('application/json')) {
@@ -48,11 +39,8 @@ const crossSiteProblem = (
       message: 'Send the operations as application/json'
     }
   }
-  const origin = request.headers.origin
-  if (origin && (!URL.canParse(origin) || new URL(origin).host !== request.headers.host)) {
-    return { status: HTTP_FORBIDDEN, message: 'Cross-site requests are refused' }
-  }
-  return undefined
+  const message = crossSiteProblem(request)
+  return message ? { status: HTTP_FORBIDDEN, message } : undefined
 }
 
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
@@ -67,7 +55,7 @@ const handleOperationsPost = async (
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
-  const problem = crossSiteProblem(request)
+  const problem = requestProblem(request)
   if (problem) {
     sendError(response, problem.status, problem.message)
     return

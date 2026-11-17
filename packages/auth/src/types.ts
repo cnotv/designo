@@ -98,6 +98,16 @@ export interface LoginAttempt extends AuthorizationChecks {
   expiresAt: number
 }
 
+export interface ReplayGuard {
+  /**
+   * Marks a sign-in attempt as used.
+   * @param state - The attempt's state value.
+   * @param expiresAt - When the attempt dies anyway, so the guard can forget it.
+   * @returns False when the attempt was already used.
+   */
+  consume: (state: string, expiresAt: number) => boolean
+}
+
 export interface CookieOptions {
   maxAgeSeconds: number
   secure: boolean
