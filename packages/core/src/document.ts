@@ -45,9 +45,33 @@ export const createDocument = (
  * @returns The children, sorted by order.
  */
 export const getChildren = (document: DesignDocument, parentId: string): DesignNode[] =>
-  Object.values(document.nodes)
-    .filter((node) => node.parentId === parentId)
-    .toSorted((first, second) => first.order - second.order)
+  getChildrenByParent(document).get(parentId) ?? []
+
+// Documents are never mutated, so one grouping per document stays valid. Without it every
+// traversal scans all nodes once per node, and a flat page of 5,000 layers took seconds.
+const childrenByDocument = new WeakMap<DesignDocument, ReadonlyMap<string | null, DesignNode[]>>()
+
+const groupChildrenByParent = (
+  document: DesignDocument
+): ReadonlyMap<string | null, DesignNode[]> =>
+  new Map(
+    [...Map.groupBy(Object.values(document.nodes), (node) => node.parentId)].map(
+      ([parentId, children]) => [
+        parentId,
+        children.toSorted((first, second) => first.order - second.order)
+      ]
+    )
+  )
+
+const getChildrenByParent = (
+  document: DesignDocument
+): ReadonlyMap<string | null, DesignNode[]> => {
+  const cached = childrenByDocument.get(document)
+  if (cached) return cached
+  const grouped = groupChildrenByParent(document)
+  childrenByDocument.set(document, grouped)
+  return grouped
+}
 
 /**
  * Collects a node and every node beneath it.

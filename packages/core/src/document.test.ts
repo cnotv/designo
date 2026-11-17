@@ -58,6 +58,17 @@ describe('applyOperation', () => {
     ])
   })
 
+  it('reads the children of the document it is given, not of an earlier one', () => {
+    const before = getChildren(documentWithFrame, 'frame-1')
+    const after = unwrap(applyOperation(documentWithFrame, { kind: 'delete', id: 'rect-1' }))
+    expect(getChildren(after, 'frame-1').map((node) => node.id)).toEqual(['text-1'])
+    expect(before.map((node) => node.id)).toEqual(['rect-1', 'text-1'])
+  })
+
+  it('lists no children under a leaf', () => {
+    expect(getChildren(documentWithFrame, 'rect-1')).toEqual([])
+  })
+
   it('never mutates the input document', () => {
     applyOperation(emptyDocument, {
       kind: 'create',
