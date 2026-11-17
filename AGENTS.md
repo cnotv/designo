@@ -123,6 +123,10 @@ as a GIF, because a GIF renders inline from a link and an MP4 shows as a bare on
   `documentation/docs/guides/mcp.md`.
 - **Relative imports carry the `.ts` extension**, because Vite loads its config through Node,
   which runs workspace TypeScript sources without resolving extensionless paths.
+- **One feature, one issue, one pull request.** A feature that ships together is a single issue,
+  branch and pull request, however many steps it has: the steps are a checklist in the issue and
+  commits in the pull request. Never open a sub-issue or a pull request per step; split only when
+  the parts can each ship and be reviewed alone, or the owner asks.
 
 ## Where output goes
 
