@@ -432,6 +432,9 @@ describe('authorize: signing in and consent', () => {
     expect(response.headers.get('content-security-policy')).not.toContain('unsafe-inline')
     expect(response.headers.get('cache-control')).toBe('no-store')
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+    // A browser sends `Origin: null` with the form post under `no-referrer`, and the Origin check
+    // would then refuse every real click; this is the policy that keeps it working.
+    expect(response.headers.get('referrer-policy')).toBe('same-origin')
     expect(body).toContain('<strong>Claude Code</strong> wants to edit your Designo designs')
     expect(body).toContain('Ada')
     expect(body).toContain('http://127.0.0.1:33417')
@@ -596,6 +599,12 @@ describe('authorize: the decision', () => {
     )
     expect(response.status).toBe(403)
     expect(response.headers.get('location')).toBeNull()
+  })
+
+  it('refuses a decision whose Origin is null, as a sandboxed or privacy-stripped page sends', async () => {
+    const { browser, fields } = await consentFor()
+    const response = await decide(browser, { ...fields, decision: 'allow' }, { Origin: 'null' })
+    expect(response.status).toBe(403)
   })
 
   it('refuses a decision with no session at all', async () => {

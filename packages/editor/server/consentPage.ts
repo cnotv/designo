@@ -26,7 +26,9 @@ export const consentPageHeaders = (nonce: string): Readonly<Record<string, strin
   'Cache-Control': 'no-store',
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
-  'Referrer-Policy': 'no-referrer',
+  // Not `no-referrer`: with it Chrome sends `Origin: null` on the form post, which the Origin check
+  // rightly refuses. `same-origin` still keeps the address from leaking to the client's site.
+  'Referrer-Policy': 'same-origin',
   'Content-Security-Policy': `default-src 'none'; style-src 'nonce-${nonce}'; base-uri 'none'; frame-ancestors 'none'`
 })
 

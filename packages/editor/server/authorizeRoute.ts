@@ -193,7 +193,6 @@ const sendToClient = (
   Object.entries(parameters).forEach(([name, value]) => {
     if (value !== undefined) target.searchParams.set(name, value)
   })
-  response.setHeader('Referrer-Policy', 'no-referrer')
   sendRedirect(response, target.href)
 }
 
