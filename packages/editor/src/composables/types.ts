@@ -6,6 +6,7 @@ import type {
   Bounds,
   DistributeAxis,
   ExportSettings,
+  GateScreen,
   HistoryState,
   LayerOrderMode,
   SnapGuide,
@@ -87,4 +88,12 @@ export interface ExportController {
   error: Ref<string | undefined>
   /** Downloads the selection, or the page, with the current settings. */
   run: () => Promise<void>
+}
+
+export interface AccessGate {
+  screen: Ref<GateScreen>
+  /** Asks the server again who is visiting, for when it refuses a request mid-session. */
+  recheck: () => Promise<void>
+  /** Ends the session on the server, then reloads so the app starts signed out. */
+  signOut: () => Promise<void>
 }

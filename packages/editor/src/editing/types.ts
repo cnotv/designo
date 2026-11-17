@@ -186,3 +186,18 @@ export interface SpatialIndex {
   depth: number
   size: number
 }
+
+/** What the server says about who is asking, from `/api/me`. */
+export type AccessAnswer =
+  /** Sign-in is off, or there is no Designo server (a static host): the editor needs no gate. */
+  | { kind: 'not-required' }
+  | { kind: 'signed-out' }
+  | { kind: 'account'; email: string; name: string; status: 'pending' | 'approved' | 'blocked' }
+
+/** Which screen the app shows: the editor itself, or a gate in front of it. */
+export type GateScreen =
+  | { screen: 'loading' }
+  | { screen: 'editor' }
+  | { screen: 'signed-out'; signInFailed: boolean }
+  | { screen: 'pending'; email: string }
+  | { screen: 'blocked'; email: string }
