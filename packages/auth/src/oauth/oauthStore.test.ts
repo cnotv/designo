@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   ACCESS_TOKEN_LIFETIME_MILLISECONDS,
+  REFRESH_RETRY_WINDOW_MILLISECONDS,
   REFRESH_TOKEN_LIFETIME_MILLISECONDS,
   createOAuthStore
 } from './oauthStore.ts'
@@ -173,6 +174,7 @@ describe('refresh tokens', () => {
       refreshToken: tokens.refreshToken,
       clientId: client.clientId
     })
+    time.now += REFRESH_RETRY_WINDOW_MILLISECONDS
     const reuse = await store.rotateRefreshToken({
       refreshToken: tokens.refreshToken,
       clientId: client.clientId
@@ -225,14 +227,49 @@ describe('refresh tokens', () => {
     ).toEqual({ kind: 'invalid' })
   })
 
-  it('lets only one of two simultaneous trades of the same token succeed', async () => {
+  it('answers two simultaneous trades of the same token with the same new pair', async () => {
     const { client, tokens } = await grantFor()
     const request = { refreshToken: tokens.refreshToken, clientId: client.clientId }
-    const outcomes = await Promise.all([
+    const [first, second] = await Promise.all([
       store.rotateRefreshToken(request),
       store.rotateRefreshToken(request)
     ])
-    expect(outcomes.map((outcome) => outcome.kind).toSorted()).toEqual(['issued', 'reused'])
+    expect(first.kind).toBe('issued')
+    expect(second).toEqual(first)
+  })
+
+  it('answers the same token again with the same pair for a few seconds, then calls it stolen', async () => {
+    const { client, tokens } = await grantFor()
+    const request = { refreshToken: tokens.refreshToken, clientId: client.clientId }
+    const first = await store.rotateRefreshToken(request)
+    time.now += REFRESH_RETRY_WINDOW_MILLISECONDS - 1
+    expect(await store.rotateRefreshToken(request)).toEqual(first)
+    time.now += 1
+    expect(await store.rotateRefreshToken(request)).toEqual({ kind: 'reused' })
+  })
+
+  it('does not repeat the answer to another client, nor once the grant was revoked', async () => {
+    const { client, tokens } = await grantFor()
+    const other = await registerClientOrFail('other')
+    const request = { refreshToken: tokens.refreshToken, clientId: client.clientId }
+    await store.rotateRefreshToken(request)
+    expect(await store.rotateRefreshToken({ ...request, clientId: other.clientId })).toEqual({
+      kind: 'invalid'
+    })
+    await store.revokeGrant(tokens.grantId)
+    expect(await store.rotateRefreshToken(request)).toEqual({ kind: 'invalid' })
+  })
+
+  it('does not repeat the answer once the new pair was itself traded in', async () => {
+    const { client, tokens } = await grantFor()
+    const request = { refreshToken: tokens.refreshToken, clientId: client.clientId }
+    const first = await store.rotateRefreshToken(request)
+    if (first.kind !== 'issued') throw new Error('The first trade should work')
+    await store.rotateRefreshToken({
+      refreshToken: first.tokens.refreshToken,
+      clientId: client.clientId
+    })
+    expect(await store.rotateRefreshToken(request)).toEqual({ kind: 'reused' })
   })
 })
 

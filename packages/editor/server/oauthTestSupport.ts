@@ -375,3 +375,53 @@ export const approveInBrowser = async (
   if (!location) throw new Error(`The consent answered ${answer.status} with no redirect`)
   return new URL(location)
 }
+
+export interface AgentTokens {
+  accessToken: string
+  refreshToken: string
+  clientId: string
+  browser: Browser
+}
+
+const tokenResponseSchema = z.object({ access_token: z.string(), refresh_token: z.string() })
+
+/**
+ * Walks an agent through the whole sign-in as `code` stands for, with no MCP client: registers,
+ * has the person sign in and allow it, and trades the code for tokens.
+ * @param app - The running server.
+ * @param code - Which fake identity signs in.
+ * @param browser - The person's browser, so a test can reuse a session or keep it afterwards.
+ * @returns The tokens and the browser.
+ */
+export const obtainAgentTokens = async (
+  app: OAuthServer,
+  code: string,
+  browser: Browser = createBrowser(app.origin)
+): Promise<AgentTokens> => {
+  const client = await registerClient(app.origin)
+  const pkce = createPkcePair()
+  const redirect = await approveInBrowser(
+    browser,
+    app.origin,
+    authorizationUrl(app.origin, {
+      client_id: client.client_id,
+      redirect_uri: REDIRECT_URI,
+      code_challenge: pkce.challenge
+    }),
+    code
+  )
+  const response = await postForm(app.origin, '/token', {
+    grant_type: 'authorization_code',
+    code: redirect.searchParams.get('code') ?? '',
+    client_id: client.client_id,
+    redirect_uri: REDIRECT_URI,
+    code_verifier: pkce.verifier
+  })
+  const tokens = tokenResponseSchema.parse(await response.json())
+  return {
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    clientId: client.client_id,
+    browser
+  }
+}

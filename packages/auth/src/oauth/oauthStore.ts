@@ -31,6 +31,10 @@ export const REFRESH_TOKEN_LIFETIME_MILLISECONDS =
 // A client without a live grant is forgotten after this long. It outlasts a refresh token, so an
 // agent that comes back after a month is told its grant is invalid, not that nobody knows it.
 const UNUSED_CLIENT_LIFETIME_MILLISECONDS = UNUSED_CLIENT_LIFETIME_DAYS * MILLISECONDS_PER_DAY
+// A client that finds its access token expired often sends two requests at once, and both try
+// to refresh. The second must get what the first got, not look like a stolen token, so a
+// refresh token that was traded in a moment ago still answers with the same new pair.
+export const REFRESH_RETRY_WINDOW_MILLISECONDS = 30_000
 // Enough to recognise a copied token from the last few trades; older ones are just unknown.
 const ROTATED_HASHES_KEPT = 5
 
@@ -148,6 +152,35 @@ const issueTokens = (random: Randomness, grantId: string, accountId: string, now
   }
 }
 
+interface RecentRotation {
+  tokens: IssuedTokens
+  clientId: string
+  at: number
+}
+
+// The earlier answer is repeated only while it is still the current pair of a grant that exists:
+// a grant revoked in the meantime, or rotated again, gets nothing.
+const repeatedRotation = (
+  earlier: RecentRotation | undefined,
+  state: OAuthState,
+  now: number,
+  clientId: string
+): IssuedTokens | undefined => {
+  const isCurrent =
+    earlier !== undefined &&
+    state.grants.some(
+      (grant) =>
+        grant.id === earlier.tokens.grantId &&
+        grant.refreshTokenHash === hashToken(earlier.tokens.refreshToken)
+    )
+  return earlier &&
+    isCurrent &&
+    earlier.clientId === clientId &&
+    now - earlier.at < REFRESH_RETRY_WINDOW_MILLISECONDS
+    ? earlier.tokens
+    : undefined
+}
+
 const withoutGrant = (state: OAuthState, grantId: string): OAuthState => ({
   ...state,
   grants: state.grants.filter((grant) => grant.id !== grantId)
@@ -181,6 +214,45 @@ const rotate = (
     state: { ...state, grants: state.grants.map((grant) => (grant === current ? rotated : grant)) },
     result: { kind: 'issued', tokens }
   }
+}
+
+const addGrant = (
+  random: Randomness,
+  state: OAuthState,
+  now: number,
+  input: { clientId: string; accountId: string },
+  limits: OAuthLimits
+): { state: OAuthState; result: IssuedTokens } => {
+  const grantId = random.createId()
+  const { tokens, hashes } = issueTokens(random, grantId, input.accountId, now)
+  const grant: OAuthGrant = {
+    id: grantId,
+    clientId: input.clientId,
+    accountId: input.accountId,
+    createdAt: new Date(now).toISOString(),
+    ...hashes,
+    rotatedRefreshTokenHashes: []
+  }
+  return {
+    state: { ...state, grants: limitGrants([...state.grants, grant], input.accountId, limits) },
+    result: tokens
+  }
+}
+
+// Forgets the answers older than the window and adds the one just given, if there was one.
+const rememberRotation = (
+  recent: ReadonlyMap<string, RecentRotation>,
+  hash: string,
+  clientId: string,
+  outcome: RefreshOutcome,
+  now: number
+): ReadonlyMap<string, RecentRotation> => {
+  const stillRecent = [...recent].filter(
+    ([, earlier]) => now - earlier.at < REFRESH_RETRY_WINDOW_MILLISECONDS
+  )
+  const added: [string, RecentRotation][] =
+    outcome.kind === 'issued' ? [[hash, { tokens: outcome.tokens, clientId, at: now }]] : []
+  return new Map([...stillRecent, ...added])
 }
 
 // Clients nobody uses go first, oldest first; one with a grant is never evicted, so a flood of
@@ -245,6 +317,9 @@ export const createOAuthStore = (
   }
   // Settled writes are chained here, and a failed one must not block the next.
   let queueTail: Promise<unknown> = Promise.resolve()
+  // The pairs handed out in the last few seconds, by the refresh token they replaced. Memory only,
+  // and gone after the window: a token in the clear is never kept longer or written anywhere.
+  let recentRotations: ReadonlyMap<string, RecentRotation> = new Map()
 
   const read = async (): Promise<OAuthState> => pruned(await readOAuthFile(filePath), clock())
 
@@ -268,24 +343,22 @@ export const createOAuthStore = (
       modify((state, now) => register(random, state, now, newClient, limits)),
     findClient: async (clientId) =>
       (await read()).clients.find((client) => client.clientId === clientId),
-    createGrant: ({ clientId, accountId }) =>
+    createGrant: (input) => modify((state, now) => addGrant(random, state, now, input, limits)),
+    rotateRefreshToken: (request) =>
       modify((state, now) => {
-        const grantId = random.createId()
-        const { tokens, hashes } = issueTokens(random, grantId, accountId, now)
-        const grant: OAuthGrant = {
-          id: grantId,
-          clientId,
-          accountId,
-          createdAt: new Date(now).toISOString(),
-          ...hashes,
-          rotatedRefreshTokenHashes: []
-        }
-        return {
-          state: { ...state, grants: limitGrants([...state.grants, grant], accountId, limits) },
-          result: tokens
-        }
+        const hash = hashToken(request.refreshToken)
+        const repeated = repeatedRotation(recentRotations.get(hash), state, now, request.clientId)
+        if (repeated) return { state, result: { kind: 'issued', tokens: repeated } }
+        const outcome = rotate(random, state, now, request)
+        recentRotations = rememberRotation(
+          recentRotations,
+          hash,
+          request.clientId,
+          outcome.result,
+          now
+        )
+        return outcome
       }),
-    rotateRefreshToken: (request) => modify((state, now) => rotate(random, state, now, request)),
     authenticateAccessToken: async (accessToken) => {
       const hash = hashToken(accessToken)
       const now = clock()

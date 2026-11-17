@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { handleAuthorize } from './authorizeRoute.ts'
+import { handleMcp } from './mcpEndpoint.ts'
 import { sendOk } from './http.ts'
 import { applyOpenCors, sendOAuthError, sendPreflightAnswer } from './oauthHttp.ts'
 import {
@@ -49,7 +50,8 @@ const onlyPost =
 const resourceMetadata = onlyGet((context) => protectedResourceMetadata(context.settings))
 
 // These answer to a bearer token or to nobody, never to the session cookie, so any web page may
-// call them: browser-based MCP clients need that. The authorize page and the `/api` routes are
+// call them: browser-based MCP clients need that. `/mcp` is the one that does real work, and it
+// only ever reads the Authorization header. The authorize page and the `/api` routes are
 // not in this table and send no CORS headers.
 const openRoutes: Readonly<Record<string, RouteHandler>> = {
   [PROTECTED_RESOURCE_METADATA_ROUTE]: resourceMetadata,
@@ -59,7 +61,8 @@ const openRoutes: Readonly<Record<string, RouteHandler>> = {
   ),
   [REGISTER_ROUTE]: onlyPost(handleRegistration),
   [TOKEN_ROUTE]: handleToken,
-  [REVOKE_ROUTE]: handleRevoke
+  [REVOKE_ROUTE]: handleRevoke,
+  [MCP_ROUTE]: handleMcp
 }
 
 /**

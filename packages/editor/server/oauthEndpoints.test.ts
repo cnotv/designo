@@ -129,7 +129,8 @@ describe('cross-origin access', () => {
     '/.well-known/oauth-authorization-server',
     '/register',
     '/token',
-    '/revoke'
+    '/revoke',
+    '/mcp'
   ])('lets any page call %s: it answers to a token, never to a cookie', async (route) => {
     const preflight = await fetch(`${app.origin}${route}`, {
       method: 'OPTIONS',
@@ -873,12 +874,24 @@ describe('token: refresh', () => {
   it('revokes the whole grant when a refresh token that was already used comes back', async () => {
     const { auth, refresh } = await refreshing()
     const next = await parseJson(await refreshRequest(auth, refresh))
+    // Just after the trade the same answer is given again, for a client that asked twice at once.
+    app.time.now += 30_000
     const reuse = await refreshRequest(auth, refresh)
     expect(reuse.status).toBe(400)
     expect((await parseJson(reuse)).error).toBe('invalid_grant')
     expect(await store().authenticateAccessToken(String(next.access_token))).toBeUndefined()
     const afterwards = await refreshRequest(auth, String(next.refresh_token))
     expect((await parseJson(afterwards)).error).toBe('invalid_grant')
+  })
+
+  it('answers a refresh token asked for twice at once with the same new pair', async () => {
+    const { auth, refresh } = await refreshing()
+    const [first, second] = await Promise.all([
+      refreshRequest(auth, refresh).then(parseJson),
+      refreshRequest(auth, refresh).then(parseJson)
+    ])
+    expect(second).toEqual(first)
+    expect(await store().authenticateAccessToken(String(first.access_token))).toBeDefined()
   })
 
   it('refuses a refresh token from another client', async () => {
