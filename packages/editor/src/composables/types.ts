@@ -6,6 +6,7 @@ import type {
   AccountSummary,
   AlignKind,
   Bounds,
+  ConnectedAgent,
   DistributeAxis,
   ExportSettings,
   GateScreen,
@@ -109,4 +110,15 @@ export interface AccountAdministration {
   error: Ref<string | undefined>
   load: () => Promise<void>
   changeAccount: (accountId: string, action: AccountAction) => Promise<void>
+}
+
+export interface ConnectedAgents {
+  /** Newest first. */
+  agents: Ref<readonly ConnectedAgent[]>
+  isLoading: Ref<boolean>
+  /** The agent whose disconnect is on its way, so its button waits. */
+  busyAgentId: Ref<string | undefined>
+  error: Ref<string | undefined>
+  load: () => Promise<void>
+  disconnect: (agentId: string) => Promise<void>
 }

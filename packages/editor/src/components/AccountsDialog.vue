@@ -24,9 +24,9 @@ import { useAccountAdministration } from '../composables/useAccountAdministratio
 import {
   actionsForAccount,
   countPendingAccounts,
-  formatJoinedDate,
   statusBadgeVariant
 } from '../editing/accountAdministration.ts'
+import { formatDay } from '../editing/formatDay.ts'
 
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ accessRefused: [] }>()
@@ -87,7 +87,7 @@ watch(open, (isOpen) => {
                 <Badge :variant="statusBadgeVariant(account.status)">{{ account.status }}</Badge>
               </TableCell>
               <TableCell class="text-muted-foreground tabular-nums">
-                {{ formatJoinedDate(account.createdAt) }}
+                {{ formatDay(account.createdAt) }}
               </TableCell>
               <TableCell>
                 <div class="flex justify-end gap-2">

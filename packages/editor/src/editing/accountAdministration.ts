@@ -134,15 +134,3 @@ export const sortAccountsForReview = (
  */
 export const countPendingAccounts = (accounts: readonly AccountSummary[]): number =>
   accounts.filter((account) => account.status === 'pending').length
-
-const DAY_LENGTH = 'YYYY-MM-DD'.length
-
-/**
- * Formats when an account was made. UTC, so every admin reads the same date.
- * @param createdAt - An ISO 8601 date.
- * @returns `YYYY-MM-DD`, or a dash when the date cannot be read.
- */
-export const formatJoinedDate = (createdAt: string): string => {
-  const time = Date.parse(createdAt)
-  return Number.isNaN(time) ? '-' : new Date(time).toISOString().slice(0, DAY_LENGTH)
-}

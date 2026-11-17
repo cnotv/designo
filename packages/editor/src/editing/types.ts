@@ -207,6 +207,19 @@ export interface AccountSummary {
   isAdmin: boolean
 }
 
+/** One agent the signed-in account has approved, as `/api/connections` lists it. */
+export interface ConnectedAgent {
+  id: string
+  clientName: string
+  /** ISO 8601. */
+  connectedAt: string
+  /** ISO 8601. */
+  expiresAt: string
+}
+
+/** What the server said to a request to disconnect an agent. */
+export type DisconnectOutcome = 'removed' | 'refused' | 'failed'
+
 export type AccountAction = 'approve' | 'block' | 'unblock'
 
 export interface AccountActionButton {

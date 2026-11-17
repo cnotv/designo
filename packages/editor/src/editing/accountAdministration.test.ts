@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   accountStatusRoute,
   countPendingAccounts,
-  formatJoinedDate,
   isAdminRefusal,
   readAccountList,
   readChangedAccount,
@@ -149,15 +148,5 @@ describe('countPendingAccounts', () => {
       ])
     ).toBe(2)
     expect(countPendingAccounts([])).toBe(0)
-  })
-})
-
-describe('formatJoinedDate', () => {
-  it('shows the day, in UTC so every admin reads the same date', () => {
-    expect(formatJoinedDate('2026-03-04T23:59:59.000Z')).toBe('2026-03-04')
-  })
-
-  it('shows a dash for a date that cannot be read', () => {
-    expect(formatJoinedDate('not a date')).toBe('-')
   })
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOut, UserRound, Users } from 'lucide-vue-next'
+import { Bot, LogOut, UserRound, Users } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,11 +12,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { SignedInAccount } from '../editing/types.ts'
 import AccountsDialog from './AccountsDialog.vue'
+import ConnectedAgentsDialog from './ConnectedAgentsDialog.vue'
 
 defineProps<{ account: SignedInAccount }>()
 const emit = defineEmits<{ signOut: []; accessRefused: [] }>()
 
 const isAccountsOpen = ref(false)
+const isAgentsOpen = ref(false)
 </script>
 
 <template>
@@ -37,12 +39,17 @@ const isAccountsOpen = ref(false)
         <Users />
         Accounts
       </DropdownMenuItem>
+      <DropdownMenuItem @select="isAgentsOpen = true">
+        <Bot />
+        Connected agents
+      </DropdownMenuItem>
       <DropdownMenuItem @select="emit('signOut')">
         <LogOut />
         Sign out
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
+  <ConnectedAgentsDialog v-model:open="isAgentsOpen" @access-refused="emit('accessRefused')" />
   <AccountsDialog
     v-if="account.isAdmin"
     v-model:open="isAccountsOpen"

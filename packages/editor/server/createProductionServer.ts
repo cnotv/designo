@@ -5,19 +5,17 @@ import {
   createAuthorizationCodeStore,
   createOAuthStore,
   createRateLimiter,
-  createReplayGuard,
-  type Account
+  createReplayGuard
 } from '@designo/auth'
 import { handleAdminRoute, isAdminRoute } from './adminRoutes.ts'
-import { accountFromRequest } from './authentication.ts'
+import { accountFromRequest, sendAccountRefusal } from './authentication.ts'
 import { handleAuthRoute, ME_ROUTE } from './authRoutes.ts'
+import { handleConnectionsRoute, isConnectionsRoute } from './connectionsRoutes.ts'
 import { handleOAuthRoute } from './oauthRoutes.ts'
 import { FILES_ROUTE, handleFilesRequest } from './filesApi.ts'
 import { sendError, sendOk } from './http.ts'
 import type { AuthContext, ProductionServerOptions } from './types.ts'
 
-const HTTP_UNAUTHORIZED = 401
-const HTTP_FORBIDDEN = 403
 const HTTP_INTERNAL_SERVER_ERROR = 500
 
 // Registration and the token endpoint are open to anyone who can reach the server, so each
@@ -40,18 +38,6 @@ const pathnameOf = (request: IncomingMessage): string => (request.url ?? '').spl
 const isFilesRoute = (pathname: string): boolean =>
   pathname === FILES_ROUTE || pathname.startsWith(`${FILES_ROUTE}/`)
 
-const sendRefusal = (response: ServerResponse, account: Account | undefined): void => {
-  if (!account) {
-    sendError(response, HTTP_UNAUTHORIZED, 'Sign in to use Designo')
-    return
-  }
-  const message =
-    account.status === 'blocked'
-      ? 'This account is blocked'
-      : 'This account is waiting for approval'
-  sendError(response, HTTP_FORBIDDEN, message)
-}
-
 // The files API works on one account's folder, so a signed-in, approved account is the only way in.
 const handleAccountFiles = async (
   context: AuthContext,
@@ -61,7 +47,7 @@ const handleAccountFiles = async (
 ): Promise<void> => {
   const account = await accountFromRequest(context, request)
   if (account?.status !== 'approved') {
-    sendRefusal(response, account)
+    sendAccountRefusal(response, account)
     return
   }
   await handleFilesRequest(
@@ -93,6 +79,10 @@ const routeWithSignIn = async (
   if (await handleOAuthRoute(context, request, response, pathname)) return
   if (isAdminRoute(pathname)) {
     await handleAdminRoute(context, request, response, pathname)
+    return
+  }
+  if (isConnectionsRoute(pathname)) {
+    await handleConnectionsRoute(context, request, response, pathname)
     return
   }
   if (isFilesRoute(pathname)) {
