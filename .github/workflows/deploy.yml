@@ -1,5 +1,6 @@
 # Deploys to a Hetzner Cloud server set up with deploy/hetzner/cloud-init.yaml, on every push to
-# main that touches the app, like generative-art. It needs the HETZNER_HOST, HETZNER_USERNAME and HETZNER_SSH_KEY secrets.
+# main that touches the app, like generative-art. It needs the HETZNER_HOST, HETZNER_USERNAME and HETZNER_SSH_KEY secrets;
+# `node scripts/set-hetzner-secrets.ts` sets them.
 name: Deploy to Hetzner
 
 on:
