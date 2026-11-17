@@ -24,11 +24,12 @@ const MILLISECONDS_PER_HOUR = 3_600_000
 const HOURS_PER_DAY = 24
 const MILLISECONDS_PER_DAY = HOURS_PER_DAY * MILLISECONDS_PER_HOUR
 const REFRESH_TOKEN_LIFETIME_DAYS = 30
-const UNUSED_CLIENT_LIFETIME_DAYS = 30
+const UNUSED_CLIENT_LIFETIME_DAYS = 90
 export const ACCESS_TOKEN_LIFETIME_MILLISECONDS = MILLISECONDS_PER_HOUR
 export const REFRESH_TOKEN_LIFETIME_MILLISECONDS =
   REFRESH_TOKEN_LIFETIME_DAYS * MILLISECONDS_PER_DAY
-// A client that registered and never got approved is forgotten after this long.
+// A client without a live grant is forgotten after this long. It outlasts a refresh token, so an
+// agent that comes back after a month is told its grant is invalid, not that nobody knows it.
 const UNUSED_CLIENT_LIFETIME_MILLISECONDS = UNUSED_CLIENT_LIFETIME_DAYS * MILLISECONDS_PER_DAY
 // Enough to recognise a copied token from the last few trades; older ones are just unknown.
 const ROTATED_HASHES_KEPT = 5
@@ -294,6 +295,13 @@ export const createOAuthStore = (
       return grant
         ? { grantId: grant.id, accountId: grant.accountId, clientId: grant.clientId }
         : undefined
+    },
+    authenticateRefreshToken: async ({ refreshToken, clientId }) => {
+      const hash = hashToken(refreshToken)
+      const grant = (await read()).grants.find(
+        (candidate) => candidate.refreshTokenHash === hash && candidate.clientId === clientId
+      )
+      return grant ? { accountId: grant.accountId } : undefined
     },
     revokeToken: (token, clientId) =>
       modify((state) => {

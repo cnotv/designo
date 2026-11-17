@@ -82,9 +82,9 @@ describe('clients', () => {
     expect(await store.registerClient(newClient)).toBeUndefined()
   })
 
-  it('forgets a client nobody used for thirty days', async () => {
+  it('forgets a client nobody used for ninety days', async () => {
     const client = await registerClientOrFail()
-    time.now += 31 * 24 * 60 * 60 * 1000
+    time.now += 91 * 24 * 60 * 60 * 1000
     await registerClientOrFail('later')
     expect(await store.findClient(client.clientId)).toBeUndefined()
   })
@@ -152,6 +152,19 @@ describe('refresh tokens', () => {
     expect(outcome.tokens.refreshToken).not.toBe(tokens.refreshToken)
     expect(await store.authenticateAccessToken(tokens.accessToken)).toBeUndefined()
     expect(await store.authenticateAccessToken(outcome.tokens.accessToken)).toBeDefined()
+  })
+
+  it('says who a refresh token belongs to without using it up', async () => {
+    const { client, tokens } = await grantFor('acc-7')
+    const request = { refreshToken: tokens.refreshToken, clientId: client.clientId }
+    expect(await store.authenticateRefreshToken(request)).toEqual({ accountId: 'acc-7' })
+    expect(await store.authenticateRefreshToken(request)).toEqual({ accountId: 'acc-7' })
+    expect(await store.authenticateRefreshToken({ ...request, clientId: 'other' })).toBeUndefined()
+    expect(
+      await store.authenticateRefreshToken({ ...request, refreshToken: 'guess' })
+    ).toBeUndefined()
+    expect((await store.rotateRefreshToken(request)).kind).toBe('issued')
+    expect(await store.authenticateRefreshToken(request)).toBeUndefined()
   })
 
   it('revokes the whole grant when a traded-in refresh token comes back', async () => {

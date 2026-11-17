@@ -2,12 +2,16 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import {
   accountDirectory,
   createAccountStore,
+  createAuthorizationCodeStore,
+  createOAuthStore,
+  createRateLimiter,
   createReplayGuard,
   type Account
 } from '@designo/auth'
 import { handleAdminRoute, isAdminRoute } from './adminRoutes.ts'
 import { accountFromRequest } from './authentication.ts'
 import { handleAuthRoute, ME_ROUTE } from './authRoutes.ts'
+import { handleOAuthRoute } from './oauthRoutes.ts'
 import { FILES_ROUTE, handleFilesRequest } from './filesApi.ts'
 import { sendError, sendOk } from './http.ts'
 import type { AuthContext, ProductionServerOptions } from './types.ts'
@@ -15,6 +19,21 @@ import type { AuthContext, ProductionServerOptions } from './types.ts'
 const HTTP_UNAUTHORIZED = 401
 const HTTP_FORBIDDEN = 403
 const HTTP_INTERNAL_SERVER_ERROR = 500
+
+// Registration and the token endpoint are open to anyone who can reach the server, so each
+// remote address gets a bounded number of tries. Registering is rare; a refresh is hourly.
+const MILLISECONDS_PER_MINUTE = 60_000
+const RATE_LIMITED_ADDRESSES = 1000
+const REGISTRATION_LIMIT = {
+  limit: 30,
+  windowMilliseconds: 10 * MILLISECONDS_PER_MINUTE,
+  maxKeys: RATE_LIMITED_ADDRESSES
+}
+const TOKEN_LIMIT = {
+  limit: 120,
+  windowMilliseconds: MILLISECONDS_PER_MINUTE,
+  maxKeys: RATE_LIMITED_ADDRESSES
+}
 
 const pathnameOf = (request: IncomingMessage): string => (request.url ?? '').split('?')[0] ?? ''
 
@@ -71,6 +90,7 @@ const routeWithSignIn = async (
 ): Promise<void> => {
   const pathname = pathnameOf(request)
   if (await handleAuthRoute(context, request, response, pathname)) return
+  if (await handleOAuthRoute(context, request, response, pathname)) return
   if (isAdminRoute(pathname)) {
     await handleAdminRoute(context, request, response, pathname)
     return
@@ -120,7 +140,12 @@ export const createProductionServer = (options: ProductionServerOptions): Server
         identityProvider: options.identityProvider,
         accountStore: createAccountStore(options.dataDirectory),
         replayGuard: createReplayGuard(clock),
-        clock
+        clock,
+        dataDirectory: options.dataDirectory,
+        oauthStore: createOAuthStore(options.dataDirectory, clock),
+        authorizationCodes: createAuthorizationCodeStore(clock),
+        registrationLimiter: createRateLimiter(REGISTRATION_LIMIT, clock),
+        tokenLimiter: createRateLimiter(TOKEN_LIMIT, clock)
       }
     : undefined
   return createServer((request, response) => {

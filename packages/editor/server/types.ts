@@ -2,9 +2,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {
   AccountStatus,
   AccountStore,
+  AuthorizationCodeStore,
   AuthSettings,
   Clock,
   IdentityProvider,
+  OAuthStore,
+  RateLimiter,
   ReplayGuard
 } from '@designo/auth'
 
@@ -39,6 +42,24 @@ export interface AuthContext {
   accountStore: AccountStore
   replayGuard: ReplayGuard
   clock: Clock
+  /** Where Designo files live; each account's folder is inside it. */
+  dataDirectory: string
+  /** Agents that signed in through OAuth: the clients that registered and the grants approved. */
+  oauthStore: OAuthStore
+  authorizationCodes: AuthorizationCodeStore
+  registrationLimiter: RateLimiter
+  tokenLimiter: RateLimiter
+}
+
+/** What the consent page shows and sends back. */
+export interface ConsentPageView {
+  clientName: string
+  /** Where the person is sent next, as scheme, host and port: enough to spot a wrong one. */
+  redirectOrigin: string
+  accountName: string
+  accountEmail: string
+  /** Hidden form fields: the authorization request and the CSRF token. */
+  fields: Readonly<Record<string, string>>
 }
 
 /** One account as the admin screen sees it: nothing that identifies the person to Google. */

@@ -30,5 +30,7 @@ export const loginAttemptSchema = z.object({
   state: z.string().min(1),
   nonce: z.string().min(1),
   codeVerifier: z.string().min(1),
+  /** Where sign-in goes back to; checked again where it is used. */
+  returnTo: z.string().optional(),
   expiresAt: z.number()
 })

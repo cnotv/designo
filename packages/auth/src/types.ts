@@ -101,6 +101,8 @@ export interface SessionClaims {
 }
 
 export interface LoginAttempt extends AuthorizationChecks {
+  /** A same-site path to go back to after sign-in, such as an agent's authorization request. */
+  returnTo?: string
   /** Epoch milliseconds. */
   expiresAt: number
 }

@@ -118,6 +118,15 @@ describe('login value', () => {
     expect(readLoginValue(value, NOW + 10 * 60 * 1000, SECRET)).toBeUndefined()
   })
 
+  it('carries where to go back to, inside the signature', () => {
+    const value = createLoginValue(checks, NOW, SECRET, '/authorize?client_id=abc')
+    expect(readLoginValue(value, NOW, SECRET)?.returnTo).toBe('/authorize?client_id=abc')
+    expect(
+      readLoginValue(createLoginValue(checks, NOW, SECRET), NOW, SECRET)?.returnTo
+    ).toBeUndefined()
+    expect(readLoginValue(value, NOW, 'another secret')).toBeUndefined()
+  })
+
   it('is not accepted when it is really a session value', () => {
     expect(
       readLoginValue(createSessionValue('account-1', 0, NOW, SECRET), NOW, SECRET)

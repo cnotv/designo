@@ -82,9 +82,15 @@ importers:
       '@designo/exporter':
         specifier: workspace:*
         version: link:../exporter
+      '@designo/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@designo/storage':
         specifier: workspace:*
         version: link:../storage
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.2
+        version: 1.32.2(zod@4.6.7)
       '@vueuse/core':
         specifier: ^15.0.0
         version: 15.0.0(vue@3.5.45(typescript@5.9.3))

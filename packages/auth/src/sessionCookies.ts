@@ -71,14 +71,20 @@ export const readSessionValue = (
  * @param checks - What the attempt must find again when Google redirects back.
  * @param now - The current time in epoch milliseconds.
  * @param secret - The session secret.
+ * @param returnTo - A same-site path to go back to once signed in, already checked.
  * @returns The value to put in the cookie.
  */
 export const createLoginValue = (
   checks: AuthorizationChecks,
   now: number,
-  secret: string
+  secret: string,
+  returnTo?: string
 ): string => {
-  const attempt: LoginAttempt = { ...checks, expiresAt: now + LOGIN_LIFETIME_MILLISECONDS }
+  const attempt: LoginAttempt = {
+    ...checks,
+    ...(returnTo === undefined ? {} : { returnTo }),
+    expiresAt: now + LOGIN_LIFETIME_MILLISECONDS
+  }
   return signValue(LOGIN_PURPOSE, attempt, secret)
 }
 

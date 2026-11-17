@@ -8,6 +8,7 @@ import {
   isAdminAccount,
   parseCookies,
   readLoginValue,
+  safeReturnPath,
   serializeClearedCookie,
   serializeCookie,
   type LoginAttempt
@@ -59,7 +60,14 @@ const failSignIn = (context: AuthContext, response: ServerResponse): void => {
   sendRedirect(response, SIGN_IN_FAILED_LOCATION)
 }
 
-const startSignIn: RouteHandler = async (context, _request, response) => {
+// Where to go after signing in, when the page that sent the visitor here asked for one. Anything
+// but a plain path on this site is dropped, so this route cannot be used to redirect elsewhere.
+const requestedReturnPath = (context: AuthContext, request: IncomingMessage): string | undefined =>
+  safeReturnPath(
+    new URL(request.url ?? '', context.settings.publicUrl).searchParams.get('return_to')
+  )
+
+const startSignIn: RouteHandler = async (context, request, response) => {
   const authorization = await context.identityProvider
     .createAuthorizationRequest()
     .catch((error: unknown) => {
@@ -74,7 +82,12 @@ const startSignIn: RouteHandler = async (context, _request, response) => {
     'Set-Cookie',
     serializeCookie(
       LOGIN_COOKIE_NAME,
-      createLoginValue(authorization, context.clock(), context.settings.sessionSecret),
+      createLoginValue(
+        authorization,
+        context.clock(),
+        context.settings.sessionSecret,
+        requestedReturnPath(context, request)
+      ),
       { ...loginCookieOptions(context), maxAgeSeconds: LOGIN_LIFETIME_SECONDS }
     )
   )
@@ -123,7 +136,8 @@ const finishSignIn: RouteHandler = async (context, request, response) => {
     sessionCookieFor(context, account),
     serializeClearedCookie(LOGIN_COOKIE_NAME, loginCookieOptions(context))
   ])
-  sendRedirect(response, '/')
+  // Checked again here: the cookie is signed, but this is the last stop before a redirect.
+  sendRedirect(response, safeReturnPath(attempt?.returnTo) ?? '/')
 }
 
 // Clearing the cookie only helps this browser, so sign-out also raises the account's session

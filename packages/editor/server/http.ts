@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { text } from 'node:stream/consumers'
 
 const HTTP_OK = 200
 const HTTP_NO_CONTENT = 204
@@ -95,14 +94,57 @@ export const jsonRequestProblem = (
 }
 
 /**
+ * Reads a request body as text, giving up as soon as it passes the limit instead of buffering
+ * whatever a client cares to send. A body that is too long is not read further.
+ * @param request - The incoming request.
+ * @param maxBytes - The most bytes to accept.
+ * @returns The body, or undefined when it is over the limit.
+ */
+export const readLimitedText = (
+  request: IncomingMessage,
+  maxBytes: number
+): Promise<string | undefined> =>
+  new Promise((resolve, reject) => {
+    if (Number(request.headers['content-length'] ?? 0) > maxBytes) {
+      request.resume()
+      resolve(undefined)
+      return
+    }
+    let chunks: readonly Buffer[] = []
+    let received = 0
+    let isSettled = false
+    request.on('data', (chunk: Buffer) => {
+      if (isSettled) return
+      received += chunk.length
+      if (received > maxBytes) {
+        isSettled = true
+        chunks = []
+        resolve(undefined)
+        return
+      }
+      chunks = [...chunks, chunk]
+    })
+    request.on('end', () => {
+      if (isSettled) return
+      isSettled = true
+      resolve(Buffer.concat(chunks).toString('utf8'))
+    })
+    request.on('error', reject)
+  })
+
+/**
  * Reads a request body as JSON, refusing one over the size limit.
  * @param request - The incoming request.
+ * @param maxBytes - The most bytes to accept.
  * @returns The parsed body, which is unvalidated.
  * @throws {RangeError} When the body is too large.
  * @throws {SyntaxError} When the body is not JSON.
  */
-export const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
-  const body = await text(request)
-  if (Buffer.byteLength(body) > MAX_BODY_BYTES) throw new RangeError('Body too large')
+export const readJsonBody = async (
+  request: IncomingMessage,
+  maxBytes: number = MAX_BODY_BYTES
+): Promise<unknown> => {
+  const body = await readLimitedText(request, maxBytes)
+  if (body === undefined) throw new RangeError('Body too large')
   return JSON.parse(body)
 }

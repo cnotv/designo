@@ -100,6 +100,16 @@ export interface OAuthStore {
    */
   authenticateAccessToken: (accessToken: string) => Promise<AuthenticatedToken | undefined>
   /**
+   * Finds who a refresh token belongs to without using it up, so an account that may not act can
+   * be turned away before the token is traded in and lost.
+   * @param request - The refresh token and the client that presents it.
+   * @returns The account, or undefined when the token is unknown, expired, traded in or another client's.
+   */
+  authenticateRefreshToken: (request: {
+    refreshToken: string
+    clientId: string
+  }) => Promise<{ accountId: string } | undefined>
+  /**
    * Revokes the grant a token belongs to (RFC 7009). An unknown token is not an error.
    * @param token - An access or refresh token.
    * @param clientId - When given, the token only counts if it was issued to this client.
@@ -164,4 +174,13 @@ export interface RateLimiterOptions {
   windowMilliseconds: number
   /** Keys remembered at once; the oldest is forgotten beyond this. */
   maxKeys: number
+}
+
+/** What an authorization request asks for, as far as the consent decision depends on it. */
+export interface AuthorizationRequestFields {
+  clientId: string
+  redirectUri: string
+  codeChallenge: string
+  state: string | undefined
+  resource: string | undefined
 }
