@@ -1,8 +1,8 @@
-import { getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
+import type { DesignNode } from '@designo/core'
 import { getTextBaselineOffset } from '../editing/geometry.ts'
 import { getBoundsCenter } from '../editing/rotation.ts'
-import { getClippingFrames } from '../editing/selection.ts'
-import type { Viewport } from '../editing/types.ts'
+import { prepareCanvas } from './prepareCanvas.ts'
+import type { Scene, SceneItem, SceneRenderer } from './types.ts'
 
 const traceShape = (context: CanvasRenderingContext2D, node: DesignNode): void => {
   context.beginPath()
@@ -34,7 +34,16 @@ const paintShape = (context: CanvasRenderingContext2D, node: DesignNode): void =
   }
 }
 
-const paintText = (context: CanvasRenderingContext2D, node: DesignNode): void => {
+/**
+ * Paints a text node's lines with its top-left corner at the origin, as CSS would lay them out.
+ * The WebGL2 renderer rasterises text with it too, until text has its own path.
+ * @param context - A 2D context, already moved to the node's origin.
+ * @param node - The text node.
+ */
+export const paintText = (
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  node: DesignNode
+): void => {
   context.fillStyle = node.fill ?? '#000000'
   context.font = `${node.fontSize}px ${node.fontFamily}`
   context.textBaseline = 'alphabetic'
@@ -68,14 +77,13 @@ const clipToFrame = (context: CanvasRenderingContext2D, frame: DesignNode): void
   context.clip()
 }
 
-const paintNode = (
+const paintSceneItem = (
   context: CanvasRenderingContext2D,
-  document: DesignDocument,
-  node: DesignNode
+  { node, clipFrames }: SceneItem
 ): void => {
   if (node.type === 'group') return
   context.save()
-  getClippingFrames(document, node.id).forEach((frame) => clipToFrame(context, frame))
+  clipFrames.forEach((frame) => clipToFrame(context, frame))
   context.globalAlpha = node.opacity
   moveToNodeOrigin(context, node)
   if (node.type === 'text') paintText(context, node)
@@ -84,23 +92,23 @@ const paintNode = (
 }
 
 /**
- * Draws a document onto a 2D canvas. A stopgap until the WebGL renderer exists (phase 1).
- * @param context - The canvas to draw on, already cleared and sized.
- * @param document - The document to draw.
- * @param viewport - Pan and zoom to apply.
- * @param hiddenNodeId - A node to leave out, because an overlay is editing it.
+ * Makes the Canvas 2D renderer: the fallback where WebGL2 is not available.
+ * @param canvas - The canvas to draw on.
+ * @returns The renderer, or undefined when the canvas has no 2D context.
  */
-export const drawDocument = (
-  context: CanvasRenderingContext2D,
-  document: DesignDocument,
-  viewport: Viewport,
-  hiddenNodeId?: string
-): void => {
-  context.save()
-  context.translate(viewport.offsetX, viewport.offsetY)
-  context.scale(viewport.scale, viewport.scale)
-  getPaintOrder(document)
-    .filter((node) => node.id !== hiddenNodeId)
-    .forEach((node) => paintNode(context, document, node))
-  context.restore()
+export const createCanvas2dRenderer = (canvas: HTMLCanvasElement): SceneRenderer | undefined => {
+  const context = canvas.getContext('2d')
+  if (!context) return undefined
+  return {
+    kind: 'canvas2d',
+    render: (scene: Scene) => {
+      prepareCanvas(canvas, scene.size, scene.pixelRatio)
+      context.setTransform(scene.pixelRatio, 0, 0, scene.pixelRatio, 0, 0)
+      context.clearRect(0, 0, scene.size.width, scene.size.height)
+      context.translate(scene.viewport.offsetX, scene.viewport.offsetY)
+      context.scale(scene.viewport.scale, scene.viewport.scale)
+      scene.items.forEach((item) => paintSceneItem(context, item))
+    },
+    dispose: () => undefined
+  }
 }
