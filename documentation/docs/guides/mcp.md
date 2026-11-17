@@ -7,6 +7,52 @@ sidebar_position: 2
 The MCP server runs over stdio. It reads and writes files in `DESIGNO_DATA_DIR`
 (default `~/.designo-data`), the same folder the editor shows.
 
+## Get it running
+
+Needs Node 24 and pnpm. Clone the repository and install once:
+
+```sh
+git clone https://github.com/cnotv/designo && cd designo
+pnpm install
+```
+
+Then pick how you want to use it. Both ways read and write the same plain `.designo.json` files.
+
+### Headless
+
+Just the MCP server: no editor, no browser and no port. Your agent's client starts it as a
+process, as in the sections below, and the agent builds a design by calling the tools. It can
+check its own work without a browser: `get_screenshot` returns a PNG and `export_svg` the SVG.
+
+To try the server by hand, `pnpm mcp` waits for MCP messages on stdin. Keep the designs in a
+folder of your own with `DESIGNO_DATA_DIR`, as an absolute path:
+
+```sh
+DESIGNO_DATA_DIR="$HOME/designs" pnpm mcp
+```
+
+A relative path would not mean the folder you are in: pnpm runs the server from `packages/mcp`.
+
+The files are ordinary JSON, so they can be committed, backed up by copying the folder, or
+opened in the editor later.
+
+### Locally, with the editor
+
+Run the editor on the same folder to watch an agent work, or to edit alongside it:
+
+```sh
+pnpm build && pnpm start      # http://127.0.0.1:3000, change the port with PORT
+pnpm dev --port 5320          # or hot reload for working on Designo itself
+```
+
+An agent's edits show up in the editor within a second, and yours reach the agent. Both
+processes must use the same `DESIGNO_DATA_DIR`: set it for the editor's server and in your
+agent's MCP configuration, or leave it unset in both for `~/.designo-data`.
+
+The editor's server listens on this machine only, because the files API has no login of its own.
+Put a reverse proxy with a login in front of it before exposing it, or see
+[self-hosting](./self-hosting.md) to run it in Docker.
+
 ## Claude Code
 
 Inside this repository nothing is needed: `.mcp.json` registers the server. Elsewhere:
@@ -60,4 +106,5 @@ Colours are `#rrggbb` or `#rrggbbaa`. Coordinates are absolute on the page.
 ## Try it
 
 Ask the agent: "Create a Designo file called Palette and lay out five colour swatches in a
-row inside a white frame, each with its hex code underneath." Open `http://localhost:5320` to watch it.
+row inside a white frame, each with its hex code underneath." With the editor running, open it
+to watch; headless, ask the agent for a screenshot.
