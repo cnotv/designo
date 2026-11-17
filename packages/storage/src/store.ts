@@ -6,7 +6,8 @@ import {
   DEFAULT_DATA_DIRECTORY_NAME,
   type DesignDocument
 } from '@designo/core'
-import { fileIdSchema, storedDocumentSchema } from './schemas.ts'
+import { parseStoredDocument } from './migrations.ts'
+import { fileIdSchema } from './schemas.ts'
 import type { DocumentSummary } from './types.ts'
 
 const DOCUMENT_EXTENSION = '.designo.json'
@@ -27,7 +28,7 @@ const documentPath = (dataDirectory: string, fileId: string): string =>
   path.join(dataDirectory, `${fileIdSchema.parse(fileId)}${DOCUMENT_EXTENSION}`)
 
 /**
- * Reads and validates one document.
+ * Reads one document, upgrading an older file to the current format and validating it.
  * @param dataDirectory - Where Designo files live.
  * @param fileId - Id of the file to read.
  * @returns The document.
@@ -37,7 +38,7 @@ export const readDocument = async (
   fileId: string
 ): Promise<DesignDocument> => {
   const raw = await readFile(documentPath(dataDirectory, fileId), 'utf8')
-  return storedDocumentSchema.parse(JSON.parse(raw))
+  return parseStoredDocument(JSON.parse(raw))
 }
 
 /**

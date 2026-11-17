@@ -1,5 +1,8 @@
 import type { DesignNodeProperties } from './types.ts'
 
+/** The file format version this code writes. Bumping it needs one migration step in the storage package. */
+export const CURRENT_FORMAT_VERSION = 2
+
 export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   name: '',
   x: 0,

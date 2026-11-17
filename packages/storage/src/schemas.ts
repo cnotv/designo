@@ -1,3 +1,4 @@
+import { CURRENT_FORMAT_VERSION } from '@designo/core'
 import { z } from 'zod'
 
 const MAX_TEXT_LENGTH = 10_000
@@ -41,7 +42,7 @@ const storedNodeSchema = nodePatchSchema.required().extend({
 })
 
 export const storedDocumentSchema = z.object({
-  formatVersion: z.literal(1),
+  formatVersion: z.literal(CURRENT_FORMAT_VERSION),
   id: fileIdSchema,
   name: z.string(),
   rootId: nodeIdSchema,

@@ -1,7 +1,7 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { createDocument } from '@designo/core'
+import { CURRENT_FORMAT_VERSION, createDocument } from '@designo/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { listDocuments, readDocument, resolveDataDirectory, writeDocument } from './store.ts'
 
@@ -20,6 +20,18 @@ describe('store', () => {
     const document = createDocument('file-a', 'A', 'page-a')
     await writeDocument(dataDirectory, document)
     expect(await readDocument(dataDirectory, 'file-a')).toEqual(document)
+  })
+
+  it('writes the current format version', async () => {
+    await writeDocument(dataDirectory, createDocument('file-w', 'W', 'page-w'))
+    const raw = JSON.parse(await readFile(path.join(dataDirectory, 'file-w.designo.json'), 'utf8'))
+    expect(raw.formatVersion).toBe(CURRENT_FORMAT_VERSION)
+  })
+
+  it('refuses a file from a newer format with a clear message', async () => {
+    const newer = { ...createDocument('file-n', 'N', 'page-n'), formatVersion: 99 }
+    await writeFile(path.join(dataDirectory, 'file-n.designo.json'), JSON.stringify(newer))
+    await expect(readDocument(dataDirectory, 'file-n')).rejects.toThrow(/only understands up to/)
   })
 
   it('skips files that fail validation when listing', async () => {

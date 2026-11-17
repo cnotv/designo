@@ -1,4 +1,8 @@
-import { CONTAINER_NODE_TYPES, DEFAULT_NODE_PROPERTIES } from './defaults.ts'
+import {
+  CONTAINER_NODE_TYPES,
+  CURRENT_FORMAT_VERSION,
+  DEFAULT_NODE_PROPERTIES
+} from './defaults.ts'
 import type {
   DesignDocument,
   DesignNode,
@@ -19,7 +23,7 @@ export const createDocument = (
   documentName: string,
   pageId: string
 ): DesignDocument => ({
-  formatVersion: 1,
+  formatVersion: CURRENT_FORMAT_VERSION,
   id: documentId,
   name: documentName,
   rootId: pageId,
