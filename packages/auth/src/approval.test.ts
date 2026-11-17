@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decideInitialStatus, isAdminAccount } from './approval.ts'
+import { decideInitialStatus, decideStatusOnSignIn, isAdminAccount } from './approval.ts'
 import type { ApprovalRules, VerifiedIdentity } from './types.ts'
 
 const rules: ApprovalRules = {
@@ -58,5 +58,36 @@ describe('isAdminAccount', () => {
     expect(
       isAdminAccount({ email: 'other@example.com', emailVerified: true }, ['admin@example.com'])
     ).toBe(false)
+  })
+})
+
+describe('decideStatusOnSignIn', () => {
+  const adminEmails = ['admin@example.com']
+
+  it.each(['pending', 'blocked'] as const)(
+    'approves a verified admin whose account is %s',
+    (current) => {
+      expect(decideStatusOnSignIn(current, identity('admin@example.com'), adminEmails)).toBe(
+        'approved'
+      )
+    }
+  )
+
+  it('keeps the status of anyone who is not a verified admin', () => {
+    expect(decideStatusOnSignIn('pending', identity('someone@example.com'), adminEmails)).toBe(
+      'pending'
+    )
+    expect(decideStatusOnSignIn('blocked', identity('someone@example.com'), adminEmails)).toBe(
+      'blocked'
+    )
+    expect(decideStatusOnSignIn('approved', identity('someone@example.com'), adminEmails)).toBe(
+      'approved'
+    )
+  })
+
+  it('does not approve an admin address Google has not verified', () => {
+    expect(decideStatusOnSignIn('pending', identity('admin@example.com', false), adminEmails)).toBe(
+      'pending'
+    )
   })
 })

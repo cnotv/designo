@@ -10,7 +10,9 @@ export const accountSchema = z.object({
   emailVerified: z.boolean(),
   name: z.string(),
   status: z.enum(['pending', 'approved', 'blocked']),
-  createdAt: z.string()
+  createdAt: z.string(),
+  // Accounts stored before sessions could be revoked have no epoch; zero is where they start.
+  sessionEpoch: z.number().int().nonnegative().default(0)
 })
 
 export const accountsFileSchema = z.object({
@@ -20,6 +22,7 @@ export const accountsFileSchema = z.object({
 
 export const sessionClaimsSchema = z.object({
   accountId: accountIdSchema,
+  epoch: z.number().int().nonnegative(),
   expiresAt: z.number()
 })
 

@@ -31,3 +31,19 @@ export const isAdminAccount = (
   account: Pick<Account, 'email' | 'emailVerified'>,
   adminEmails: readonly string[]
 ): boolean => account.emailVerified && adminEmails.includes(account.email.toLowerCase())
+
+/**
+ * Decides the status an existing account has after signing in. A verified admin is always
+ * approved, even if the account was made pending before the address joined the list or was
+ * blocked, so the people who run the server can never be locked out; for anyone else only an
+ * admin changes a status, so it stays as it is.
+ * @param current - The status stored for the account.
+ * @param identity - Who signed in, with the email as Google reports it now.
+ * @param adminEmails - The configured admin addresses, lower case.
+ * @returns The status the account should have.
+ */
+export const decideStatusOnSignIn = (
+  current: AccountStatus,
+  identity: VerifiedIdentity,
+  adminEmails: readonly string[]
+): AccountStatus => (isAdminAccount(identity, adminEmails) ? 'approved' : current)

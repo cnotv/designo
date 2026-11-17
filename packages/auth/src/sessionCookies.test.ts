@@ -50,22 +50,37 @@ describe('signed values', () => {
 
 describe('session value', () => {
   it('carries the account id until seven days from now', () => {
-    const value = createSessionValue('account-1', NOW, SECRET)
+    const value = createSessionValue('account-1', 0, NOW, SECRET)
     expect(readSessionValue(value, NOW + 1000, SECRET)).toEqual({
       accountId: 'account-1',
+      epoch: 0,
       expiresAt: NOW + SEVEN_DAYS
     })
   })
 
+  it('carries the session epoch it was made at', () => {
+    const value = createSessionValue('account-1', 3, NOW, SECRET)
+    expect(readSessionValue(value, NOW, SECRET)?.epoch).toBe(3)
+  })
+
+  it('is refused when it has no epoch, as a cookie from before epochs would not', () => {
+    const value = signValue(
+      'session',
+      { accountId: 'account-1', expiresAt: NOW + SEVEN_DAYS },
+      SECRET
+    )
+    expect(readSessionValue(value, NOW, SECRET)).toBeUndefined()
+  })
+
   it('is signed-out once expired', () => {
-    const value = createSessionValue('account-1', NOW, SECRET)
+    const value = createSessionValue('account-1', 0, NOW, SECRET)
     expect(readSessionValue(value, NOW + SEVEN_DAYS, SECRET)).toBeUndefined()
     expect(readSessionValue(value, NOW + SEVEN_DAYS + 1, SECRET)).toBeUndefined()
   })
 
   it('is signed-out when signed with another secret', () => {
     expect(
-      readSessionValue(createSessionValue('account-1', NOW, OTHER_SECRET), NOW, SECRET)
+      readSessionValue(createSessionValue('account-1', 0, NOW, OTHER_SECRET), NOW, SECRET)
     ).toBeUndefined()
   })
 
@@ -87,7 +102,7 @@ describe('session value', () => {
   it('refuses an account id that is not a safe folder name', () => {
     const value = signValue(
       'session',
-      { accountId: '../other', expiresAt: NOW + SEVEN_DAYS },
+      { accountId: '../other', epoch: 0, expiresAt: NOW + SEVEN_DAYS },
       SECRET
     )
     expect(readSessionValue(value, NOW, SECRET)).toBeUndefined()
@@ -105,7 +120,7 @@ describe('login value', () => {
 
   it('is not accepted when it is really a session value', () => {
     expect(
-      readLoginValue(createSessionValue('account-1', NOW, SECRET), NOW, SECRET)
+      readLoginValue(createSessionValue('account-1', 0, NOW, SECRET), NOW, SECRET)
     ).toBeUndefined()
   })
 })

@@ -31,14 +31,21 @@ export const SESSION_LIFETIME_SECONDS = SESSION_LIFETIME_MILLISECONDS / MILLISEC
 export const LOGIN_LIFETIME_SECONDS = LOGIN_LIFETIME_MILLISECONDS / MILLISECONDS_PER_SECOND
 
 /**
- * Makes the session cookie's value: the account id and when the session ends, signed.
+ * Makes the session cookie's value: the account id, its session epoch and when the session ends,
+ * signed.
  * @param accountId - The signed-in account.
+ * @param epoch - The account's current session epoch; the cookie counts only while it matches.
  * @param now - The current time in epoch milliseconds.
  * @param secret - The session secret.
  * @returns The value to put in the cookie.
  */
-export const createSessionValue = (accountId: string, now: number, secret: string): string => {
-  const claims: SessionClaims = { accountId, expiresAt: now + SESSION_LIFETIME_MILLISECONDS }
+export const createSessionValue = (
+  accountId: string,
+  epoch: number,
+  now: number,
+  secret: string
+): string => {
+  const claims: SessionClaims = { accountId, epoch, expiresAt: now + SESSION_LIFETIME_MILLISECONDS }
   return signValue(SESSION_PURPOSE, claims, secret)
 }
 

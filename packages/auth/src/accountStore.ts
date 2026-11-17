@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { decideInitialStatus } from './approval.ts'
+import { decideInitialStatus, decideStatusOnSignIn } from './approval.ts'
 import { accountIdSchema, accountsFileSchema } from './schemas.ts'
 import type { Account, AccountStore, ApprovalRules, VerifiedIdentity } from './types.ts'
 
@@ -55,15 +55,22 @@ const buildAccount = (
   emailVerified: identity.emailVerified,
   name: identity.name || identity.email,
   status: decideInitialStatus(identity, rules),
-  createdAt: new Date(now).toISOString()
+  createdAt: new Date(now).toISOString(),
+  sessionEpoch: 0
 })
 
-// A later sign-in refreshes who the person is but never their status: only an admin changes that.
-const refreshAccount = (account: Account, identity: VerifiedIdentity): Account => ({
+// A later sign-in refreshes who the person is. Their status stays as an admin set it, except that
+// an admin listed in the settings is approved again, so that list can never lock anyone out.
+const refreshAccount = (
+  account: Account,
+  identity: VerifiedIdentity,
+  rules: ApprovalRules
+): Account => ({
   ...account,
   email: identity.email.toLowerCase(),
   emailVerified: identity.emailVerified,
-  name: identity.name || identity.email
+  name: identity.name || identity.email,
+  status: decideStatusOnSignIn(account.status, identity, rules.adminEmails)
 })
 
 /**
@@ -104,7 +111,7 @@ export const createAccountStore = (
       modify((accounts) => {
         const existing = accounts.find((account) => account.subject === identity.subject)
         if (existing) {
-          const refreshed = refreshAccount(existing, identity)
+          const refreshed = refreshAccount(existing, identity, rules)
           return {
             accounts: accounts.map((account) => (account === existing ? refreshed : account)),
             result: refreshed
@@ -112,6 +119,15 @@ export const createAccountStore = (
         }
         const created = buildAccount(identity, rules, now, createAccountId())
         return { accounts: [...accounts, created], result: created }
-      })
+      }),
+    revokeSessions: (accountId) =>
+      modify((accounts) => ({
+        accounts: accounts.map((account) =>
+          account.id === accountId
+            ? { ...account, sessionEpoch: account.sessionEpoch + 1 }
+            : account
+        ),
+        result: undefined
+      }))
   }
 }

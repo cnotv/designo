@@ -5,6 +5,7 @@ import path from 'node:path'
 import {
   accountDirectory,
   createAccountStore,
+  createSessionValue,
   type Account,
   type AuthSettings,
   type VerifiedIdentity
@@ -404,6 +405,23 @@ describe('approval', () => {
     }
   )
 
+  it('approves an admin at sign-in even when the account was made pending before it was listed', async () => {
+    const beforeListing = await startHarness(makeSettings({ adminEmails: [] }))
+    const pendingCookie = await signInAs('admin', beforeListing)
+    expect((await request('/api/files', withCookie(pendingCookie), beforeListing)).status).toBe(403)
+    const afterListing = await startHarness(makeSettings({ adminEmails: ['admin@example.com'] }))
+    const cookie = await signInAs('admin', afterListing)
+    expect((await request('/api/files', withCookie(cookie), afterListing)).status).toBe(200)
+    expect(await accountsOnDisk()).toHaveLength(1)
+  })
+
+  it('approves an admin who was blocked, at the next sign-in', async () => {
+    await signInAs('admin')
+    await setStatusOnDisk('admin@example.com', 'blocked')
+    const cookie = await signInAs('admin')
+    expect((await request('/api/files', withCookie(cookie))).status).toBe(200)
+  })
+
   it('lets an account in the moment an admin approves it, with no new sign-in', async () => {
     const cookie = await signInAs('stranger')
     expect((await request('/api/files', withCookie(cookie))).status).toBe(403)
@@ -504,6 +522,52 @@ describe('signing out', () => {
     const response = await request('/auth/logout', { method: 'POST', ...withCookie(cookie) })
     expect(response.status).toBe(204)
     expect(setCookieNamed(response, 'designo_session')).toContain('Max-Age=0')
+  })
+
+  it('revokes the session: a cookie copied before sign-out is refused after it', async () => {
+    const cookie = await signInAs('admin')
+    const copy = `${cookie}`
+    expect((await request('/api/me', withCookie(copy))).status).toBe(200)
+    await request('/auth/logout', { method: 'POST', ...withCookie(cookie) })
+    expect((await request('/api/me', withCookie(copy))).status).toBe(401)
+    expect((await request('/api/files', withCookie(copy))).status).toBe(401)
+  })
+
+  it('lets the account sign in again after signing out', async () => {
+    const before = await signInAs('admin')
+    await request('/auth/logout', { method: 'POST', ...withCookie(before) })
+    const after = await signInAs('admin')
+    expect((await request('/api/me', withCookie(after))).status).toBe(200)
+    expect((await request('/api/files', withCookie(after))).status).toBe(200)
+    expect((await request('/api/me', withCookie(before))).status).toBe(401)
+  })
+
+  it('refuses a cookie signed with an old epoch, even though the signature is good', async () => {
+    await signInAs('admin')
+    const accountId = await accountIdOf('admin@example.com')
+    const current = createSessionValue(accountId, 0, START_TIME, SESSION_SECRET)
+    expect((await request('/api/me', withCookie(`designo_session=${current}`))).status).toBe(200)
+    await createAccountStore(dataDirectory).revokeSessions(accountId)
+    expect((await request('/api/me', withCookie(`designo_session=${current}`))).status).toBe(401)
+    const renewed = createSessionValue(accountId, 1, START_TIME, SESSION_SECRET)
+    expect((await request('/api/me', withCookie(`designo_session=${renewed}`))).status).toBe(200)
+  })
+
+  it("ends the account's other sessions too, and leaves other accounts signed in", async () => {
+    const adminBrowser = await signInAs('admin')
+    const adminPhone = await signInAs('admin')
+    const friend = await signInAs('friend')
+    await request('/auth/logout', { method: 'POST', ...withCookie(adminBrowser) })
+    expect((await request('/api/me', withCookie(adminPhone))).status).toBe(401)
+    expect((await request('/api/me', withCookie(friend))).status).toBe(200)
+  })
+
+  it('changes nothing when the cookie is forged or already revoked', async () => {
+    const cookie = await signInAs('admin')
+    await request('/auth/logout', { method: 'POST', ...withCookie(cookie) })
+    await request('/auth/logout', { method: 'POST', ...withCookie(cookie) })
+    await request('/auth/logout', { method: 'POST', ...withCookie('designo_session=forged.value') })
+    expect((await accountsOnDisk())[0]?.sessionEpoch).toBe(1)
   })
 
   it('refuses a sign-out another site triggers, and a GET', async () => {

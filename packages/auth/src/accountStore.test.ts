@@ -79,7 +79,7 @@ describe('account store sign-in', () => {
     expect(first.id).toMatch(/^[\w-]{20,64}$/)
   })
 
-  it('updates email and name on a later sign-in but never the status', async () => {
+  it('updates email and name on a later sign-in but not the status of someone who is not an admin', async () => {
     const store = createAccountStore(dataDirectory)
     const created = await store.signIn(identity('sub-1', 'old@example.com'), rules, NOW)
     const stored = JSON.parse(await readFile(path.join(dataDirectory, 'accounts.json'), 'utf8'))
@@ -87,13 +87,13 @@ describe('account store sign-in', () => {
     await writeFile(path.join(dataDirectory, 'accounts.json'), JSON.stringify(stored))
 
     const again = await store.signIn(
-      identity('sub-1', 'admin@example.com', { name: 'New Name' }),
+      identity('sub-1', 'new@example.com', { name: 'New Name' }),
       rules,
       NOW + 1000
     )
     expect(again).toMatchObject({
       id: created.id,
-      email: 'admin@example.com',
+      email: 'new@example.com',
       name: 'New Name',
       status: 'blocked',
       createdAt: created.createdAt
@@ -127,6 +127,80 @@ describe('account store sign-in', () => {
     expect(await store.findById('missing')).toBeUndefined()
     expect(await store.findByEmail('ONE@example.com')).toEqual([account])
     expect(await store.findByEmail('nobody@example.com')).toEqual([])
+  })
+
+  it('approves a pending account at its next sign-in once its address is listed as admin', async () => {
+    const store = createAccountStore(dataDirectory)
+    const pending = await store.signIn(identity('sub-1', 'late-admin@example.com'), rules, NOW)
+    expect(pending.status).toBe('pending')
+    const later = { ...rules, adminEmails: ['late-admin@example.com'] }
+    const approved = await store.signIn(identity('sub-1', 'late-admin@example.com'), later, NOW)
+    expect(approved).toMatchObject({ id: pending.id, status: 'approved' })
+  })
+
+  it('approves an admin even if the account was blocked, so admins cannot be locked out', async () => {
+    const store = createAccountStore(dataDirectory)
+    const admin = await store.signIn(identity('sub-1', 'admin@example.com'), rules, NOW)
+    await writeFile(
+      path.join(dataDirectory, 'accounts.json'),
+      JSON.stringify({ formatVersion: 1, accounts: [{ ...admin, status: 'blocked' }] })
+    )
+    expect((await store.signIn(identity('sub-1', 'admin@example.com'), rules, NOW)).status).toBe(
+      'approved'
+    )
+  })
+
+  it('does not approve a pending account for an admin address Google has not verified', async () => {
+    const store = createAccountStore(dataDirectory)
+    await store.signIn(identity('sub-1', 'admin@example.com', { emailVerified: false }), rules, NOW)
+    const again = await store.signIn(
+      identity('sub-1', 'admin@example.com', { emailVerified: false }),
+      rules,
+      NOW
+    )
+    expect(again.status).toBe('pending')
+  })
+
+  it('starts every account at session epoch zero and raises it on revoke', async () => {
+    const store = createAccountStore(dataDirectory)
+    const account = await store.signIn(identity('sub-1', 'one@example.com'), rules, NOW)
+    const other = await store.signIn(identity('sub-2', 'two@example.com'), rules, NOW)
+    expect(account.sessionEpoch).toBe(0)
+    await store.revokeSessions(account.id)
+    await store.revokeSessions(account.id)
+    expect((await store.findById(account.id))?.sessionEpoch).toBe(2)
+    expect((await store.findById(other.id))?.sessionEpoch).toBe(0)
+  })
+
+  it('keeps the epoch across later sign-ins and ignores revoking an unknown account', async () => {
+    const store = createAccountStore(dataDirectory)
+    const account = await store.signIn(identity('sub-1', 'one@example.com'), rules, NOW)
+    await store.revokeSessions(account.id)
+    await store.revokeSessions('missing')
+    const again = await store.signIn(identity('sub-1', 'one@example.com'), rules, NOW)
+    expect(again.sessionEpoch).toBe(1)
+    expect(await store.list()).toHaveLength(1)
+  })
+
+  it('reads an account stored before epochs existed as epoch zero', async () => {
+    await writeFile(
+      path.join(dataDirectory, 'accounts.json'),
+      JSON.stringify({
+        formatVersion: 1,
+        accounts: [
+          {
+            id: 'abc',
+            subject: 's',
+            email: 'a@example.com',
+            emailVerified: true,
+            name: 'A',
+            status: 'approved',
+            createdAt: 'now'
+          }
+        ]
+      })
+    )
+    expect((await createAccountStore(dataDirectory).findById('abc'))?.sessionEpoch).toBe(0)
   })
 
   it('writes a file only its owner can read', async () => {

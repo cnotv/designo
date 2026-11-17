@@ -16,6 +16,11 @@ export interface Account {
   status: AccountStatus
   /** ISO 8601. */
   createdAt: string
+  /**
+   * Raised by every sign-out. A session cookie carries the epoch it was made at and counts only
+   * while it still matches, so signing out ends every session of the account, copies included.
+   */
+  sessionEpoch: number
 }
 
 /** What the identity provider says about the person who just signed in. */
@@ -89,6 +94,8 @@ export interface GoogleIdentityProviderOptions {
 
 export interface SessionClaims {
   accountId: string
+  /** The account's `sessionEpoch` when the session began. */
+  epoch: number
   /** Epoch milliseconds. */
   expiresAt: number
 }
@@ -122,9 +129,15 @@ export interface AccountStore {
   /**
    * Records a sign-in: creates the account on the first one, refreshes email and name after.
    * @param identity - The verified identity from the provider.
-   * @param rules - Decide the first status; a later sign-in never changes it.
+   * @param rules - Decide the first status. A later sign-in changes it only to approve an admin.
    * @param now - The current time, for `createdAt`.
    * @returns The account as stored.
    */
   signIn: (identity: VerifiedIdentity, rules: ApprovalRules, now: number) => Promise<Account>
+  /**
+   * Ends every session of an account by raising its session epoch.
+   * @param accountId - The account that signed out.
+   * @returns Nothing; an unknown account is ignored.
+   */
+  revokeSessions: (accountId: string) => Promise<void>
 }

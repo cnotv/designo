@@ -12,7 +12,12 @@ import {
   serializeCookie,
   type LoginAttempt
 } from '@designo/auth'
-import { accountFromRequest, clearedSessionCookie, sessionCookieFor } from './authentication.ts'
+import {
+  accountFromRequest,
+  clearedSessionCookie,
+  revokeRequestSessions,
+  sessionCookieFor
+} from './authentication.ts'
 import { crossSiteProblem, sendError, sendNoContent, sendOk, sendRedirect } from './http.ts'
 import type { AuthContext } from './types.ts'
 
@@ -121,15 +126,17 @@ const finishSignIn: RouteHandler = async (context, request, response) => {
   sendRedirect(response, '/')
 }
 
-const signOut: RouteHandler = (context, request, response) => {
+// Clearing the cookie only helps this browser, so sign-out also raises the account's session
+// epoch: a copy of the cookie stops working too.
+const signOut: RouteHandler = async (context, request, response) => {
   const problem = crossSiteProblem(request)
   if (problem) {
     sendError(response, HTTP_FORBIDDEN, problem)
-    return Promise.resolve()
+    return
   }
+  await revokeRequestSessions(context, request)
   response.setHeader('Set-Cookie', clearedSessionCookie(context))
   sendNoContent(response)
-  return Promise.resolve()
 }
 
 const describeMe: RouteHandler = async (context, request, response) => {
