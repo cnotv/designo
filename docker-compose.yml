@@ -1,7 +1,8 @@
 # Designo on its own: `docker compose up -d` publishes it on 127.0.0.1:3020, for a reverse proxy
 # on the same host to route to. Port 3020 keeps clear of other apps on the server (3000 and 3001
 # are taken). Change the port or bind address with DESIGNO_PORT and DESIGNO_BIND in .env.
-# The files API has no login: the reverse proxy in front must add one.
+# The files API has no login of its own unless DESIGNO_AUTH=google turns on sign-in with Google
+# (settings below, set in .env): without it, the reverse proxy in front must add one.
 services:
   designo:
     image: ghcr.io/cnotv/designo:latest
@@ -10,6 +11,16 @@ services:
     restart: unless-stopped
     ports:
       - ${DESIGNO_BIND:-127.0.0.1}:${DESIGNO_PORT:-3020}:3000
+    environment:
+      # Empty means off: the server starts as it always has unless DESIGNO_AUTH is google.
+      DESIGNO_AUTH: ${DESIGNO_AUTH:-}
+      DESIGNO_GOOGLE_CLIENT_ID: ${DESIGNO_GOOGLE_CLIENT_ID:-}
+      DESIGNO_GOOGLE_CLIENT_SECRET: ${DESIGNO_GOOGLE_CLIENT_SECRET:-}
+      DESIGNO_PUBLIC_URL: ${DESIGNO_PUBLIC_URL:-}
+      DESIGNO_SESSION_SECRET: ${DESIGNO_SESSION_SECRET:-}
+      DESIGNO_ADMIN_EMAILS: ${DESIGNO_ADMIN_EMAILS:-}
+      DESIGNO_AUTO_APPROVE_EMAILS: ${DESIGNO_AUTO_APPROVE_EMAILS:-}
+      DESIGNO_AUTO_APPROVE_DOMAINS: ${DESIGNO_AUTO_APPROVE_DOMAINS:-}
     volumes:
       - designo-data:/data
 
