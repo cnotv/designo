@@ -118,6 +118,8 @@ circle. After drawing, the editor returns to Move.
 
 The properties panel has an effects section below Stroke.
 
+![Selecting each effect in the sample file: a gradient, a radial gradient, a blur, a shadow and two multiplied circles](/img/effects.gif)
+
 - **Gradient:** the plus beside Gradient turns the fill into a two colour gradient that starts on the
   current fill. Pick linear or radial, set the angle of a linear one, and change the colour of each
   stop. A gradient can fill a rectangle, an ellipse or a frame. More than two stops, or stops at
