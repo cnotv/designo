@@ -130,26 +130,18 @@ void main() {
 `
 
 export const GLYPH_VERTEX_SHADER = /* glsl */ `#version 300 es
-layout(location = 0) in vec2 a_corner;
-layout(location = 1) in vec4 a_originAndSize;
-layout(location = 2) in vec2 a_cosineAndSine;
-layout(location = 3) in vec4 a_uvRect;
-layout(location = 4) in vec4 a_color;
+layout(location = 0) in vec2 a_world;
+layout(location = 1) in vec2 a_uv;
+layout(location = 2) in vec4 a_color;
 ${PLACE_IN_VIEW}
 out vec2 v_uv;
 out vec4 v_color;
 
 void main() {
-  vec2 corner = a_corner * 0.5 + 0.5;
-  v_uv = mix(a_uvRect.xy, a_uvRect.zw, corner);
+  v_uv = a_uv;
   v_color = a_color;
-  // The quad's top left is the glyph's bitmap corner, already turned around the node's centre.
-  gl_Position = placeInViewTurned(
-    a_originAndSize.xy,
-    corner * a_originAndSize.zw,
-    a_cosineAndSine.x,
-    a_cosineAndSine.y
-  );
+  // The corners were turned with their node on the CPU, so only the view is left.
+  gl_Position = placeInViewTurned(a_world, vec2(0.0), 1.0, 0.0);
 }
 `
 

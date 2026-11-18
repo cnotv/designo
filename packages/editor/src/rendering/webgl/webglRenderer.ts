@@ -94,7 +94,7 @@ export const createWebglRenderer = (
   if (!textureText) return undefined
   const instances = gl.createBuffer()
   const shapeVertexArray = createShapeVertexArray(gl, quad, instances)
-  const glyphPipeline = textRuntime ? createGlyphPipeline(gl, quad, textRuntime) : undefined
+  const glyphPipeline = textRuntime ? createGlyphPipeline(gl, textRuntime) : undefined
   const state = { frame: 0, clipKey: '' }
   const viewTargets: ViewUniformTarget[] = [
     { program: shapeProgram, uniforms: shapeUniforms },

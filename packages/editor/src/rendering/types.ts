@@ -89,9 +89,9 @@ export interface ViewUniformTarget {
 export interface GlyphDrawStep {
   kind: 'glyphs'
   pageIndex: number
-  /** The first instance in the draw list's buffer. */
-  firstInstance: number
-  instanceCount: number
+  /** The first glyph of the run in the draw list's vertex data. */
+  firstGlyph: number
+  glyphCount: number
 }
 
 /** A text node the glyph path could not draw, left to the Canvas 2D texture path. */
@@ -102,10 +102,10 @@ export interface FallbackDrawStep {
 
 export type TextDrawStep = GlyphDrawStep | FallbackDrawStep
 
-/** What drawing a batch of text takes, in paint order: instance data and the steps over it. */
+/** What drawing a batch of text takes, in paint order: vertex data and the steps over it. */
 export interface TextDrawList {
-  /** `GLYPH_INSTANCE_FLOATS` floats per glyph quad. */
-  instances: Float32Array
+  /** `GLYPH_BYTES` bytes per glyph: four vertices of position, atlas position and colour. */
+  vertices: Uint8Array
   steps: readonly TextDrawStep[]
 }
 

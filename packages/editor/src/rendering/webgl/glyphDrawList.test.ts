@@ -2,8 +2,8 @@ import type { DesignNode } from '@designo/core'
 import { describe, expect, it, vi } from 'vitest'
 import { createGlyphAtlas } from '../text/glyphAtlas.ts'
 import type { AtlasGlyph, GlyphKey, TextLayout } from '../text/types.ts'
-import type { SceneItem } from '../types.ts'
-import { GLYPH_INSTANCE_FLOATS, buildTextDrawList } from './glyphDrawList.ts'
+import type { SceneItem, TextDrawList } from '../types.ts'
+import { GLYPH_BYTES, buildTextDrawList } from './glyphDrawList.ts'
 
 const baseNode = {
   id: 'a',
@@ -56,6 +56,35 @@ const createFixture = (
   atlas: { lookupGlyph: vi.fn(lookupGlyph), pageWidth: 1024, pageHeight: 512 }
 })
 
+// Reads the packed vertex data back: each glyph's four corners with position, atlas position and
+// the premultiplied colour as bytes.
+const readQuads = (list: TextDrawList) => {
+  const floats = new Float32Array(
+    list.vertices.buffer,
+    list.vertices.byteOffset,
+    list.vertices.byteLength / 4
+  )
+  const words = new Uint32Array(
+    list.vertices.buffer,
+    list.vertices.byteOffset,
+    list.vertices.byteLength / 4
+  )
+  return Array.from({ length: list.vertices.byteLength / GLYPH_BYTES }, (_, glyph) =>
+    Array.from({ length: 4 }, (_unused, corner) => {
+      const base = glyph * 16 + corner * 4
+      const uv = words[base + 2] ?? 0
+      const color = words[base + 3] ?? 0
+      return {
+        x: floats[base] ?? 0,
+        y: floats[base + 1] ?? 0,
+        u: (uv & 0xffff) / 65535,
+        v: (uv >>> 16) / 65535,
+        color: [color & 0xff, (color >>> 8) & 0xff, (color >>> 16) & 0xff, color >>> 24]
+      }
+    })
+  )
+}
+
 const run = (
   fixture: ReturnType<typeof createFixture>,
   items: SceneItem[],
@@ -65,17 +94,38 @@ const run = (
 describe('buildTextDrawList', () => {
   it('puts one quad per glyph at the glyph origin plus the bitmap bearings, scaled from the bucket to the font size', () => {
     const fixture = createFixture(layoutOf(glyph(7, 3)))
-    const list = run(fixture, [item()])
     // 16 world units at 2 device pixels is 32 pixels per em, which is the bucket, so one bitmap
     // pixel is half a world unit.
-    expect(list.instances).toHaveLength(GLYPH_INSTANCE_FLOATS)
-    const [originX, originY, width, height, cosine, sine, u0, v0, u1, v1] = list.instances
-    expect(originX).toBeCloseTo(100 + 3 + 2 * 0.5)
-    expect(originY).toBeCloseTo(50 + 12 - 30 * 0.5)
-    expect(width).toBeCloseTo(20 * 0.5)
-    expect(height).toBeCloseTo(40 * 0.5)
-    expect([cosine, sine]).toEqual([1, 0])
-    expect([u0, v0, u1, v1]).toEqual([64 / 1024, 128 / 512, 84 / 1024, 168 / 512])
+    const quads = readQuads(run(fixture, [item()]))
+    expect(quads).toHaveLength(1)
+    const corners = (quads[0] ?? []).map(({ x, y }) => [x, y])
+    const left = 100 + 3 + 2 * 0.5
+    const top = 50 + 12 - 30 * 0.5
+    const expected = [
+      [left, top],
+      [left + 10, top],
+      [left, top + 20],
+      [left + 10, top + 20]
+    ]
+    corners.forEach(([x, y], corner) => {
+      expect(x).toBeCloseTo(expected[corner]?.[0] ?? Number.NaN)
+      expect(y).toBeCloseTo(expected[corner]?.[1] ?? Number.NaN)
+    })
+  })
+
+  it('points each corner at its corner of the glyph in the atlas page', () => {
+    const fixture = createFixture(layoutOf(glyph(7, 3)))
+    const [quad = []] = readQuads(run(fixture, [item()]))
+    const expected = [
+      [64 / 1024, 128 / 512],
+      [84 / 1024, 128 / 512],
+      [64 / 1024, 168 / 512],
+      [84 / 1024, 168 / 512]
+    ]
+    quad.forEach(({ u, v }, corner) => {
+      expect(u).toBeCloseTo(expected[corner]?.[0] ?? Number.NaN, 4)
+      expect(v).toBeCloseTo(expected[corner]?.[1] ?? Number.NaN, 4)
+    })
   })
 
   it('asks the atlas for the zoom bucket of the size on screen', () => {
@@ -85,32 +135,32 @@ describe('buildTextDrawList', () => {
     expect(fixture.atlas.lookupGlyph.mock.calls.map(([key]) => key.zoomBucket)).toEqual([32, 128])
   })
 
-  it('premultiplies the fill by its alpha and the node opacity', () => {
+  it('premultiplies the fill by its alpha and the node opacity, as bytes', () => {
     const fixture = createFixture(layoutOf(glyph(7, 0)))
-    const { instances } = run(fixture, [item({ fill: '#ff000080', opacity: 0.5 })])
-    const alpha = (128 / 255) * 0.5
-    expect(instances[10]).toBeCloseTo(alpha)
-    expect(instances[11]).toBe(0)
-    expect(instances[13]).toBeCloseTo(alpha)
+    const [quad] = readQuads(run(fixture, [item({ fill: '#ff000080', opacity: 0.5 })]))
+    const alpha = Math.round((128 / 255) * 0.5 * 255)
+    expect(
+      quad?.every(({ color }) => color[0] === alpha && color[1] === 0 && color[3] === alpha)
+    ).toBe(true)
   })
 
   it('draws a node with no fill black, as the Canvas 2D path does', () => {
     const fixture = createFixture(layoutOf(glyph(7, 0)))
-    const { instances } = run(fixture, [item({ fill: null })])
-    expect([instances[10], instances[11], instances[12], instances[13]]).toEqual([0, 0, 0, 1])
+    const [quad] = readQuads(run(fixture, [item({ fill: null })]))
+    expect(quad?.[0]?.color).toEqual([0, 0, 0, 255])
   })
 
-  it('turns every quad around the node centre with the node', () => {
+  it('turns every corner around the node centre with the node', () => {
     const fixture = createFixture(layoutOf(glyph(7, 0, 0)), () =>
       atlasGlyph({ bearingX: 0, bearingY: 0 })
     )
-    const { instances } = run(fixture, [item({ rotation: 90 })])
+    const [quad] = readQuads(run(fixture, [item({ rotation: 90 })]))
     // The glyph origin is the node's top left, (-20, -10) from its centre (120, 60); a quarter turn
-    // sends that to (130, 40).
-    expect(instances[0]).toBeCloseTo(130)
-    expect(instances[1]).toBeCloseTo(40)
-    expect(instances[4]).toBeCloseTo(0)
-    expect(instances[5]).toBeCloseTo(1)
+    // sends that to (130, 40). The quad's width of 10 then runs down the screen, not across.
+    expect(quad?.[0]?.x).toBeCloseTo(130)
+    expect(quad?.[0]?.y).toBeCloseTo(40)
+    expect(quad?.[1]?.x).toBeCloseTo(130)
+    expect(quad?.[1]?.y).toBeCloseTo(50)
   })
 
   it('draws nothing for a glyph with no pixels, such as a space, and does not fall back', () => {
@@ -118,10 +168,8 @@ describe('buildTextDrawList', () => {
       key.glyphId === 1 ? atlasGlyph({ isEmpty: true }) : atlasGlyph()
     )
     const list = run(fixture, [item()])
-    expect(list.instances).toHaveLength(GLYPH_INSTANCE_FLOATS)
-    expect(list.steps).toEqual([
-      { kind: 'glyphs', pageIndex: 0, firstInstance: 0, instanceCount: 1 }
-    ])
+    expect(list.vertices).toHaveLength(GLYPH_BYTES)
+    expect(list.steps).toEqual([{ kind: 'glyphs', pageIndex: 0, firstGlyph: 0, glyphCount: 1 }])
   })
 
   it('merges runs on the same page across nodes and splits where the page changes', () => {
@@ -139,9 +187,9 @@ describe('buildTextDrawList', () => {
     )
     const list = run(fixture, [item({ id: 'a' }), item({ id: 'b' }), item({ id: 'c' })])
     expect(list.steps).toEqual([
-      { kind: 'glyphs', pageIndex: 0, firstInstance: 0, instanceCount: 2 },
-      { kind: 'glyphs', pageIndex: 1, firstInstance: 2, instanceCount: 1 },
-      { kind: 'glyphs', pageIndex: 0, firstInstance: 3, instanceCount: 1 }
+      { kind: 'glyphs', pageIndex: 0, firstGlyph: 0, glyphCount: 2 },
+      { kind: 'glyphs', pageIndex: 1, firstGlyph: 2, glyphCount: 1 },
+      { kind: 'glyphs', pageIndex: 0, firstGlyph: 3, glyphCount: 1 }
     ])
   })
 
@@ -166,7 +214,7 @@ describe('buildTextDrawList', () => {
       key.glyphId === 3 ? undefined : atlasGlyph()
     )
     const list = run(fixture, [item()])
-    expect(list.instances).toHaveLength(0)
+    expect(list.vertices).toHaveLength(0)
     expect(list.steps).toEqual([{ kind: 'fallback', node: expect.objectContaining({ id: 'a' }) }])
   })
 
@@ -182,7 +230,7 @@ describe('buildTextDrawList', () => {
       ((node: DesignNode) => layouts[node.id]) as never
     )
     const list = run(fixture, [item({ id: 'a' }), item({ id: 'b' })])
-    expect(list.instances).toHaveLength(GLYPH_INSTANCE_FLOATS)
+    expect(list.vertices).toHaveLength(GLYPH_BYTES)
     expect(list.steps.map((step) => step.kind)).toEqual(['glyphs', 'fallback'])
   })
 
@@ -196,7 +244,7 @@ describe('buildTextDrawList', () => {
   it('draws an empty layout as nothing at all', () => {
     const fixture = createFixture({ lines: [], width: 0, height: 0, lineHeight: 19.2 })
     const list = run(fixture, [item()])
-    expect(list.instances).toHaveLength(0)
+    expect(list.vertices).toHaveLength(0)
     expect(list.steps).toEqual([])
   })
 })
@@ -234,7 +282,7 @@ describe('buildTextDrawList with the real atlas', () => {
   it('draws one glyph once per bucket, however many nodes and uses it has', () => {
     const { rasterizeGlyph, draw } = createCountingFixture()
     const list = draw(500, 2)
-    expect(list.instances).toHaveLength(500 * 3 * GLYPH_INSTANCE_FLOATS)
+    expect(list.vertices).toHaveLength(500 * 3 * GLYPH_BYTES)
     expect(rasterizeGlyph).toHaveBeenCalledTimes(2)
   })
 
@@ -254,5 +302,68 @@ describe('buildTextDrawList with the real atlas', () => {
     expect(rasterizeGlyph.mock.calls.map(([key]) => key.zoomBucket).toSorted()).toEqual([
       32, 32, 64, 64
     ])
+  })
+})
+
+describe('buildTextDrawList while the atlas evicts', () => {
+  // A page holds one 30 by 30 glyph, so every new glyph past the second page clears a page.
+  const createTinyFixture = () => {
+    const atlas = createGlyphAtlas({
+      pageWidth: 32,
+      pageHeight: 32,
+      maxPages: 2,
+      padding: 1,
+      rasterizeGlyph: (key) => ({
+        width: 28,
+        height: 28,
+        bearingX: 0,
+        bearingY: 28,
+        pixels: new Uint8Array(28 * 28).fill(key.glyphId)
+      })
+    })
+    const layouts: Record<string, TextLayout> = {
+      first: layoutOf(glyph(1, 0), glyph(2, 8)),
+      second: layoutOf(glyph(3, 0), glyph(4, 8)),
+      third: layoutOf(glyph(5, 0), glyph(6, 8), glyph(7, 16))
+    }
+    const engine = { getNodeLayout: (node: DesignNode) => layouts[node.id] }
+    const draw = (...ids: string[]) => {
+      atlas.beginFrame()
+      return buildTextDrawList({
+        items: ids.map((id) => item({ id })),
+        devicePixelsPerUnit: 2,
+        engine,
+        atlas
+      })
+    }
+    return { atlas, draw }
+  }
+
+  it('places a later frame by evicting a page the earlier frame used, and queues its clear', () => {
+    const { atlas, draw } = createTinyFixture()
+    draw('first')
+    atlas.takePendingUploads()
+    const list = draw('second')
+    expect(list.steps.every((step) => step.kind === 'glyphs')).toBe(true)
+    expect(atlas.takeClearedPages().toSorted()).toEqual([0, 1])
+  })
+
+  it('never takes a page from a glyph already placed in the same frame: the node that does not fit is drawn by the fallback whole', () => {
+    const { atlas, draw } = createTinyFixture()
+    const list = draw('first', 'third')
+    // Both pages are in use by the first node's two glyphs, so the third node's glyphs have no
+    // room, and it falls back instead of overwriting them.
+    expect(list.steps.map((step) => step.kind)).toEqual(['glyphs', 'glyphs', 'fallback'])
+    expect(list.vertices).toHaveLength(2 * GLYPH_BYTES)
+    expect(atlas.takeClearedPages()).toEqual([])
+  })
+
+  it('draws the glyphs it lost again when they are next shown, without a gap in between', () => {
+    const { draw } = createTinyFixture()
+    draw('first')
+    draw('second')
+    const again = draw('first')
+    expect(again.steps.every((step) => step.kind === 'glyphs')).toBe(true)
+    expect(again.vertices).toHaveLength(2 * GLYPH_BYTES)
   })
 })

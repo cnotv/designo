@@ -4,81 +4,92 @@ import type { AtlasGlyph, PlacedGlyph, TextLayout } from '../text/types.ts'
 import { parseHexColor } from '../scene.ts'
 import type { TextDrawList, TextDrawListInput, TextDrawStep } from '../types.ts'
 
+/** Vertices per glyph: a quad's four corners, drawn as two triangles by a shared index pattern. */
+export const GLYPH_VERTICES = 4
+
 /**
- * Floats per glyph quad: origin x and y, width and height in world units, the rotation's cosine
- * and sine (so the shader turns no angle into sines per vertex), the atlas rectangle as u0 v0 u1
- * v1, and the premultiplied colour.
+ * Words (four bytes) per vertex: the world position as two floats, the atlas position as two
+ * normalised 16-bit integers, and the premultiplied colour as four normalised bytes. Quads are
+ * plain triangles rather than instances because software GL, which headless Chromium and some
+ * machines without a GPU use, draws 60,000 instances 30 times slower than the same quads as
+ * triangles.
  */
-export const GLYPH_INSTANCE_FLOATS = 14
+export const GLYPH_VERTEX_WORDS = 4
+export const GLYPH_WORDS = GLYPH_VERTICES * GLYPH_VERTEX_WORDS
+export const GLYPH_BYTES = GLYPH_WORDS * 4
 
-// Where each field of a glyph instance sits, matching the vertex attributes in the pipeline.
-const FIELD = {
-  originX: 0,
-  originY: 1,
-  width: 2,
-  height: 3,
-  cosine: 4,
-  sine: 5,
-  u0: 6,
-  v0: 7,
-  u1: 8,
-  v1: 9,
-  red: 10,
-  green: 11,
-  blue: 12,
-  alpha: 13
-} as const
-
+const UINT16_MAX = 65_535
+const UINT8_MAX = 255
+const BITS_PER_16 = 16
+const BITS_PER_BYTE = 8
 // Past this, a glyph's bitmap would have to be rasterised larger than the atlas keeps its
 // biggest bucket twice over, and scaling it up would blur it; the Canvas 2D path stays sharp.
 const MAX_GLYPH_PIXELS_PER_EM = 512
 const HALF_TURN_DEGREES = 180
-const INITIAL_INSTANCE_CAPACITY = 4096
+const INITIAL_GLYPH_CAPACITY = 4096
+
+// Top left, top right, bottom left and bottom right, as the shared index pattern expects.
+const CORNERS = [
+  { across: 0, down: 0 },
+  { across: 1, down: 0 },
+  { across: 0, down: 1 },
+  { across: 1, down: 1 }
+] as const
 
 interface BuilderMark {
-  floatCount: number
+  glyphCount: number
   stepCount: number
-  lastStepInstances: number
+  lastStepGlyphs: number
 }
 
-// Instances are written into one growing buffer, because a frame can place tens of thousands of
+interface VertexViews {
+  floats: Float32Array
+  words: Uint32Array
+}
+
+const createViews = (glyphCapacity: number): VertexViews => {
+  const buffer = new ArrayBuffer(glyphCapacity * GLYPH_BYTES)
+  return { floats: new Float32Array(buffer), words: new Uint32Array(buffer) }
+}
+
+// Vertices are written into one growing buffer, because a frame can place tens of thousands of
 // glyphs and an object each would be most of what it costs.
-const createInstanceBuilder = () => {
+const createVertexBuilder = () => {
   const state = {
-    data: new Float32Array(INITIAL_INSTANCE_CAPACITY * GLYPH_INSTANCE_FLOATS),
-    floatCount: 0,
+    views: createViews(INITIAL_GLYPH_CAPACITY),
+    glyphCount: 0,
     steps: [] as TextDrawStep[]
   }
 
   const ensureRoom = (): void => {
-    if (state.floatCount + GLYPH_INSTANCE_FLOATS <= state.data.length) return
-    const grown = new Float32Array(state.data.length * 2)
-    grown.set(state.data)
-    state.data = grown
+    if ((state.glyphCount + 1) * GLYPH_WORDS <= state.views.words.length) return
+    const grown = createViews((state.views.words.length / GLYPH_WORDS) * 2)
+    grown.words.set(state.views.words)
+    state.views = grown
   }
 
   const extendOrStartRun = (pageIndex: number): void => {
     const last = state.steps.at(-1)
     if (last?.kind === 'glyphs' && last.pageIndex === pageIndex) {
-      last.instanceCount += 1
+      last.glyphCount += 1
       return
     }
     state.steps.push({
       kind: 'glyphs',
       pageIndex,
-      firstInstance: state.floatCount / GLYPH_INSTANCE_FLOATS,
-      instanceCount: 1
+      firstGlyph: state.glyphCount,
+      glyphCount: 1
     })
   }
 
   return {
-    // Reserves the next instance on a page and returns the buffer and where its floats start.
-    reserveGlyph: (pageIndex: number): { data: Float32Array; start: number } => {
+    // Reserves the next glyph on a page and returns the views and the word its vertices start at.
+    reserveGlyph: (pageIndex: number): { views: VertexViews; start: number } => {
       ensureRoom()
       extendOrStartRun(pageIndex)
-      const start = state.floatCount
-      state.floatCount += GLYPH_INSTANCE_FLOATS
-      return { data: state.data, start }
+      const start = state.glyphCount * GLYPH_WORDS
+      state.glyphCount += 1
+      return { views: state.views, start }
     },
     addFallback: (node: DesignNode): void => {
       state.steps.push({ kind: 'fallback', node })
@@ -86,25 +97,25 @@ const createInstanceBuilder = () => {
     mark: (): BuilderMark => {
       const last = state.steps.at(-1)
       return {
-        floatCount: state.floatCount,
+        glyphCount: state.glyphCount,
         stepCount: state.steps.length,
-        lastStepInstances: last?.kind === 'glyphs' ? last.instanceCount : 0
+        lastStepGlyphs: last?.kind === 'glyphs' ? last.glyphCount : 0
       }
     },
     rollback: (mark: BuilderMark): void => {
-      state.floatCount = mark.floatCount
+      state.glyphCount = mark.glyphCount
       state.steps.length = mark.stepCount
       const last = state.steps.at(-1)
-      if (last?.kind === 'glyphs') last.instanceCount = mark.lastStepInstances
+      if (last?.kind === 'glyphs') last.glyphCount = mark.lastStepGlyphs
     },
     finish: (): TextDrawList => ({
-      instances: state.data.subarray(0, state.floatCount),
+      vertices: new Uint8Array(state.views.words.buffer, 0, state.glyphCount * GLYPH_BYTES),
       steps: state.steps
     })
   }
 }
 
-type InstanceBuilder = ReturnType<typeof createInstanceBuilder>
+type VertexBuilder = ReturnType<typeof createVertexBuilder>
 
 // A node read from a reactive document costs a tracked read per field, and a text node is read
 // once per glyph, so what placing needs is copied out once per node.
@@ -118,48 +129,62 @@ interface NodePlacement {
   zoomBucket: number
   cosine: number
   sine: number
-  /** The premultiplied fill, with the node's opacity folded into its alpha. */
-  color: readonly [number, number, number, number]
+  /** The premultiplied fill with the node's opacity folded into its alpha, packed as four bytes. */
+  packedColor: number
 }
 
-const premultipliedColor = (fill: string | null, opacity: number): NodePlacement['color'] => {
+const toByte = (channel: number): number => Math.round(channel * UINT8_MAX)
+
+const packColor = (fill: string | null, opacity: number): number => {
   const { red, green, blue, alpha } = parseHexColor(fill ?? '#000000')
   const total = alpha * opacity
-  return [red * total, green * total, blue * total, total]
+  return (
+    (toByte(red * total) |
+      (toByte(green * total) << BITS_PER_BYTE) |
+      (toByte(blue * total) << (BITS_PER_BYTE * 2)) |
+      (toByte(total) << (BITS_PER_BYTE * 3))) >>>
+    0
+  )
 }
 
-const writeGlyphInstance = (
-  slot: { data: Float32Array; start: number },
+const packAtlasPosition = (u: number, v: number): number =>
+  (Math.round(u * UINT16_MAX) | (Math.round(v * UINT16_MAX) << BITS_PER_16)) >>> 0
+
+const writeGlyphQuad = (
+  slot: { views: VertexViews; start: number },
   placement: NodePlacement,
   glyph: PlacedGlyph,
   atlasGlyph: AtlasGlyph,
   atlas: TextDrawListInput['atlas']
 ): void => {
   const { centerX, centerY, halfWidth, halfHeight, unitsPerBitmapPixel: unit } = placement
-  const { cosine, sine, color } = placement
+  const { cosine, sine, packedColor } = placement
   const { rectangle } = atlasGlyph
-  const { data, start } = slot
+  const { floats, words } = slot.views
   // Measured from the node's centre, which it turns around, so the corner can be rotated whole.
   const fromCenterX = glyph.x + atlasGlyph.bearingX * unit - halfWidth
   const fromCenterY = glyph.y - atlasGlyph.bearingY * unit - halfHeight
-  data[start + FIELD.originX] = centerX + fromCenterX * cosine - fromCenterY * sine
-  data[start + FIELD.originY] = centerY + fromCenterX * sine + fromCenterY * cosine
-  data[start + FIELD.width] = rectangle.width * unit
-  data[start + FIELD.height] = rectangle.height * unit
-  data[start + FIELD.cosine] = cosine
-  data[start + FIELD.sine] = sine
-  data[start + FIELD.u0] = rectangle.x / atlas.pageWidth
-  data[start + FIELD.v0] = rectangle.y / atlas.pageHeight
-  data[start + FIELD.u1] = (rectangle.x + rectangle.width) / atlas.pageWidth
-  data[start + FIELD.v1] = (rectangle.y + rectangle.height) / atlas.pageHeight
-  data[start + FIELD.red] = color[0]
-  data[start + FIELD.green] = color[1]
-  data[start + FIELD.blue] = color[2]
-  data[start + FIELD.alpha] = color[3]
+  const width = rectangle.width * unit
+  const height = rectangle.height * unit
+  const originX = centerX + fromCenterX * cosine - fromCenterY * sine
+  const originY = centerY + fromCenterX * sine + fromCenterY * cosine
+  const left = rectangle.x / atlas.pageWidth
+  const top = rectangle.y / atlas.pageHeight
+  const right = (rectangle.x + rectangle.width) / atlas.pageWidth
+  const bottom = (rectangle.y + rectangle.height) / atlas.pageHeight
+  CORNERS.forEach(({ across, down }, corner) => {
+    const base = slot.start + corner * GLYPH_VERTEX_WORDS
+    const alongX = across * width
+    const alongY = down * height
+    floats[base] = originX + alongX * cosine - alongY * sine
+    floats[base + 1] = originY + alongX * sine + alongY * cosine
+    words[base + 2] = packAtlasPosition(across ? right : left, down ? bottom : top)
+    words[base + 3] = packedColor
+  })
 }
 
 const placeGlyph = (
-  builder: InstanceBuilder,
+  builder: VertexBuilder,
   placement: NodePlacement,
   glyph: PlacedGlyph,
   atlas: TextDrawListInput['atlas']
@@ -171,18 +196,12 @@ const placeGlyph = (
   })
   if (!atlasGlyph) return false
   if (atlasGlyph.isEmpty) return true
-  writeGlyphInstance(
-    builder.reserveGlyph(atlasGlyph.pageIndex),
-    placement,
-    glyph,
-    atlasGlyph,
-    atlas
-  )
+  writeGlyphQuad(builder.reserveGlyph(atlasGlyph.pageIndex), placement, glyph, atlasGlyph, atlas)
   return true
 }
 
 const placeNode = (
-  builder: InstanceBuilder,
+  builder: VertexBuilder,
   node: DesignNode,
   layout: TextLayout,
   devicePixelsPerUnit: number,
@@ -200,7 +219,7 @@ const placeNode = (
     unitsPerBitmapPixel: fontSize / zoomBucket,
     cosine: Math.cos(rotation),
     sine: Math.sin(rotation),
-    color: premultipliedColor(node.fill, node.opacity)
+    packedColor: packColor(node.fill, node.opacity)
   }
   const mark = builder.mark()
   const placedEverything = layout.lines.every((line) =>
@@ -212,12 +231,13 @@ const placeNode = (
 }
 
 /**
- * Works out how to draw a run of text nodes with the glyph atlas: one instanced quad per glyph,
- * grouped into draws by atlas page, with the nodes the glyph path cannot draw marked for the
- * Canvas 2D texture path in their place in the paint order. It asks the atlas for every glyph, so
- * a glyph is rasterised the first time any node shows it at a zoom bucket and never again.
+ * Works out how to draw a run of text nodes with the glyph atlas: one quad per glyph, with its
+ * corners already turned with the node, grouped into draws by atlas page, with the nodes the
+ * glyph path cannot draw marked for the Canvas 2D texture path in their place in the paint order.
+ * It asks the atlas for every glyph, so a glyph is rasterised the first time any node shows it at
+ * a zoom bucket and never again.
  * @param input - The nodes, the device pixels per world unit, the text engine and the atlas.
- * @returns The instance data and the steps to draw it with.
+ * @returns The vertex data and the steps to draw it with.
  */
 export const buildTextDrawList = ({
   items,
@@ -225,7 +245,7 @@ export const buildTextDrawList = ({
   engine,
   atlas
 }: TextDrawListInput): TextDrawList => {
-  const builder = createInstanceBuilder()
+  const builder = createVertexBuilder()
   items.forEach(({ node }) => {
     const layout =
       node.fontSize * devicePixelsPerUnit <= MAX_GLYPH_PIXELS_PER_EM
