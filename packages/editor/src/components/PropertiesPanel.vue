@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
 import {
@@ -196,14 +195,16 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             :model-value="node.textAlign"
             @update:model-value="updateTextAlign"
           >
-            <Tooltip v-for="option in TEXT_ALIGN_OPTIONS" :key="option.value">
-              <TooltipTrigger as-child>
-                <ToggleGroupItem :value="option.value" :aria-label="option.label">
-                  <component :is="ALIGN_ICONS[option.value]" />
-                </ToggleGroupItem>
-              </TooltipTrigger>
-              <TooltipContent>{{ option.label }}</TooltipContent>
-            </Tooltip>
+            <!-- No Tooltip around an item: its trigger would overwrite the item's pressed state. -->
+            <ToggleGroupItem
+              v-for="option in TEXT_ALIGN_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+              :aria-label="option.label"
+              :title="option.label"
+            >
+              <component :is="ALIGN_ICONS[option.value]" />
+            </ToggleGroupItem>
           </ToggleGroup>
           <ToggleGroup
             type="single"

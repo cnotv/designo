@@ -264,6 +264,12 @@ describe('operations', () => {
       expect(patchOf(state, { lineHeight: 2 })).toMatchObject({ lineHeight: 2, height: 40 })
     })
 
+    it('keeps the width of an auto-width box when only the line height changes', () => {
+      const state = withLabel({ text: 'one', fontSize: 10, width: 77, height: 33 })
+      const patch = patchOf(state, { lineHeight: 1.5 })
+      expect(patch).toEqual({ lineHeight: 1.5, height: 15 })
+    })
+
     it('leaves the box alone when only the alignment changes', () => {
       const state = withLabel({ text: 'one', width: 77, height: 33 })
       expect(patchOf(state, { textAlign: 'center' })).toEqual({ textAlign: 'center' })

@@ -196,6 +196,9 @@ const TEXT_BOX_PROPERTIES = ['text', 'fontSize', 'lineHeight', 'textWrap'] as co
 const changesTextBox = (patch: DesignNodePatch): boolean =>
   TEXT_BOX_PROPERTIES.some((property) => property in patch)
 
+// The line height changes how tall the lines stand, never how wide they are.
+const WIDTH_PROPERTIES = ['text', 'fontSize', 'textWrap'] as const
+
 // A fixed-width box keeps the width it was given and only grows taller; an auto-width box
 // follows its words in both directions.
 const fitTextBox = (
@@ -208,7 +211,8 @@ const fitTextBox = (
     patch.fontSize ?? node.fontSize,
     patch.lineHeight ?? node.lineHeight
   )
-  return isFixedWidth ? { height } : { width, height }
+  const followsWords = !isFixedWidth && WIDTH_PROPERTIES.some((property) => property in patch)
+  return followsWords ? { width, height } : { height }
 }
 
 /**
