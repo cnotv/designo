@@ -1,6 +1,6 @@
 import type { DesignNode } from '@designo/core'
-import { getTextBaselineOffset } from '../editing/geometry.ts'
 import { getBoundsCenter } from '../editing/rotation.ts'
+import { paintText } from './fallbackText.ts'
 import { prepareCanvas } from './prepareCanvas.ts'
 import type { Scene, SceneItem, SceneRenderer } from './types.ts'
 
@@ -32,32 +32,6 @@ const paintShape = (context: CanvasRenderingContext2D, node: DesignNode): void =
     context.lineWidth = node.strokeWidth
     context.stroke()
   }
-}
-
-/**
- * Paints a text node's lines with its top-left corner at the origin, as CSS would lay them out.
- * The WebGL2 renderer rasterises text with it too, until text has its own path.
- * @param context - A 2D context, already moved to the node's origin.
- * @param node - The text node.
- */
-export const paintText = (
-  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  node: DesignNode
-): void => {
-  context.fillStyle = node.fill ?? '#000000'
-  context.font = `${node.fontSize}px ${node.fontFamily}`
-  context.textBaseline = 'alphabetic'
-  // The font's own ascent and descent, not the glyphs', so every line sits where CSS puts it.
-  const metrics = context.measureText(node.text)
-  node.text.split('\n').forEach((line, lineIndex) => {
-    const baseline = getTextBaselineOffset(
-      lineIndex,
-      node.fontSize,
-      metrics.fontBoundingBoxAscent,
-      metrics.fontBoundingBoxDescent
-    )
-    context.fillText(line, 0, baseline)
-  })
 }
 
 // Rotation turns a node around its centre, so its box stays where it is while the node spins.

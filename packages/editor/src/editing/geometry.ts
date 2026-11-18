@@ -1,17 +1,15 @@
 import type { DesignNode } from '@designo/core'
-import type { Bounds, Point, ResizeHandle } from './types.ts'
+import type { Bounds, Point, ResizeHandle, TextBoxMeasurer } from './types.ts'
 
 const MIN_SIZE = 1
 const TEXT_WIDTH_PER_CHARACTER = 0.56
-/** Line spacing as a multiple of the font size, shared by the canvas, the text editor and sizing. */
-export const TEXT_LINE_HEIGHT = 1.25
-
 /**
  * Finds where a line of text sits, the way CSS lays out a line box: the font's ascent and descent
  * are centred in the line height. The canvas uses it so its text lines up with the editor's
  * textarea, which CSS lays out.
  * @param lineIndex - Which line, from 0.
  * @param fontSize - The font size.
+ * @param lineHeightMultiple - The line height as a multiple of the font size.
  * @param fontAscent - The font's ascent at that size, above the baseline.
  * @param fontDescent - The font's descent at that size, below the baseline.
  * @returns The baseline's distance from the top of the text box.
@@ -19,10 +17,11 @@ export const TEXT_LINE_HEIGHT = 1.25
 export const getTextBaselineOffset = (
   lineIndex: number,
   fontSize: number,
+  lineHeightMultiple: number,
   fontAscent: number,
   fontDescent: number
 ): number => {
-  const lineHeight = fontSize * TEXT_LINE_HEIGHT
+  const lineHeight = fontSize * lineHeightMultiple
   return lineIndex * lineHeight + (lineHeight - fontAscent - fontDescent) / 2 + fontAscent
 }
 
@@ -122,17 +121,19 @@ export const resizeBounds = (
  * renderer measures text for real.
  * @param text - The text, lines split by newlines.
  * @param fontSize - Font size in world units.
+ * @param lineHeightMultiple - The line height as a multiple of the font size.
  * @returns The width and height.
  */
 export const estimateTextSize = (
   text: string,
-  fontSize: number
+  fontSize: number,
+  lineHeightMultiple: number
 ): { width: number; height: number } => {
   const lines = text.split('\n')
   const longestLine = Math.max(...lines.map((line) => line.length), 1)
   return {
     width: Math.ceil(longestLine * fontSize * TEXT_WIDTH_PER_CHARACTER),
-    height: Math.ceil(lines.length * fontSize * TEXT_LINE_HEIGHT)
+    height: Math.ceil(lines.length * fontSize * lineHeightMultiple)
   }
 }
 
@@ -158,4 +159,23 @@ export const getHandlePositions = (bounds: Bounds): { handle: ResizeHandle; poin
     { handle: 'sw', point: { x: left, y: bottom } },
     { handle: 'w', point: { x: left, y: centerY } }
   ]
+}
+
+/**
+ * Sizes a text box without any font: each character is a fixed share of the font size wide, and a
+ * fixed-width box wraps where that many characters stop fitting. It is what stands in until the
+ * fonts have loaded, and what the tests measure with.
+ * @param request - The text, font size, line height and the width to wrap at.
+ * @returns The width and height.
+ */
+export const estimateTextBox: TextBoxMeasurer = ({ text, fontSize, lineHeight, wrapWidth }) => {
+  if (wrapWidth === undefined) return estimateTextSize(text, fontSize, lineHeight)
+  const charactersPerLine = Math.max(
+    1,
+    Math.floor(wrapWidth / (fontSize * TEXT_WIDTH_PER_CHARACTER))
+  )
+  const lineCount = text
+    .split('\n')
+    .reduce((count, line) => count + Math.max(1, Math.ceil(line.length / charactersPerLine)), 0)
+  return { width: wrapWidth, height: Math.ceil(lineCount * fontSize * lineHeight) }
 }

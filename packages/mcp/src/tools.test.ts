@@ -1,8 +1,12 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createDocument } from '@designo/core'
 import { readDocument } from '@designo/storage'
+import { createDesignoServer } from './server.ts'
 import {
   applyOperationsTool,
   createFileTool,
@@ -171,6 +175,124 @@ describe('export tools', () => {
     const { fileId } = await createSquareFile()
     await expect(getScreenshotTool(context, { fileId, nodeId: 'missing' })).rejects.toThrow(
       'Node missing does not exist'
+    )
+  })
+})
+
+const DEFAULT_TEXT_PROPERTIES = { textAlign: 'left', lineHeight: 1.2, textWrap: false }
+
+const connectClient = async (): Promise<Client> => {
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+  const client = new Client({ name: 'test', version: '0.0.0' })
+  await Promise.all([
+    createDesignoServer(context).connect(serverTransport),
+    client.connect(clientTransport)
+  ])
+  return client
+}
+
+describe('text properties on the node tools', () => {
+  it('gives a new text node the defaults', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Defaults' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [{ kind: 'create', id: 'words', type: 'text', parentId: pageId }]
+    })
+    expect(await getNodeTool(context, { fileId, nodeId: 'words' })).toMatchObject(
+      DEFAULT_TEXT_PROPERTIES
+    )
+  })
+
+  it('create_node, update_node and apply_ops take the three properties and save them', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Set' })
+    const client = await connectClient()
+    const created = await client.callTool({
+      name: 'create_node',
+      arguments: {
+        fileId,
+        type: 'text',
+        parentId: pageId,
+        properties: { text: 'Hi', textAlign: 'center', lineHeight: 1.5, textWrap: true, width: 200 }
+      }
+    })
+    expect(created.isError).toBeFalsy()
+    const updated = await client.callTool({
+      name: 'update_node',
+      arguments: { fileId, nodeId: 'text-3', patch: { textAlign: 'right' } }
+    })
+    expect(updated.isError).toBeFalsy()
+    const batched = await client.callTool({
+      name: 'apply_ops',
+      arguments: {
+        fileId,
+        operations: [
+          {
+            kind: 'create',
+            id: 'second',
+            type: 'text',
+            parentId: pageId,
+            properties: { lineHeight: 2 }
+          },
+          { kind: 'update', id: 'second', patch: { textWrap: true } }
+        ]
+      }
+    })
+    expect(batched.isError).toBeFalsy()
+    expect(await getNodeTool(context, { fileId, nodeId: 'text-3' })).toMatchObject({
+      textAlign: 'right',
+      lineHeight: 1.5,
+      textWrap: true
+    })
+    expect(await getNodeTool(context, { fileId, nodeId: 'second' })).toMatchObject({
+      textAlign: 'left',
+      lineHeight: 2,
+      textWrap: true
+    })
+  })
+
+  it('refuses an alignment, a line height or a wrap switch the schema does not allow', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Refused' })
+    const client = await connectClient()
+    const attempts = [
+      { textAlign: 'justify' },
+      { lineHeight: 0 },
+      { lineHeight: -1.2 },
+      { textWrap: 'yes' }
+    ]
+    const results = await Promise.all(
+      attempts.map((properties) =>
+        client.callTool({
+          name: 'create_node',
+          arguments: { fileId, type: 'text', parentId: pageId, properties }
+        })
+      )
+    )
+    expect(results.every((result) => result.isError === true)).toBe(true)
+    expect(Object.keys((await readDocument(context.dataDirectory, fileId)).nodes)).toEqual([pageId])
+  })
+
+  it('describes the properties to the agent in the tool schema', async () => {
+    const client = await connectClient()
+    const { tools } = await client.listTools()
+    const schema = JSON.stringify(tools.find((tool) => tool.name === 'create_node')?.inputSchema)
+    expect(schema).toContain('textAlign')
+    expect(schema).toContain('lineHeight')
+    expect(schema).toContain('textWrap')
+  })
+
+  it('opens a version 2 file and shows the defaults, so an old design reads as it did', async () => {
+    const document = createDocument('old-file', 'Old', 'old-page')
+    const versionTwoPage = Object.fromEntries(
+      Object.entries(document.nodes['old-page'] ?? {}).filter(
+        ([key]) => !Object.keys(DEFAULT_TEXT_PROPERTIES).includes(key)
+      )
+    )
+    await writeFile(
+      path.join(context.dataDirectory, 'old-file.designo.json'),
+      JSON.stringify({ ...document, formatVersion: 2, nodes: { 'old-page': versionTwoPage } })
+    )
+    expect(await getNodeTool(context, { fileId: 'old-file', nodeId: 'old-page' })).toMatchObject(
+      DEFAULT_TEXT_PROPERTIES
     )
   })
 })

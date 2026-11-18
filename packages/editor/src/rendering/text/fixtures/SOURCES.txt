@@ -1,0 +1,4 @@
+NotoSans-Latin.fixture.ttf is a test-only font, never shipped: Noto Sans Regular from the variable
+font in google/fonts (ofl/notosans), instantiated at weight 400, reduced with pyftsubset to Basic
+Latin and U+FB01. It is here because Inter has no fi ligature and the ligature test needs a font
+that does. Licence: OFL-NotoSans.txt

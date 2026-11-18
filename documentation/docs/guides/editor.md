@@ -71,6 +71,21 @@ circle. After drawing, the editor returns to Move.
   text layer left empty is removed. Shortcuts are paused while you type.
 - **Properties:** position, size, rotation, opacity, corner radius, fill, stroke, and text with
   its size. A field applies when you press Enter or leave it; Escape leaves the field.
+- **Text layout:** a text layer's properties also hold its **Line height**, a multiple of the font
+  size (1.2 by default, from 0.5 to 10), three buttons to align its lines left, centre or right
+  inside its width, and **Auto width** or **Fixed width**. An auto-width box follows its words and
+  never wraps them; a fixed-width box keeps its width and wraps its lines there. Typing a width
+  into a text layer makes it fixed-width, and choosing **Auto width** fits the box to the words
+  again. Each change is one undo step, and the in-place text editor follows the alignment, line
+  height and wrapping of the drawn text. The box of a text layer is the box its text is drawn in:
+  a fixed-width layer grows as tall as its lines wrap to as you type, and an auto-width one is as
+  wide as its longest line. Files saved before these existed open with the defaults.
+- **Text rendering:** text is shaped with HarfBuzz, so ligatures, kerning, Arabic joining,
+  Devanagari conjuncts and mixed left-to-right and right-to-left lines come out right, and it
+  stays sharp at any zoom. Inter covers Latin, Greek and Cyrillic; Arabic, Hebrew and Devanagari
+  fonts load when a text uses them. A layer whose font family lists a font Designo ships uses it,
+  and any other list uses Inter. Characters none of them cover, such as emoji and Chinese,
+  Japanese and Korean text, are drawn by the browser with your system fonts.
 - **Hide and show:** the eye beside a layer in the layers panel.
 - **Delete:** Delete or Backspace.
 - **Duplicate:** Ctrl/Cmd D copies the selection with everything in it, 10 px down and right, and
@@ -96,7 +111,8 @@ The Export section sits at the bottom of the properties panel.
 - **What it exports:** each selected layer, one file apiece, or the whole page when nothing is
   selected. A layer is drawn with everything inside it.
 - **SVG:** a vector file named `<layer name>.svg`. Text is plain SVG text, so it may differ from
-  the canvas where fonts differ.
+  the canvas where fonts differ. It follows a text layer's alignment and line height, but never
+  wraps: a fixed-width layer is drawn line by line as written.
 - **PNG:** pick 1x, 2x or 3x; the file is `<layer name>@<scale>x.png`. The browser draws the SVG
   onto a canvas, so nothing is uploaded. A very large layer is shrunk to fit the browser's canvas
   limit of 8192 pixels on the long side.
@@ -132,6 +148,6 @@ skipped rather than half-applied.
 ## Not yet
 
 The canvas draws shapes with WebGL2 and falls back to Canvas 2D where WebGL2 is missing; add
-`?renderer=canvas2d` to the address to force the fallback. Text is still rasterised with Canvas 2D
-until text shaping lands ([issue #10](https://github.com/cnotv/designo/issues/10)), and hit testing
-does not use the spatial index yet ([issue #11](https://github.com/cnotv/designo/issues/11)).
+`?renderer=canvas2d` to the address to force the fallback, which draws text with the browser's own
+text drawing and still honours alignment, line height and wrapping. Hit testing does not use the
+spatial index yet ([issue #11](https://github.com/cnotv/designo/issues/11)).

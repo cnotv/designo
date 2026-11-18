@@ -25,7 +25,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP         |
 | `@designo/exporter` | built   | Pure SVG export of a node; the MCP server draws it with resvg in a child process          |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
-| `renderer`          | partial | WebGL2 shapes in the editor (#9); text shaping (#10) and hit testing (#11) next           |
+| `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11) next     |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
 | `exporter` (rest)   | phase 4 | PDF and Vue/HTML code, in-editor PNG                                                      |
 
@@ -80,15 +80,77 @@ top, always Canvas 2D, carries selection, guides and the marquee and takes the p
 - **Scene.** `buildScene` asks a packed R-tree (`editing/spatialIndex.ts`, Sort-Tile-Recursive,
   rebuilt once per document) for the nodes in view, sorts them back to front and records the
   frames each one is clipped by. `batchScene` splits the list into runs of shapes and runs of
-  text, so paint order holds across both.
+  text, so paint order holds across both. Consecutive texts under the same clipping frames are
+  one run, which draws together from the atlas.
 - **WebGL2.** Each run of shapes is one instanced draw: a quad per node, with a signed distance
   function for the rounded box or ellipse, its stroke and edge antialiasing in the fragment
   shader. Colours are premultiplied. A frame clips through the stencil buffer: each frame in a
   node's chain increments it, and the node draws where it equals the chain's length.
-- **Text, for now,** is rasterised per node with Canvas 2D into a texture, cached by content and a
-  power-of-two zoom bucket, until HarfBuzz and a glyph atlas replace it (#10).
+- **Text** is drawn from a glyph atlas, and described in its own section below.
 - **Fallback.** Without WebGL2, or with `?renderer=canvas2d`, the same scene is painted with
   Canvas 2D. A lost WebGL context is rebuilt when the browser restores it.
+
+## Text
+
+Text is shaped by HarfBuzz, compiled to WebAssembly (`harfbuzzjs`, loaded on first use), laid out
+by pure code, and drawn as one textured quad per glyph from a shared atlas. All of it that does not
+touch a canvas or a GL context lives in `packages/editor/src/rendering/text/` and is tested in Node.
+
+- **Fonts.** A catalog and registry load the bundled Inter (Latin, Greek and Cyrillic) and, lazily,
+  Noto Sans subsets for Arabic, Hebrew and Devanagari from `public/fonts/`, and pick a font per
+  character by coverage. A node's `fontFamily` is a CSS-like list: the first family the catalog
+  has is the primary font, which sets the baseline and wins any character it covers; a list that
+  names none uses Inter, because the editor cannot read the fonts of the user's system.
+- **Layout.** `layoutText` breaks lines with `Intl.Segmenter` and shaped advances, orders
+  mixed-direction lines with a subset of the Unicode bidirectional algorithm, aligns them and
+  returns every glyph's position. The `TextEngine` wraps it: it loads the fonts a text needs, asks
+  `layoutText` once per (text, font family, size, line height, alignment, wrap width) and keeps the
+  result, so panning and zooming shape nothing. Only a fixed-width node (`textWrap`) wraps, so
+  every auto-width node of the same words shares one layout.
+- **Atlas.** `createGlyphAtlas` packs glyph bitmaps into 2048 by 2048 pages of 8-bit coverage, up
+  to four, with a shelf packer. A glyph is drawn once per zoom bucket, the device pixels per em
+  rounded up to a power of two between 8 and 256, however many nodes use it; zooming inside a
+  bucket only scales its quads. When the pages are full the one unused longest is cleared, but
+  never one used since `beginFrame`, so a frame cannot lose a glyph it already placed; a glyph that
+  cannot be placed makes its node fall back.
+- **Rasteriser.** The outline from HarfBuzz (`glyphToPath`) is filled with `Path2D` on an
+  `OffscreenCanvas` at the bucket's size and its alpha channel is the coverage. Plain coverage was
+  chosen over a signed distance field, which was not built: a glyph is drawn at the size it is
+  shown at or within a factor of two of it, which plain coverage handles, and the glyph path then
+  needs no second shader. The measured comparison with the browser's own text is in the journey
+  note.
+- **Draw.** `buildTextDrawList` turns a run of text nodes into vertex data, four vertices a glyph
+  (world position with the node's rotation already applied, atlas position as 16-bit integers, the
+  premultiplied fill with the node's opacity as four bytes), and a list of steps: one draw per run
+  of glyphs on the same atlas page, in paint order, and a fallback step for each node the glyph
+  path cannot draw. Quads are plain indexed triangles over one shared index pattern, not
+  instances: software GL (headless Chromium, machines with no GPU) drew 60,000 instanced quads
+  1.4 s a frame and the same quads as triangles 42 ms. An upright node's glyph corners are snapped
+  to the device's pixel grid, so a glyph drawn at its bucket's size is not filtered across two
+  pixels; turned text is not snapped. `createAtlasTextures` applies the atlas's evictions and
+  uploads to the GPU textures each frame.
+- **Fallback.** A node is drawn the Canvas 2D way, as a texture of its own, while its fonts or
+  HarfBuzz are still loading (the scene draws again when they arrive), when its text holds a
+  character no bundled font covers (emoji, CJK, symbols: the browser's own fonts draw it, in
+  colour), when its glyphs are shown larger than 512 device pixels per em, and when a glyph does
+  not fit the atlas. Without WebGL2, or without WebAssembly, every text takes that path for good.
+  `layoutFallbackText` gives it the same lines, alignment, line height and wrap width through the
+  same chunking and greedy fill as the shaped layout, measured by the browser, so it can differ
+  from the shaped layout by a kerning pair at a word boundary. A glyph a font lacks draws that
+  font's missing-glyph shape, which the bundled Inter subset leaves empty.
+- **Editing.** A text node's box comes from the layout: `createPropertyOperations` sizes it with a
+  `TextBoxMeasurer`, which asks the engine for the layout the canvas draws (the browser's
+  measurement while fonts load, a character-count estimate where there is no canvas). A fixed-width
+  box keeps its width and is as tall as its lines wrap to; an auto-width box is as wide as its
+  longest line. The in-place editor is a textarea sized by the same measurement, wrapping (`wrap`
+  soft, `white-space: pre-wrap`) and aligned like the drawn text, in the browser's copies of the
+  bundled fonts (`@font-face` in `style.css`, under `designo-` names so the app's own Inter is
+  untouched).
+- **Limits.** Bidi is a subset (no explicit embeddings or isolates); there is no CJK or colour emoji
+  in the glyph path; text has one font size, weight and colour per node; the glyph path does not
+  hint, so a glyph between two zoom buckets is filtered down from the larger; a text box an agent
+  creates through the MCP tools keeps the width and height the agent gave it until the text is next
+  edited in the editor, which refits it to the layout.
 
 Tree queries in `@designo/core` group a document's children once and cache the grouping per
 document, which is safe because documents are never mutated. Before that, every traversal
@@ -210,10 +272,21 @@ the entry `N` to `MIGRATION_STEPS` in `packages/storage/src/migrations.ts`, a pu
 the raw version-N object to a version-(N + 1) one. The pipeline sets `formatVersion` itself. Add a
 test in `migrations.test.ts` with a sample of the old file.
 
-| Version | Change                                                                                       | Step                      |
-| ------- | -------------------------------------------------------------------------------------------- | ------------------------- |
-| 1       | First format; a node turns around its top-left corner                                        |                           |
-| 2       | A node turns around its centre; rotated nodes move so they are drawn exactly where they were | `migrateRotationPivot.ts` |
+| Version | Change                                                                                                             | Step                       |
+| ------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| 1       | First format; a node turns around its top-left corner                                                              |                            |
+| 2       | A node turns around its centre; rotated nodes move so they are drawn exactly where they were                       | `migrateRotationPivot.ts`  |
+| 3       | Every node carries `textAlign`, `lineHeight` and `textWrap`; old files get the defaults, which draw text as before | `migrateTextProperties.ts` |
+
+A new property every node carries needs a version, even with a default: the stored schema requires
+every property, so version 3 added `textAlign` (`left`), `lineHeight` (`1.2`) and `textWrap`
+(`false`) through `migrateTextProperties.ts` rather than loosening the schema. The migration holds
+its own copy of the defaults, so a later change to the live defaults never rewrites an old step.
+
+A text node is one of two boxes. With `textWrap` false its `width` follows its words and its lines
+break only at newlines; with `textWrap` true the `width` is a wrap width, which the layout in
+`rendering/text/` breaks lines at. The SVG exporter has no shaper, so it aligns lines inside the
+`width` but never wraps them.
 
 ## Decisions
 
@@ -222,5 +295,3 @@ test in `migrations.test.ts` with a sample of the old file.
   through the CSS variables in `src/style.css`.
 
 ## Still open
-
-- **Text shaping:** HarfBuzz compiled to WebAssembly is the likely choice for the WebGL renderer (#10).

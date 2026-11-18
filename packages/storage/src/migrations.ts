@@ -1,5 +1,6 @@
 import { CURRENT_FORMAT_VERSION, type DesignDocument } from '@designo/core'
 import { migrateRotationPivot } from './migrateRotationPivot.ts'
+import { migrateTextProperties } from './migrateTextProperties.ts'
 import { storedDocumentSchema } from './schemas.ts'
 import type { MigrationSteps, RawDocument } from './types.ts'
 
@@ -8,7 +9,8 @@ import type { MigrationSteps, RawDocument } from './types.ts'
  * N + 1 means adding the entry N here and nothing else.
  */
 export const MIGRATION_STEPS: MigrationSteps = {
-  1: migrateRotationPivot
+  1: migrateRotationPivot,
+  2: migrateTextProperties
 }
 
 const isRawDocument = (value: unknown): value is RawDocument =>

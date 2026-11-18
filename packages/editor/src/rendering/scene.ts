@@ -63,21 +63,27 @@ const clipKey = (item: SceneItem): string => item.clipFrames.map((frame) => fram
 
 /**
  * Splits a scene into runs that one draw call can take: consecutive shapes under the same
- * clipping frames, and each text on its own until text has its own batched path.
+ * clipping frames, and consecutive texts under the same clipping frames, which draw together
+ * from the glyph atlas.
  * @param items - The scene, back to front.
  * @returns The batches, back to front.
  */
-export const batchScene = (items: readonly SceneItem[]): SceneBatch[] =>
-  items.reduce<SceneBatch[]>((batches, item) => {
+export const batchScene = (items: readonly SceneItem[]): SceneBatch[] => {
+  // Built in one pass over the items, because a scene can hold thousands and copying a growing
+  // batch for each would be quadratic.
+  const batches: { kind: SceneBatch['kind']; items: SceneItem[]; clip: string }[] = []
+  items.forEach((item) => {
     const kind = item.node.type === 'text' ? 'text' : 'shapes'
+    const clip = clipKey(item)
     const last = batches.at(-1)
-    const extendsLast =
-      kind === 'shapes' &&
-      last?.kind === 'shapes' &&
-      clipKey(last.items[0] ?? item) === clipKey(item)
-    if (!last || !extendsLast) return [...batches, { kind, items: [item] }]
-    return [...batches.slice(0, -1), { kind, items: [...last.items, item] }]
-  }, [])
+    if (last?.kind === kind && last.clip === clip) {
+      last.items.push(item)
+      return
+    }
+    batches.push({ kind, items: [item], clip })
+  })
+  return batches
+}
 
 // Channel 0 is red; the leading # takes the first character.
 const channel = (hex: string, channelIndex: number): number => {

@@ -1,7 +1,11 @@
 import type { DesignNodeProperties } from './types.ts'
 
 /** The file format version this code writes. Bumping it needs one migration step in the storage package. */
-export const CURRENT_FORMAT_VERSION = 2
+export const CURRENT_FORMAT_VERSION = 3
+
+/** The range a text node's `lineHeight` may take, as a multiple of the font size. */
+export const MIN_LINE_HEIGHT = 0.5
+export const MAX_LINE_HEIGHT = 10
 
 export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   name: '',
@@ -18,7 +22,10 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   cornerRadius: 0,
   text: '',
   fontSize: 16,
-  fontFamily: 'Inter, system-ui, sans-serif'
+  fontFamily: 'Inter, system-ui, sans-serif',
+  textAlign: 'left',
+  lineHeight: 1.2,
+  textWrap: false
 }
 
 export const CONTAINER_NODE_TYPES = ['page', 'frame', 'group'] as const

@@ -1,4 +1,4 @@
-import { createDocument, type DesignDocument } from '@designo/core'
+import { CURRENT_FORMAT_VERSION, createDocument, type DesignDocument } from '@designo/core'
 import { describe, expect, it } from 'vitest'
 import { moveNodeToCentrePivot } from './migrateRotationPivot.ts'
 import { parseStoredDocument } from './migrations.ts'
@@ -105,7 +105,7 @@ describe('migrateRotationPivot', () => {
 
   it('upgrades a version 1 file on read, keeping its rotated layer in place', () => {
     const document = parseStoredDocument(versionOneFile(90))
-    expect(document.formatVersion).toBe(2)
+    expect(document.formatVersion).toBe(CURRENT_FORMAT_VERSION)
     expect(document.nodes['card']).toMatchObject({ x: -110, y: 80, rotation: 90 })
   })
 })

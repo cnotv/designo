@@ -1,5 +1,5 @@
 import type { DesignNode } from '@designo/core'
-import { TEXT_LINE_HEIGHT } from '../../editing/geometry.ts'
+import type { FallbackTextLayout } from '../text/types.ts'
 import type { TextRasterSize } from '../types.ts'
 
 const MIN_RASTER_SCALE = 0.125
@@ -34,22 +34,20 @@ export const capRasterScale = (rasterScale: number, size: TextRasterSize): numbe
   )
 
 /**
- * Measures the area a text node's raster must cover: at least its box, and wider when a line runs
- * past it, since text is not clipped to its box.
- * @param node - The text node.
- * @param widestLine - The widest line's advance in world units.
+ * Measures the area a text node's raster must cover: its box and every line to its far edge, with
+ * room for glyphs that lean past it, since text is not clipped to its box.
+ * @param layout - The fallback layout of the node's text.
  * @returns The width and height in world units.
  */
-export const measureTextRaster = (node: DesignNode, widestLine: number): TextRasterSize => {
-  const lineCount = node.text.split('\n').length
-  return {
-    width: Math.max(node.width, widestLine + OVERHANG_PADDING),
-    height: Math.max(node.height, lineCount * node.fontSize * TEXT_LINE_HEIGHT)
-  }
-}
+export const measureTextRaster = (layout: FallbackTextLayout): TextRasterSize => ({
+  width:
+    Math.max(layout.width, ...layout.lines.map((line) => line.x + line.width)) + OVERHANG_PADDING,
+  height: layout.height
+})
 
 /**
  * Names a text raster by everything that changes its pixels, so identical text shares a texture.
+ * Only a fixed-width node's width matters, because it is where its lines wrap.
  * @param node - The text node.
  * @param rasterScale - The zoom bucket, from `bucketRasterScale`.
  * @returns The cache key.
@@ -60,7 +58,8 @@ export const textRasterKey = (node: DesignNode, rasterScale: number): string =>
     node.fontFamily,
     node.fontSize,
     node.fill,
-    node.width,
-    node.height,
+    node.textAlign,
+    node.lineHeight,
+    node.textWrap ? node.width : null,
     rasterScale
   ])

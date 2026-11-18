@@ -1,11 +1,18 @@
 import {
   applyOperations,
   createDocument,
+  DEFAULT_NODE_PROPERTIES,
   type DesignDocument,
+  type DesignNodePatch,
   type OperationResult
 } from '@designo/core'
-import { describe, expect, it } from 'vitest'
-import { resizeBounds, estimateTextSize, getTextBaselineOffset } from './geometry.ts'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  estimateTextBox,
+  estimateTextSize,
+  getTextBaselineOffset,
+  resizeBounds
+} from './geometry.ts'
 import { getLayerRows } from './layers.ts'
 import { EMPTY_HISTORY, recordHistoryEntry, takeRedo, takeUndo } from './history.ts'
 import {
@@ -21,6 +28,7 @@ import {
   getTopmostIds,
   toggleInSelection
 } from './selection.ts'
+import type { TextBoxMeasurer } from './types.ts'
 import { screenToWorld, worldToScreen, zoomAt } from './viewport.ts'
 
 const unwrap = (result: OperationResult): DesignDocument => {
@@ -111,11 +119,17 @@ describe('selection', () => {
 describe('getTextBaselineOffset', () => {
   it('centres the font in the line height, as CSS does', () => {
     // 20px text: a 25px line, 18 + 4 of font, so 1.5 above the ascent.
-    expect(getTextBaselineOffset(0, 20, 18, 4)).toBe(19.5)
+    expect(getTextBaselineOffset(0, 20, 1.25, 18, 4)).toBe(19.5)
   })
 
   it('steps one line height per line', () => {
-    expect(getTextBaselineOffset(2, 20, 18, 4)).toBe(69.5)
+    expect(getTextBaselineOffset(2, 20, 1.25, 18, 4)).toBe(69.5)
+  })
+
+  it('follows the line height: a taller line puts more space above the font', () => {
+    // 20px text in a 40px line: 18 + 4 of font leaves 18 to split, so 9 above the ascent.
+    expect(getTextBaselineOffset(0, 20, 2, 18, 4)).toBe(27)
+    expect(getTextBaselineOffset(1, 20, 2, 18, 4)).toBe(67)
   })
 })
 
@@ -148,9 +162,13 @@ describe('geometry', () => {
   })
 
   it('sizes text by its longest line and line count', () => {
-    const size = estimateTextSize('ab\nabcd', 10)
+    const size = estimateTextSize('ab\nabcd', 10, 1.25)
     expect(size.height).toBe(25)
-    expect(size.width).toBeGreaterThan(estimateTextSize('ab', 10).width)
+    expect(size.width).toBeGreaterThan(estimateTextSize('ab', 10, 1.25).width)
+  })
+
+  it('sizes text height by the line height', () => {
+    expect(estimateTextSize('a\nb', 10, 2).height).toBe(40)
   })
 })
 
@@ -210,12 +228,156 @@ describe('operations', () => {
         })
       ])
     )
-    const [operation] = createPropertyOperations(withText, 'label', { text: 'A much longer label' })
+    const [operation] = createPropertyOperations(
+      withText,
+      'label',
+      { text: 'A much longer label' },
+      estimateTextBox
+    )
     expect(operation).toMatchObject({ patch: { text: 'A much longer label' } })
     expect(
       operation?.kind === 'update' &&
         (operation.patch.width ?? 0) > (withText.nodes.label?.width ?? 0)
     ).toBe(true)
+  })
+
+  describe('text boxes that follow their words or hold a fixed width', () => {
+    const withLabel = (properties: DesignNodePatch) =>
+      unwrap(
+        applyOperations(document, [
+          { kind: 'create', id: 'note', type: 'text', parentId: 'page', properties }
+        ])
+      )
+    const patchOf = (
+      state: DesignDocument,
+      patch: DesignNodePatch,
+      measure: TextBoxMeasurer = estimateTextBox
+    ): DesignNodePatch | undefined => {
+      const [operation] = createPropertyOperations(state, 'note', patch, measure)
+      return operation?.kind === 'update' ? operation.patch : undefined
+    }
+
+    it('sizes a newly drawn text node by the default line height', () => {
+      const operation = createDrawOperation({
+        tool: 'text',
+        nodeId: 'new',
+        parentId: 'page',
+        start: { x: 0, y: 0 },
+        current: { x: 0, y: 0 },
+        keepSquare: false
+      })
+      expect(operation.kind === 'create' && operation.properties?.height).toBe(
+        Math.ceil(16 * DEFAULT_NODE_PROPERTIES.lineHeight)
+      )
+    })
+
+    it('resizes the height when the line height changes', () => {
+      const state = withLabel({ text: 'one\ntwo', fontSize: 10, width: 30, height: 24 })
+      expect(patchOf(state, { lineHeight: 2 })).toMatchObject({ lineHeight: 2, height: 40 })
+    })
+
+    it('keeps the width of an auto-width box when only the line height changes', () => {
+      const state = withLabel({ text: 'one', fontSize: 10, width: 77, height: 33 })
+      const patch = patchOf(state, { lineHeight: 1.5 })
+      expect(patch).toEqual({ lineHeight: 1.5, height: 15 })
+    })
+
+    it('leaves the box alone when only the alignment changes', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33 })
+      expect(patchOf(state, { textAlign: 'center' })).toEqual({ textAlign: 'center' })
+    })
+
+    it('keeps a fixed-width box at its width while its words change', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33, textWrap: true })
+      const patch = patchOf(state, { text: 'a much longer label than before' })
+      expect(patch).toHaveProperty('height')
+      expect(patch).not.toHaveProperty('width')
+    })
+
+    it('makes a text node fixed-width when its width is typed in, and fits its height to the wrapped words', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33, fontSize: 10 })
+      expect(patchOf(state, { width: 150 })).toEqual({ width: 150, textWrap: true, height: 12 })
+    })
+
+    it('takes the box from the measurer: a fixed width keeps its width and grows as tall as the lines wrap to', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33, textWrap: true })
+      const measure = vi.fn<TextBoxMeasurer>(() => ({ width: 50, height: 70.2 }))
+      const patch = patchOf(state, { text: 'one two three four' }, measure)
+      expect(patch).toEqual({ text: 'one two three four', height: 71 })
+      expect(measure).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'one two three four', wrapWidth: 77 })
+      )
+    })
+
+    it('takes both sizes from the measurer for an auto-width box, and no wrap width', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33 })
+      const measure = vi.fn<TextBoxMeasurer>(() => ({ width: 41.2, height: 19.2 }))
+      expect(patchOf(state, { text: 'two' }, measure)).toEqual({
+        text: 'two',
+        width: 42,
+        height: 20
+      })
+      expect(measure).toHaveBeenCalledWith(expect.objectContaining({ wrapWidth: undefined }))
+    })
+
+    it('wraps at the width being typed, not the old one', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33, textWrap: true })
+      const measure = vi.fn<TextBoxMeasurer>(() => ({ width: 200, height: 40 }))
+      patchOf(state, { width: 200 }, measure)
+      expect(measure).toHaveBeenCalledWith(expect.objectContaining({ wrapWidth: 200 }))
+    })
+
+    it('measures with the alignment and the font family the node has', () => {
+      const state = withLabel({ text: 'one', textAlign: 'right', fontFamily: 'Papyrus' })
+      const measure = vi.fn<TextBoxMeasurer>(() => ({ width: 1, height: 1 }))
+      patchOf(state, { lineHeight: 2 }, measure)
+      expect(measure).toHaveBeenCalledWith(
+        expect.objectContaining({ textAlign: 'right', fontFamily: 'Papyrus', lineHeight: 2 })
+      )
+    })
+
+    it('does not make a shape fixed-width when its width is typed in', () => {
+      expect(createPropertyOperations(document, 'box', { width: 150 }, estimateTextBox)).toEqual([
+        { kind: 'update', id: 'box', patch: { width: 150 } }
+      ])
+    })
+
+    it('fits the box to the words again when it goes back to auto width', () => {
+      const state = withLabel({ text: 'one', fontSize: 10, width: 300, height: 33, textWrap: true })
+      expect(patchOf(state, { textWrap: false })).toMatchObject({
+        textWrap: false,
+        width: estimateTextSize('one', 10, 1.2).width,
+        height: estimateTextSize('one', 10, 1.2).height
+      })
+    })
+  })
+})
+
+describe('estimateTextBox', () => {
+  it('is the unwrapped estimate for an auto-width box', () => {
+    expect(
+      estimateTextBox({
+        text: 'ab\nabcd',
+        fontFamily: 'Inter',
+        fontSize: 10,
+        lineHeight: 1.25,
+        textAlign: 'left',
+        wrapWidth: undefined
+      })
+    ).toEqual(estimateTextSize('ab\nabcd', 10, 1.25))
+  })
+
+  it('wraps a fixed-width box at the characters that fit, and keeps the width', () => {
+    // 10 wide characters are 5.6 each, so 5 fit in 30.
+    const size = estimateTextBox({
+      text: 'abcdefghijkl',
+      fontFamily: 'Inter',
+      fontSize: 10,
+      lineHeight: 1.2,
+      textAlign: 'left',
+      wrapWidth: 30
+    })
+    expect(size).toEqual({ width: 30, height: 36 })
   })
 })
 

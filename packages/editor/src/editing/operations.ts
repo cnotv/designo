@@ -1,13 +1,22 @@
 import {
+  DEFAULT_NODE_PROPERTIES,
   getSubtreeIds,
   type DesignDocument,
+  type DesignNode,
   type DesignNodePatch,
   type DesignOperation
 } from '@designo/core'
 import { boundsFromPoints, estimateTextSize } from './geometry.ts'
 import { getBoundsCenter, normalizeRotation, resizeRotatedBounds, rotatePoint } from './rotation.ts'
 import { getTopmostIds } from './selection.ts'
-import type { Bounds, DrawingTool, DrawRequest, Point, ResizeHandle } from './types.ts'
+import type {
+  Bounds,
+  DrawingTool,
+  DrawRequest,
+  Point,
+  ResizeHandle,
+  TextBoxMeasurer
+} from './types.ts'
 
 const DEFAULT_SHAPE_SIZE = 100
 const DRAG_THRESHOLD = 2
@@ -146,7 +155,11 @@ export const createDrawOperation = ({
   keepSquare
 }: DrawRequest): DesignOperation => {
   if (tool === 'text') {
-    const size = estimateTextSize(DEFAULT_TEXT, DEFAULT_FONT_SIZE)
+    const size = estimateTextSize(
+      DEFAULT_TEXT,
+      DEFAULT_FONT_SIZE,
+      DEFAULT_NODE_PROPERTIES.lineHeight
+    )
     const properties: DesignNodePatch = {
       name: NAME_BY_TOOL.text,
       x: start.x,
@@ -185,23 +198,61 @@ export const createDeleteOperations = (
     .filter((nodeId) => nodeId !== document.rootId && document.nodes[nodeId])
     .map((nodeId) => ({ kind: 'delete', id: nodeId }))
 
+// A width typed into a text node is where its lines wrap, so it changes the box's height too.
+const TEXT_BOX_PROPERTIES = ['text', 'fontSize', 'lineHeight', 'textWrap', 'width'] as const
+
+const changesTextBox = (patch: DesignNodePatch): boolean =>
+  TEXT_BOX_PROPERTIES.some((property) => property in patch)
+
+// The line height changes how tall the lines stand, never how wide they are.
+const WIDTH_PROPERTIES = ['text', 'fontSize', 'textWrap'] as const
+
+// A fixed-width box keeps the width it was given and only grows taller, as tall as its words
+// wrap to; an auto-width box follows its words in both directions.
+const fitTextBox = (
+  node: DesignNode,
+  patch: DesignNodePatch,
+  isFixedWidth: boolean,
+  measureTextBox: TextBoxMeasurer
+): DesignNodePatch => {
+  const { width, height } = measureTextBox({
+    text: patch.text ?? node.text,
+    fontFamily: patch.fontFamily ?? node.fontFamily,
+    fontSize: patch.fontSize ?? node.fontSize,
+    lineHeight: patch.lineHeight ?? node.lineHeight,
+    textAlign: patch.textAlign ?? node.textAlign,
+    wrapWidth: isFixedWidth ? (patch.width ?? node.width) : undefined
+  })
+  const followsWords = !isFixedWidth && WIDTH_PROPERTIES.some((property) => property in patch)
+  return followsWords
+    ? { width: Math.ceil(width), height: Math.ceil(height) }
+    : { height: Math.ceil(height) }
+}
+
 /**
- * Builds the update for a property edit, keeping a text node's box in step with its words.
+ * Builds the update for a property edit, keeping a text node's box in step with its words. A
+ * width typed into a text node makes it a fixed-width box, because an auto-width box would give
+ * the number back the next time its words changed.
  * @param document - The document.
  * @param nodeId - The node being edited.
  * @param patch - The changed properties.
+ * @param measureTextBox - Sizes a text box: the shaped layout in the app, an estimate in tests.
  * @returns The update, or none when the node is gone.
  */
 export const createPropertyOperations = (
   document: DesignDocument,
   nodeId: string,
-  patch: DesignNodePatch
+  patch: DesignNodePatch,
+  measureTextBox: TextBoxMeasurer
 ): DesignOperation[] => {
   const node = document.nodes[nodeId]
   if (!node) return []
-  const changesText = node.type === 'text' && ('text' in patch || 'fontSize' in patch)
-  const size = changesText
-    ? estimateTextSize(patch.text ?? node.text, patch.fontSize ?? node.fontSize)
+  if (node.type !== 'text') return [{ kind: 'update', id: nodeId, patch }]
+  const setsWidth = 'width' in patch && !('textWrap' in patch)
+  const typedPatch: DesignNodePatch = setsWidth ? { ...patch, textWrap: true } : patch
+  const isFixedWidth = typedPatch.textWrap ?? node.textWrap
+  const size = changesTextBox(patch)
+    ? fitTextBox(node, typedPatch, isFixedWidth, measureTextBox)
     : {}
-  return [{ kind: 'update', id: nodeId, patch: { ...patch, ...size } }]
+  return [{ kind: 'update', id: nodeId, patch: { ...typedPatch, ...size } }]
 }

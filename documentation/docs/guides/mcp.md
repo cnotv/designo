@@ -164,6 +164,23 @@ one line height (1.2 times `fontSize`), and an empty line leaves a gap of one.
 Colours are `#rrggbb` or `#rrggbbaa`. Coordinates are absolute on the page, and `rotation` (in
 degrees) turns a node around its centre.
 
+### Text properties
+
+`create_node`, `update_node` and `apply_ops` take these on a text node, besides `text`,
+`fontSize` and `fontFamily`. Each is optional; `get_node` always returns all three.
+
+| Property     | Values                    | Default | Does                                                                    |
+| ------------ | ------------------------- | ------- | ----------------------------------------------------------------------- |
+| `textAlign`  | `left`, `center`, `right` | `left`  | Puts every line against that edge of the node's `width`                 |
+| `lineHeight` | a number from 0.5 to 10   | `1.2`   | The distance between lines, as a multiple of `fontSize`                 |
+| `textWrap`   | `true`, `false`           | `false` | `true` makes the node a fixed-width box that wraps its lines at `width` |
+
+With `textWrap` off, `width` is only the box the text sits in, which the editor keeps in step with
+the words; lines break where the text has a newline and never anywhere else. Set `textWrap: true`
+and a `width` to have long text wrap instead of adding line breaks by hand. `export_svg` and
+`get_screenshot` draw text without shaping, so they honour `textAlign` and `lineHeight` but never
+wrap: they draw each line as it is written, aligned inside `width`.
+
 ## Try it
 
 Ask the agent: "Create a Designo file called Palette and lay out five colour swatches in a

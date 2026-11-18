@@ -1,5 +1,6 @@
 import type { DesignNode } from '@designo/core'
-import { paintText } from '../canvas2dRenderer.ts'
+import { layoutFallbackRequest, paintText } from '../fallbackText.ts'
+import { toTextLayoutRequest } from '../text/textLayoutRequest.ts'
 import type { TextTexture, TextTextureCache } from '../types.ts'
 import {
   bucketRasterScale,
@@ -11,11 +12,12 @@ import {
 // Textures for text no longer on screen are dropped once the cache grows past this.
 const TEXT_CACHE_LIMIT = 256
 
-const measureWidestLine = (node: DesignNode): number => {
-  const context = new OffscreenCanvas(1, 1).getContext('2d')
-  if (!context) return node.width
-  context.font = `${node.fontSize}px ${node.fontFamily}`
-  return Math.max(...node.text.split('\n').map((line) => context.measureText(line).width))
+const measuringCell: { context?: OffscreenCanvasRenderingContext2D | null } = {}
+
+// Made on first use, so importing this module needs no canvas.
+const getMeasuringContext = (): OffscreenCanvasRenderingContext2D | null => {
+  measuringCell.context ??= new OffscreenCanvas(1, 1).getContext('2d')
+  return measuringCell.context
 }
 
 const uploadText = (
@@ -23,7 +25,12 @@ const uploadText = (
   node: DesignNode,
   bucket: number
 ): Omit<TextTexture, 'lastFrame'> => {
-  const size = measureTextRaster(node, measureWidestLine(node))
+  // The layout is measured once and shared by the raster's size and by painting it.
+  const measuringContext = getMeasuringContext()
+  const layout = measuringContext
+    ? layoutFallbackRequest(measuringContext, toTextLayoutRequest(node))
+    : { lines: [], width: node.width, height: node.height }
+  const size = measureTextRaster(layout)
   const rasterScale = capRasterScale(bucket, size)
   const raster = new OffscreenCanvas(
     Math.max(1, Math.ceil(size.width * rasterScale)),
@@ -31,7 +38,7 @@ const uploadText = (
   )
   const context = raster.getContext('2d')
   context?.scale(rasterScale, rasterScale)
-  if (context) paintText(context, node)
+  if (context) paintText(context, node, layout)
   const texture = gl.createTexture()
   gl.bindTexture(gl.TEXTURE_2D, texture)
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)

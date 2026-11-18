@@ -4,13 +4,15 @@ const PLACE_IN_VIEW = /* glsl */ `
 uniform vec3 u_viewport;
 uniform vec2 u_size;
 
-vec4 placeInView(vec2 center, vec2 local, float rotation) {
-  float cosine = cos(rotation);
-  float sine = sin(rotation);
+vec4 placeInViewTurned(vec2 center, vec2 local, float cosine, float sine) {
   vec2 world = center + vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
   vec2 screen = world * u_viewport.z + u_viewport.xy;
   vec2 clip = screen / u_size * 2.0 - 1.0;
   return vec4(clip.x, -clip.y, 0.0, 1.0);
+}
+
+vec4 placeInView(vec2 center, vec2 local, float rotation) {
+  return placeInViewTurned(center, local, cos(rotation), sin(rotation));
 }
 `
 
@@ -124,5 +126,35 @@ out vec4 outColor;
 
 void main() {
   outColor = texture(u_texture, v_uv) * u_opacity;
+}
+`
+
+export const GLYPH_VERTEX_SHADER = /* glsl */ `#version 300 es
+layout(location = 0) in vec2 a_world;
+layout(location = 1) in vec2 a_uv;
+layout(location = 2) in vec4 a_color;
+${PLACE_IN_VIEW}
+out vec2 v_uv;
+out vec4 v_color;
+
+void main() {
+  v_uv = a_uv;
+  v_color = a_color;
+  // The corners were turned with their node on the CPU, so only the view is left.
+  gl_Position = placeInViewTurned(a_world, vec2(0.0), 1.0, 0.0);
+}
+`
+
+export const GLYPH_FRAGMENT_SHADER = /* glsl */ `#version 300 es
+precision highp float;
+
+in vec2 v_uv;
+in vec4 v_color;
+uniform sampler2D u_atlas;
+out vec4 outColor;
+
+void main() {
+  // The atlas holds coverage, and the colour is already premultiplied by its alpha.
+  outColor = v_color * texture(u_atlas, v_uv).r;
 }
 `

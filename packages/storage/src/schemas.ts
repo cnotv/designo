@@ -1,4 +1,4 @@
-import { CURRENT_FORMAT_VERSION } from '@designo/core'
+import { CURRENT_FORMAT_VERSION, MAX_LINE_HEIGHT, MIN_LINE_HEIGHT } from '@designo/core'
 import { z } from 'zod'
 
 const MAX_TEXT_LENGTH = 10_000
@@ -29,7 +29,20 @@ export const nodePatchSchema = z
     cornerRadius: z.number().min(0),
     text: z.string().max(MAX_TEXT_LENGTH),
     fontSize: z.number().positive(),
-    fontFamily: z.string().max(200)
+    fontFamily: z.string().max(200),
+    textAlign: z
+      .enum(['left', 'center', 'right'])
+      .describe('Text only: which edge lines sit against inside the width. Default left.'),
+    lineHeight: z
+      .number()
+      .min(MIN_LINE_HEIGHT)
+      .max(MAX_LINE_HEIGHT)
+      .describe('Text only: distance between lines as a multiple of fontSize. Default 1.2.'),
+    textWrap: z
+      .boolean()
+      .describe(
+        'Text only: true makes the node a fixed-width box whose lines wrap at its width; false (the default) sizes the box to its text.'
+      )
   })
   .partial()
   .strict()

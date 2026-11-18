@@ -1,5 +1,6 @@
 import { DEFAULT_NODE_PROPERTIES, type DesignNode } from '@designo/core'
 import { describe, expect, it } from 'vitest'
+import type { FallbackTextLayout } from '../text/types.ts'
 import {
   bucketRasterScale,
   capRasterScale,
@@ -15,6 +16,7 @@ const text: DesignNode = {
   order: 0,
   text: 'One\nTwo',
   fontSize: 20,
+  lineHeight: 1.25,
   width: 50,
   height: 10
 }
@@ -32,16 +34,27 @@ describe('capRasterScale', () => {
   })
 })
 
+const layout = (
+  lineExtents: [number, number][],
+  height: number,
+  width = 0
+): FallbackTextLayout => ({
+  lines: lineExtents.map(([x, lineWidth]) => ({ text: 'x', x, width: lineWidth, baselineY: 0 })),
+  width,
+  height
+})
+
 describe('measureTextRaster', () => {
-  it('grows past the box for long lines and for every line', () => {
-    expect(measureTextRaster(text, 120)).toEqual({ width: 122, height: 50 })
+  it('covers the box and every line to its far edge, with room for overhang, and as tall as the lines', () => {
+    expect(measureTextRaster(layout([[0, 120]], 50, 100))).toEqual({ width: 122, height: 50 })
   })
 
-  it('keeps at least the box', () => {
-    expect(measureTextRaster({ ...text, text: 'a', width: 300, height: 80 }, 10)).toEqual({
-      width: 300,
-      height: 80
-    })
+  it('covers a line that an alignment pushed past the box', () => {
+    expect(measureTextRaster(layout([[90, 40]], 24, 100)).width).toBe(132)
+  })
+
+  it('is as tall as the layout says, which is how its lines are spaced', () => {
+    expect(measureTextRaster(layout([[0, 10]], 80)).height).toBe(80)
   })
 })
 
@@ -50,5 +63,17 @@ describe('textRasterKey', () => {
     expect(textRasterKey(text, 1)).toBe(textRasterKey({ ...text, id: 'other', x: 500 }, 1))
     expect(textRasterKey(text, 1)).not.toBe(textRasterKey(text, 2))
     expect(textRasterKey(text, 1)).not.toBe(textRasterKey({ ...text, fill: '#ff0000' }, 1))
+  })
+
+  it('tells apart what changes the lines: alignment, line height, wrapping and the width it wraps at', () => {
+    const key = (patch: Partial<DesignNode>) => textRasterKey({ ...text, ...patch }, 1)
+    expect(key({ textAlign: 'right' })).not.toBe(key({}))
+    expect(key({ lineHeight: 2 })).not.toBe(key({}))
+    expect(key({ textWrap: true })).not.toBe(key({}))
+    expect(key({ textWrap: true, width: 80 })).not.toBe(key({ textWrap: true, width: 90 }))
+  })
+
+  it('ignores the width of a node that does not wrap, which its words set', () => {
+    expect(textRasterKey({ ...text, width: 80 }, 1)).toBe(textRasterKey({ ...text, width: 90 }, 1))
   })
 })
