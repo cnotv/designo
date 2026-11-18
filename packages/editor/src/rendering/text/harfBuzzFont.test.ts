@@ -1,8 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { BUNDLED_FONT_CATALOG } from './bundledFontCatalog.ts'
 import {
+  FIXTURE_FONT_CATALOG,
   LIGATURE_FIXTURE_FILE,
-  readBundledFontBytes,
   readFixtureFontBytes
 } from './fixtures/fontFiles.ts'
 import { findFontForCodePoint } from './fontRegistry.ts'
@@ -10,9 +9,9 @@ import { createHarfBuzzShapingFont } from './harfBuzzFont.ts'
 import type { ShapingFont } from './types.ts'
 
 const openCatalogFont = async (fontId: string): Promise<ShapingFont> => {
-  const definition = BUNDLED_FONT_CATALOG.fonts.find((font) => font.id === fontId)
+  const definition = FIXTURE_FONT_CATALOG.fonts.find((font) => font.id === fontId)
   if (!definition) throw new Error(`No font ${fontId}`)
-  return createHarfBuzzShapingFont(await readBundledFontBytes(definition.url))
+  return createHarfBuzzShapingFont(await readFixtureFontBytes(definition.url))
 }
 
 const totalAdvance = (font: ShapingFont, text: string): number =>
@@ -105,14 +104,14 @@ describe('HarfBuzz shaping', () => {
 describe('the font catalog', () => {
   const BASIC_MULTILINGUAL_PLANE = Array.from({ length: 0x10000 }, (_, codePoint) => codePoint)
 
-  it.each(BUNDLED_FONT_CATALOG.fonts.map((definition) => definition.id))(
+  it.each(FIXTURE_FONT_CATALOG.fonts.map((definition) => definition.id))(
     'claims every character %s really draws, so no font is skipped for a character it has',
     async (fontId) => {
       const font = await openCatalogFont(fontId)
       const unclaimed = BASIC_MULTILINGUAL_PLANE.filter(
         (codePoint) =>
           font.hasGlyph(codePoint) &&
-          findFontForCodePoint(BUNDLED_FONT_CATALOG, codePoint, fontId) !== fontId
+          findFontForCodePoint(FIXTURE_FONT_CATALOG, codePoint, fontId) !== fontId
       )
       expect(unclaimed.map((codePoint) => codePoint.toString(16))).toEqual([])
     }

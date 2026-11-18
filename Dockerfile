@@ -10,7 +10,8 @@ RUN pnpm --filter @designo/editor build
 
 FROM node:24-alpine
 WORKDIR /app
-# Fonts for get_screenshot: resvg draws text with system fonts, and the Alpine image has none.
+# get_screenshot fetches its fonts from the Fontsource API; DejaVu draws its text when the API
+# cannot be reached, as the Alpine image has no fonts of its own.
 RUN corepack enable && apk add --no-cache font-dejavu
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \

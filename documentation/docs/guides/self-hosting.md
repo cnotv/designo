@@ -13,6 +13,15 @@ Files live in the `designo-data` volume. The port is bound to `127.0.0.1`, and t
 no login of its own unless you turn on [Sign in with Google](#sign-in-with-google), so put one in
 front or turn that on before exposing it.
 
+## Fonts
+
+No font ships with Designo: the editor and the screenshot tool load them from the
+[Fontsource](https://fontsource.org) API, `api.fontsource.org` for a family's description and
+`cdn.jsdelivr.net` for its files. Visitors' browsers fetch them directly, so those hosts learn the
+visitor's address, as with any web font service. The server fetches the files a screenshot needs
+and keeps them in `designo-fonts` in its temporary folder. Where the server cannot reach those
+hosts, screenshots fall back to the image's DejaVu fonts.
+
 ## Sign in with Google
 
 Off by default. Turn it on to put a Google sign-in in front of the editor and keep each person's

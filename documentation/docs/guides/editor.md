@@ -82,10 +82,16 @@ circle. After drawing, the editor returns to Move.
   wide as its longest line. Files saved before these existed open with the defaults.
 - **Text rendering:** text is shaped with HarfBuzz, so ligatures, kerning, Arabic joining,
   Devanagari conjuncts and mixed left-to-right and right-to-left lines come out right, and it
-  stays sharp at any zoom. Inter covers Latin, Greek and Cyrillic; Arabic, Hebrew and Devanagari
-  fonts load when a text uses them. A layer whose font family lists a font Designo ships uses it,
-  and any other list uses Inter. Characters none of them cover, such as emoji and Chinese,
-  Japanese and Korean text, are drawn by the browser with your system fonts.
+  stays sharp at any zoom. Fonts come from the [Fontsource](https://fontsource.org) API as a text
+  needs them, so a layer's font family can name any of its families: every Google font and more,
+  such as Lora, Playfair Display or Caveat. The first family in the list the API has draws the
+  text. Fonts that cannot be published, such as Georgia, Arial, Helvetica, Times New Roman,
+  Courier New, Calibri and Cambria, draw in an open font with the same letter widths (Gelasio,
+  Arimo, Tinos, Cousine, Carlito, Caladea), so lines break where they would; a list that names no
+  family the API has uses Inter. Arabic, Hebrew, Devanagari and symbols the family lacks come from
+  Noto fonts. Characters none of them cover, such as emoji and Chinese, Japanese and Korean text,
+  are drawn by the browser with your system fonts. The editor needs to reach `api.fontsource.org`
+  and `cdn.jsdelivr.net`; while it cannot, text is drawn by the browser.
 - **Hide and show:** the eye beside a layer in the layers panel.
 - **Delete:** Delete or Backspace.
 - **Duplicate:** Ctrl/Cmd D copies the selection with everything in it, 10 px down and right, and

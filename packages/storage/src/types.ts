@@ -1,6 +1,6 @@
 import type { DesignDocument } from '@designo/core'
 import type { z } from 'zod'
-import type { operationInputSchema } from './schemas.ts'
+import type { fontsourceFamilySchema, operationInputSchema } from './schemas.ts'
 
 export interface DocumentSummary {
   id: string
@@ -26,3 +26,6 @@ export interface AppliedBatch {
   document: DesignDocument
   createdNodeIds: string[]
 }
+
+/** A family as the Fontsource API describes it, once validated. */
+export type FontsourceFamily = z.infer<typeof fontsourceFamilySchema>

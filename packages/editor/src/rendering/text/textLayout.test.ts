@@ -1,10 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { TextAlign } from '@designo/core'
 import { getTextBaselineOffset } from '../../editing/geometry.ts'
-import { BUNDLED_FONT_CATALOG } from './bundledFontCatalog.ts'
-import { readBundledFontBytes } from './fixtures/fontFiles.ts'
-import { createFontRegistry } from './fontRegistry.ts'
-import { createHarfBuzzShapingFont } from './harfBuzzFont.ts'
+import { createFixtureFontRegistry } from './fixtures/fontFiles.ts'
 import { layoutText } from './textLayout.ts'
 import { createTextShaper } from './textShaper.ts'
 import type { TextLayoutInput, TextShaper } from './types.ts'
@@ -292,11 +289,7 @@ describe('layoutText with the bundled fonts', () => {
     result.lines[0]?.glyphs.find((glyph) => glyph.cluster === cluster)?.x ?? Number.NaN
 
   beforeAll(async () => {
-    const registry = createFontRegistry({
-      catalog: BUNDLED_FONT_CATALOG,
-      loadBytes: readBundledFontBytes,
-      createShapingFont: createHarfBuzzShapingFont
-    })
+    const registry = createFixtureFontRegistry()
     await registry.loadFontsForText(text)
     shaper = createTextShaper(registry)
     result = layoutText(input, shaper)

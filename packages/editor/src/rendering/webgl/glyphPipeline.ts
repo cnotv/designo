@@ -59,7 +59,7 @@ export const createGlyphPipeline = (
     pageHeight: ATLAS_PAGE_SIZE,
     maxPages: ATLAS_MAX_PAGES,
     padding: ATLAS_PADDING,
-    rasterizeGlyph: createGlyphRasterizer(runtime.registry)
+    rasterizeGlyph: createGlyphRasterizer(runtime.library)
   })
   const atlasTextures = createAtlasTextures(gl, atlas)
 

@@ -1,16 +1,15 @@
 import type { DesignNode, TextAlign } from '@designo/core'
+import type { CodePointRange, ResolveFontFamily } from '@designo/fonts'
 
 export type TextDirection = 'ltr' | 'rtl'
 
-/** An inclusive range of Unicode code points. */
-export type CodePointRange = readonly [first: number, last: number]
-
 /** One font file the editor can shape with. */
 export interface FontDefinitionData {
+  /** Unique across families, such as `gelasio:latin`. */
   id: string
-  /** The CSS family name the font answers to. */
+  /** The family name the font answers to. */
   family: string
-  /** Where the file is served from, relative to the app's base URL. */
+  /** Where the file is fetched from. */
   url: string
   /** The code points the file draws, as `U+0600-06FF` ranges or a single `U+00A0`. */
   coverage: readonly string[]
@@ -27,7 +26,7 @@ export interface FontDefinition extends Omit<FontDefinitionData, 'coverage'> {
   coverage: readonly CodePointRange[]
 }
 
-/** The fonts text can be shaped with. The default covers Latin, Greek and Cyrillic. */
+/** The fonts a text can be shaped with, preferred first. The default sets the line metrics. */
 export interface FontCatalog {
   defaultFontId: string
   fonts: readonly FontDefinition[]
@@ -88,16 +87,32 @@ export interface ShapingFont {
   getGlyphOutline: (glyphId: number) => GlyphOutline
 }
 
-/** Reads a font file's bytes. The browser fetches it; tests read it from disk. */
+/** Reads a font file's bytes. The browser fetches it from the font API; tests read it from disk. */
 export type FontBytesLoader = (url: string) => Promise<Uint8Array>
+
+/** The font once it has loaded; undefined while it is still being fetched. */
+export type GetLoadedFont = (fontId: string) => ShapingFont | undefined
 
 /** Opens font bytes in HarfBuzz. */
 export type ShapingFontFactory = (bytes: Uint8Array) => Promise<ShapingFont>
 
-export interface FontRegistryOptions {
-  catalog: FontCatalog
+export interface FontStoreOptions {
   loadBytes: FontBytesLoader
   createShapingFont: ShapingFontFactory
+  /** Hears of each font once it has loaded, so the browser can draw with it too. */
+  onFontLoaded?: (definition: FontDefinition, bytes: Uint8Array) => void
+}
+
+/** The font files loaded or loading, shared by every text so a file is fetched once. */
+export interface FontStore {
+  loadFont: (definition: FontDefinition) => Promise<void>
+  /** The font once it has loaded; undefined while it is still being fetched. */
+  getFont: (fontId: string) => ShapingFont | undefined
+}
+
+export interface FontRegistryOptions {
+  catalog: FontCatalog
+  store: FontStore
 }
 
 export interface FontRegistry {
@@ -341,8 +356,23 @@ export interface TextLayoutRequest extends TextLayoutInput {
   fontFamily: string
 }
 
+export interface FontLibraryOptions {
+  /** Finds a family's files through the font API. */
+  resolveFamily: ResolveFontFamily
+  store: FontStore
+}
+
+/** Every family list's fonts, found through the font API as texts ask for them. */
+export interface FontLibrary {
+  /** The fonts a `fontFamily` list draws with; undefined until `loadFamilies` has found them. */
+  getRegistry: (fontFamily: string) => FontRegistry | undefined
+  /** Looks up the list's families and their fallbacks. Rejects when the font API has none of them. */
+  loadFamilies: (fontFamily: string) => Promise<void>
+  getFont: (fontId: string) => ShapingFont | undefined
+}
+
 export interface TextEngineOptions {
-  registry: FontRegistry
+  library: FontLibrary
   /** Whether WebAssembly exists, which HarfBuzz needs; false keeps every text on the fallback. */
   isShapingAvailable?: () => boolean
   /** How many layouts to keep before the oldest are dropped. */
@@ -353,7 +383,7 @@ export interface TextEngineOptions {
 export interface TextEngine {
   /**
    * The layout of a request. Undefined while its fonts are still loading, when it holds a
-   * character no bundled font covers, or where shaping is unavailable: the caller draws those
+   * character none of its fonts covers, or where shaping is unavailable: the caller draws those
    * with the Canvas 2D fallback. Asking starts the font load and, once it ends, the listeners run.
    */
   getLayout: (request: TextLayoutRequest) => TextLayout | undefined
@@ -395,6 +425,6 @@ export interface FallbackTextLayout {
 
 /** The fonts and the engine that lays text out with them. */
 export interface TextRuntime {
-  registry: FontRegistry
+  library: FontLibrary
   engine: TextEngine
 }

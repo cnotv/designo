@@ -1,7 +1,5 @@
 import type { DesignNode } from '@designo/core'
-import { pickPrimaryFontId } from './fontFamilyList.ts'
 import { isCodePointCovered, splitIntoFontRuns } from './fontRegistry.ts'
-import { createPreferredFontRegistry } from './preferredFontRegistry.ts'
 import { layoutText } from './textLayout.ts'
 import { createTextShaper } from './textShaper.ts'
 import { toTextLayoutRequest } from './textLayoutRequest.ts'
@@ -29,18 +27,18 @@ const layoutKey = (request: TextLayoutRequest): string =>
     request.wrapWidth ?? null
   ])
 
-const neededFontIds = (view: FontRegistry, text: string): string[] => [
+const neededFontIds = (registry: FontRegistry, text: string): string[] => [
   ...new Set([
-    view.catalog.defaultFontId,
-    ...splitIntoFontRuns(text, view.catalog).map((run) => run.fontId)
+    registry.catalog.defaultFontId,
+    ...splitIntoFontRuns(text, registry.catalog, registry.getFont).map((run) => run.fontId)
   ])
 ]
 
-const hasUncoveredCharacter = (view: FontRegistry, text: string): boolean =>
+const hasUncoveredCharacter = (registry: FontRegistry, text: string): boolean =>
   [...text].some((character) => {
     return (
       !IGNORED_CHARACTER_PATTERN.test(character) &&
-      !isCodePointCovered(view.catalog, character.codePointAt(0) ?? 0)
+      !isCodePointCovered(registry.catalog, character.codePointAt(0) ?? 0, registry.getFont)
     )
   })
 
@@ -48,45 +46,52 @@ const isWebAssemblyDefined = (): boolean => typeof WebAssembly === 'object'
 
 /**
  * Makes the engine that turns a text node into laid-out glyphs for the renderers and the editor.
- * It picks the font from the node's family list, loads fonts on demand and keeps each layout, so
- * panning and zooming never shape again. Anything it cannot do yet or at all (fonts still
- * loading, a character no bundled font draws, no WebAssembly) it reports as undefined, and the
- * caller draws that text the Canvas 2D way.
- * @param options - The font registry, and for tests whether shaping is available and the cache size.
+ * It finds the node's families through the font library, loads their files on demand and keeps
+ * each layout, so panning and zooming never shape again. Anything it cannot do yet or at all
+ * (fonts still loading, a family the font API lacks, a character none of the fonts draws, no
+ * WebAssembly) it reports as undefined, and the caller draws that text the Canvas 2D way.
+ * @param options - The font library, and for tests whether shaping is available and the cache size.
  * @returns The engine.
  */
 export const createTextEngine = ({
-  registry,
+  library,
   isShapingAvailable = isWebAssemblyDefined,
   layoutLimit = DEFAULT_LAYOUT_LIMIT
 }: TextEngineOptions): TextEngine => {
   const layouts = new Map<string, TextLayout>()
   const nodeLayouts = new WeakMap<DesignNode, TextLayout>()
-  const views = new Map<string, { view: FontRegistry; shaper: TextShaper }>()
+  const shapers = new WeakMap<FontRegistry, TextShaper>()
   const pendingLoads = new Set<string>()
   const failedLoads = new Set<string>()
   const finishedLoads = new Set<string>()
   const listeners = new Set<() => void>()
 
-  const getView = (fontFamily: string) => {
-    const fontId = pickPrimaryFontId(fontFamily, registry.catalog)
-    const existing = views.get(fontId)
-    if (existing) return existing
-    const view = createPreferredFontRegistry(registry, fontId)
-    const created = { view, shaper: createTextShaper(view) }
-    views.set(fontId, created)
-    return created
+  const getShaper = (registry: FontRegistry): TextShaper => {
+    const known = shapers.get(registry)
+    if (known) return known
+    const shaper = createTextShaper(registry)
+    shapers.set(registry, shaper)
+    return shaper
   }
 
   const notify = (): void => listeners.forEach((listener) => listener())
 
-  const startLoading = (key: string, view: FontRegistry, text: string): void => {
+  const loadFonts = async (request: TextLayoutRequest): Promise<boolean> => {
+    await library.loadFamilies(request.fontFamily)
+    const registry = library.getRegistry(request.fontFamily)
+    // A character none of the fonts draws stays with the browser, which may have a font for it.
+    if (!registry || hasUncoveredCharacter(registry, request.text)) return false
+    await registry.loadFontsForText(request.text)
+    return true
+  }
+
+  const startLoading = (key: string, request: TextLayoutRequest): void => {
     if (pendingLoads.has(key) || failedLoads.has(key)) return
     pendingLoads.add(key)
-    view
-      .loadFontsForText(text)
-      .then(() => {
-        finishedLoads.add(key)
+    loadFonts(request)
+      .then((loaded) => {
+        const outcomes = loaded ? finishedLoads : failedLoads
+        outcomes.add(key)
       })
       .catch((error: unknown) => {
         failedLoads.add(key)
@@ -106,10 +111,12 @@ export const createTextEngine = ({
   }
 
   const computeLayout = (request: TextLayoutRequest, key: string): TextLayout | undefined => {
-    const { view, shaper } = getView(request.fontFamily)
-    if (hasUncoveredCharacter(view, request.text)) return undefined
-    if (!neededFontIds(view, request.text).every((fontId) => view.getFont(fontId))) return undefined
-    const layout = layoutText(request, shaper)
+    const registry = library.getRegistry(request.fontFamily)
+    if (!registry || hasUncoveredCharacter(registry, request.text)) return undefined
+    if (!neededFontIds(registry, request.text).every((fontId) => registry.getFont(fontId))) {
+      return undefined
+    }
+    const layout = layoutText(request, getShaper(registry))
     remember(key, layout)
     return layout
   }
@@ -124,8 +131,7 @@ export const createTextEngine = ({
     if (layout || !shouldLoad) return layout
     // Loaded and still not laid out would ask again every frame, so it stays on the fallback.
     if (finishedLoads.has(key)) failedLoads.add(key)
-    const { view } = getView(request.fontFamily)
-    if (!hasUncoveredCharacter(view, request.text)) startLoading(key, view, request.text)
+    startLoading(key, request)
     return undefined
   }
 

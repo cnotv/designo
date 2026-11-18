@@ -1,55 +1,62 @@
-import type { FontCatalog } from './types.ts'
+import { toFontsourceId, type CodePointRange } from '@designo/fonts'
+import type { FontDefinition, FontRegistry } from './types.ts'
 
-const QUOTES_PATTERN = /^["']|["']$/g
-
-/**
- * Reads a CSS `font-family` list.
- * @param list - A list such as `Inter, "Noto Sans", sans-serif`.
- * @returns The family names in order, without quotes or padding.
- */
-export const parseFontFamilyList = (list: string): string[] =>
-  list
-    .split(',')
-    .map((family) => family.trim().replaceAll(QUOTES_PATTERN, ''))
-    .filter((family) => family !== '')
+const HEX_RADIX = 16
 
 /**
- * Chooses the font a node's text is shaped with. The first family in the list that the catalog
- * has wins; a list that names none uses the bundled Inter, because the editor cannot read the
- * font files of the user's system.
- * @param list - The node's `fontFamily`.
- * @param catalog - The fonts the editor ships.
- * @returns The id of a catalog font.
+ * Names the CSS family a loaded font file is registered under for the browser, which no other
+ * style in the app uses, so a font installed on the visitor's machine never stands in for it.
+ * @param family - The font's family name, such as `Noto Sans Arabic`.
+ * @returns The `FontFace` family name, such as `designo-noto-sans-arabic`.
  */
-export const pickPrimaryFontId = (list: string, catalog: FontCatalog): string => {
-  const names = parseFontFamilyList(list).map((family) => family.toLowerCase())
-  const named = names
-    .map((name) => catalog.fonts.find((font) => font.family.toLowerCase() === name))
-    .find((font) => font !== undefined)
-  return named?.id ?? catalog.defaultFontId
-}
+export const getLoadedFontCssFamily = (family: string): string =>
+  `designo-${toFontsourceId(family)}`
+
+const formatCodePoint = (codePoint: number): string =>
+  codePoint.toString(HEX_RADIX).toUpperCase().padStart(4, '0')
+
+const formatRange = ([first, last]: CodePointRange): string =>
+  first === last
+    ? `U+${formatCodePoint(first)}`
+    : `U+${formatCodePoint(first)}-${formatCodePoint(last)}`
 
 /**
- * Names the CSS family a bundled font is loaded under, which no other style in the app uses.
- * @param fontId - The catalog id of the font.
- * @returns The `@font-face` family name.
+ * Writes a font's coverage the way CSS reads it, so the browser uses the file for those
+ * characters only, as the shaper does.
+ * @param definition - The font file.
+ * @returns A `unicode-range` value such as `U+0000-00FF, U+0131`.
  */
-export const getBundledFontCssFamily = (fontId: string): string => `designo-${fontId}`
+export const toUnicodeRange = (definition: FontDefinition): string =>
+  definition.coverage.map(formatRange).join(', ')
 
 /**
  * Builds the CSS font list for text the browser draws itself (the editing box and the Canvas 2D
- * fallback) so it looks like the shaped text: the primary font first, then the other bundled
- * fonts, which a character the primary lacks falls through to as the shaper's font choice does,
- * and last the node's own list, for what the bundled fonts cannot draw.
+ * fallback) so it looks like the shaped text: the list's fonts as the shaper chose them, preferred
+ * first, and last the node's own list, for what they cannot draw or while they load.
  * @param list - The node's `fontFamily`.
- * @param catalog - The fonts the editor ships.
+ * @param registry - The fonts the shaper uses for that list, once the library has found them.
  * @returns A list for CSS or a canvas font string.
  */
-export const createBrowserFontStack = (list: string, catalog: FontCatalog): string => {
-  const primaryId = pickPrimaryFontId(list, catalog)
-  const bundledIds = [primaryId, ...catalog.fonts.map((font) => font.id)]
-  const bundledFamilies = [...new Set(bundledIds)].map(
-    (fontId) => `'${getBundledFontCssFamily(fontId)}'`
-  )
-  return [...bundledFamilies, list].join(', ')
+export const createBrowserFontStack = (
+  list: string,
+  registry: FontRegistry | undefined
+): string => {
+  const families = [...new Set(registry?.catalog.fonts.map((font) => font.family) ?? [])]
+  return [...families.map((family) => `'${getLoadedFontCssFamily(family)}'`), list].join(', ')
+}
+
+/**
+ * Registers a loaded font file with the browser, so the paths that draw text with the browser
+ * use the same file the shaper does.
+ * @param definition - The font file.
+ * @param bytes - Its bytes, as the shaper received them.
+ */
+export const addBrowserFontFace = (definition: FontDefinition, bytes: Uint8Array): void => {
+  if (typeof document === 'undefined' || typeof FontFace === 'undefined') return
+  // A copy, as FontFace takes only bytes backed by a plain ArrayBuffer.
+  const face = new FontFace(getLoadedFontCssFamily(definition.family), new Uint8Array(bytes), {
+    unicodeRange: toUnicodeRange(definition)
+  })
+  document.fonts.add(face)
+  void face.load()
 }

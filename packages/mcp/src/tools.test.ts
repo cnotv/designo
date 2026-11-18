@@ -1,9 +1,10 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDocument } from '@designo/core'
 import { readDocument } from '@designo/storage'
 import { createDesignoServer } from './server.ts'
@@ -16,7 +17,18 @@ import {
   getScreenshotTool,
   listFilesTool
 } from './tools.ts'
-import type { DesignoToolContext } from './types.ts'
+import type { DesignoToolContext, ScreenshotFonts, ScreenshotText } from './types.ts'
+
+const NO_FONTS: ScreenshotFonts = {
+  files: [],
+  resolveFontFamily: () => undefined,
+  getFontMetrics: () => undefined
+}
+
+// The editor's test font, standing in for a file the font API gives.
+const NOTO_SANS_FIXTURE = fileURLToPath(
+  new URL('../../editor/src/rendering/text/fixtures/NotoSans-Latin.fixture.ttf', import.meta.url)
+)
 
 const createCountingIdGenerator = () => {
   let counter = 0
@@ -30,7 +42,11 @@ let context: DesignoToolContext
 
 beforeEach(async () => {
   const dataDirectory = await mkdtemp(path.join(tmpdir(), 'designo-mcp-'))
-  context = { dataDirectory, generateId: createCountingIdGenerator() }
+  context = {
+    dataDirectory,
+    generateId: createCountingIdGenerator(),
+    loadScreenshotFonts: async () => NO_FONTS
+  }
 })
 
 afterEach(async () => {
@@ -131,6 +147,58 @@ describe('export tools', () => {
     expect(image.mimeType).toBe('image/png')
     expect(Buffer.from(image.data, 'base64').toString('hex', 0, 8)).toBe(PNG_SIGNATURE)
     expect(readPngSize(image.data)).toEqual({ width: 40, height: 20 })
+  })
+
+  it('get_screenshot asks for the fonts of the texts it draws, and draws with them', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Fonts' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'title',
+          type: 'text',
+          parentId: pageId,
+          properties: {
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 40,
+            text: 'Once',
+            fontSize: 24,
+            fontFamily: 'Noto Sans'
+          }
+        },
+        {
+          kind: 'create',
+          id: 'square',
+          type: 'rectangle',
+          parentId: pageId,
+          properties: { x: 0, y: 50, width: 10, height: 10, fill: '#ff0000' }
+        }
+      ]
+    })
+    const asked: ScreenshotText[][] = []
+    const withFonts = await getScreenshotTool(
+      {
+        ...context,
+        loadScreenshotFonts: async (texts) => {
+          asked.push([...texts])
+          return { ...NO_FONTS, files: [NOTO_SANS_FIXTURE] }
+        }
+      },
+      { fileId }
+    )
+    expect(asked).toEqual([[{ fontFamily: 'Noto Sans', text: 'Once' }]])
+    const withoutFonts = await getScreenshotTool(context, { fileId })
+    expect(withFonts.data).not.toBe(withoutFonts.data)
+  })
+
+  it('get_screenshot asks for no fonts when what it draws has no text', async () => {
+    const { fileId } = await createSquareFile()
+    const loadScreenshotFonts = vi.fn(async () => NO_FONTS)
+    await getScreenshotTool({ ...context, loadScreenshotFonts }, { fileId })
+    expect(loadScreenshotFonts).toHaveBeenCalledWith([])
   })
 
   it('get_screenshot scales the output', async () => {

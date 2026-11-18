@@ -82,6 +82,9 @@ importers:
       '@designo/exporter':
         specifier: workspace:*
         version: link:../exporter
+      '@designo/fonts':
+        specifier: workspace:*
+        version: link:../fonts
       '@designo/mcp':
         specifier: workspace:*
         version: link:../mcp
@@ -147,6 +150,15 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/fonts:
+    dependencies:
+      '@designo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@designo/storage':
+        specifier: workspace:*
+        version: link:../storage
+
   packages/mcp:
     dependencies:
       '@designo/auth':
@@ -158,6 +170,9 @@ importers:
       '@designo/exporter':
         specifier: workspace:*
         version: link:../exporter
+      '@designo/fonts':
+        specifier: workspace:*
+        version: link:../fonts
       '@designo/storage':
         specifier: workspace:*
         version: link:../storage

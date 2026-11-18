@@ -1,21 +1,21 @@
-import type { FontCatalogData } from './types.ts'
+import type { FontCatalogData } from '../types.ts'
 
 // Space, digits and punctuation sit between letters of any language, so every script font claims
 // them and a run of Arabic keeps its numbers and spaces in the Arabic font.
 const NEUTRAL_RANGES = ['U+0020-0040', 'U+005B-0060', 'U+007B-007E', 'U+00A0']
 
 /**
- * The fonts the editor ships. Inter covers Latin, Greek and Cyrillic; the Noto Sans subsets cover
- * the scripts Inter lacks and load only when a text uses them. The ranges are what each file was
- * subset to, and a test checks the files map nothing outside them.
+ * The test fonts: Inter for Latin, Greek and Cyrillic and Noto Sans subsets for the scripts Inter
+ * lacks, in the order the font API's fallbacks put them. The ranges are what each file was subset
+ * to, and a test checks the files map nothing outside them.
  */
-export const BUNDLED_FONT_CATALOG_DATA: FontCatalogData = {
+export const FIXTURE_FONT_CATALOG_DATA: FontCatalogData = {
   defaultFontId: 'inter',
   fonts: [
     {
       id: 'inter',
       family: 'Inter',
-      url: 'fonts/Inter-Regular.subset.ttf',
+      url: 'Inter-Regular.subset.ttf',
       coverage: [
         'U+0020-007E',
         'U+00A0-024F',
@@ -37,7 +37,7 @@ export const BUNDLED_FONT_CATALOG_DATA: FontCatalogData = {
     {
       id: 'noto-sans-arabic',
       family: 'Noto Sans Arabic',
-      url: 'fonts/NotoSansArabic-Regular.subset.ttf',
+      url: 'NotoSansArabic-Regular.subset.ttf',
       coverage: [
         ...NEUTRAL_RANGES,
         'U+00AB',
@@ -56,7 +56,7 @@ export const BUNDLED_FONT_CATALOG_DATA: FontCatalogData = {
     {
       id: 'noto-sans-hebrew',
       family: 'Noto Sans Hebrew',
-      url: 'fonts/NotoSansHebrew-Regular.subset.ttf',
+      url: 'NotoSansHebrew-Regular.subset.ttf',
       coverage: [
         ...NEUTRAL_RANGES,
         'U+0590-05FF',
@@ -70,7 +70,7 @@ export const BUNDLED_FONT_CATALOG_DATA: FontCatalogData = {
     {
       id: 'noto-sans-devanagari',
       family: 'Noto Sans Devanagari',
-      url: 'fonts/NotoSansDevanagari-Regular.subset.ttf',
+      url: 'NotoSansDevanagari-Regular.subset.ttf',
       coverage: [
         ...NEUTRAL_RANGES,
         'U+0900-097F',

@@ -284,8 +284,52 @@ describe('exportNodeToSvg', () => {
       }
     ])
     expect(exportNodeToSvg(document, 'label')).toContain(
-      '<text x="5" y="7" font-family="Inter, &quot;Helvetica Neue&quot;, sans-serif" font-size="14" dominant-baseline="hanging" fill="#333333">A &lt; B &amp; &quot;C&quot;</text>'
+      '<text x="5" y="7" font-family="Inter, &quot;Helvetica Neue&quot;, Arimo, sans-serif" font-size="14" dominant-baseline="hanging" fill="#333333">A &lt; B &amp; &quot;C&quot;</text>'
     )
+  })
+
+  it('lists the bundled stand-in after Georgia, so a renderer without Georgia still breaks lines alike', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: 'Once', fontFamily: 'Georgia, serif' }
+      }
+    ])
+    expect(exportNodeToSvg(document, 'label')).toContain('font-family="Georgia, Gelasio, serif"')
+  })
+
+  it('puts each line on its alphabetic baseline when the font metrics are known', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: { x: 0, y: 10, text: 'one\ntwo', fontSize: 20, lineHeight: 1.5 }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'label', {
+      getFontMetrics: () => ({ unitsPerEm: 1000, ascender: 800, descender: -200 })
+    })
+    expect(svg).not.toContain('dominant-baseline')
+    expect(svg).toContain('<tspan x="0" y="31">one</tspan><tspan x="0" y="61">two</tspan>')
+  })
+
+  it('names the family the caller resolves the list to', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: 'Once', fontFamily: 'Georgia' }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'label', { resolveFontFamily: () => 'designo-1234' })
+    expect(svg).toContain('font-family="designo-1234"')
   })
 
   it('splits multi-line text into tspans placed by absolute y, one line height apart', () => {
