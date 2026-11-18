@@ -111,8 +111,7 @@ export const getScreenshotTool = async (
   input: { fileId: string; nodeId?: string; scale?: number }
 ): Promise<ScreenshotImage> => {
   const svg = await exportSvgTool(context, input)
-  return {
-    mimeType: 'image/png',
-    data: rasterizeSvgToPng(svg, input.scale ?? 1).toString('base64')
-  }
+  const outcome = await (context.rasterize ?? rasterizeSvgToPng)(svg, input.scale ?? 1)
+  if (!outcome.ok) throw new Error(outcome.message)
+  return { mimeType: 'image/png', data: outcome.png.toString('base64') }
 }
