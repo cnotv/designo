@@ -39,7 +39,7 @@ feature that replaces it.
 
 | What the template faked                                                                                                          | The feature                                                                                                                              | Lands in                |
 | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Text options the MCP tools reject: wrapping, line height, alignment. Lines broken by hand                                        | Every node property in the MCP tool schemas, generated from the zod schema so they cannot drift                                          | MCP follow-up, first    |
+| Text set to wrap draws on one line in screenshots and SVG, so lines were broken by hand                                          | Wrapping in `get_screenshot` and `export_svg` through the same layout engine the editor uses                                             | MCP follow-up, first    |
 | Children placed relative to a frame landed outside it, and nothing said so                                                       | Create and update results carry a warning when a node lies outside its parent frame, and the tool text says which coordinates it takes   | MCP follow-up, first    |
 | Panels sized by guesswork, because text height is unknown                                                                        | A `measure_text` tool, and text boxes that grow to fit their text                                                                        | MCP follow-up, first    |
 | Georgia drawn as a sans-serif in screenshots, and no way to add a font                                                           | Bundled serif faces (a metric-compatible Georgia replacement), fonts added per account, and screenshots shaped the way the editor shapes | Text, then MCP          |
@@ -61,7 +61,7 @@ The order follows how much each item improves what a person sees, per week of wo
 2. **Blur, gradients, blend modes and shadows.** Hard-edged stacked ellipses are what make the washes in the
    template look flat. One blurred, gradient-filled shape replaces five of them. This is the larger half of the
    visual gap, and the harder half, since the WebGL editor and the SVG and PNG exporter must both draw it.
-3. **The MCP fixes**, a few days: every node property in the tool schemas, a warning for a node outside its
+3. **The MCP fixes**, a few days: wrapping in screenshots and SVG export, a warning for a node outside its
    frame, and `measure_text`.
 4. **Text styles**, then **pages, units and guides**, then images and master pages.
 5. **PDF last**, because it needs all of the above.
