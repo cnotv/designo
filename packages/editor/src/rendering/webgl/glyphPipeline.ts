@@ -100,8 +100,8 @@ export const createGlyphPipeline = (
   return {
     viewTarget: { program, uniforms },
     beginFrame: atlas.beginFrame,
-    drawTexts: (items: readonly SceneItem[], devicePixelsPerUnit, drawFallback) => {
-      const list = buildTextDrawList({ items, devicePixelsPerUnit, engine: runtime.engine, atlas })
+    drawTexts: (items: readonly SceneItem[], view, drawFallback) => {
+      const list = buildTextDrawList({ items, view, engine: runtime.engine, atlas })
       atlasTextures.applyChanges()
       gl.bindVertexArray(vertexArray)
       ensureIndices(list.vertices.length / GLYPH_BYTES)

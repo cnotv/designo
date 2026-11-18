@@ -109,10 +109,18 @@ export interface TextDrawList {
   steps: readonly TextDrawStep[]
 }
 
-export interface TextDrawListInput {
-  items: readonly SceneItem[]
+/** Where the scene is on the device's pixel grid. */
+export interface TextDrawView {
   /** Viewport scale times the device pixel ratio. */
   devicePixelsPerUnit: number
+  /** The viewport's pan in device pixels. */
+  deviceOffsetX: number
+  deviceOffsetY: number
+}
+
+export interface TextDrawListInput {
+  items: readonly SceneItem[]
+  view: TextDrawView
   engine: Pick<TextEngine, 'getNodeLayout'>
   atlas: Pick<GlyphAtlas, 'lookupGlyph' | 'pageWidth' | 'pageHeight'>
 }
@@ -128,7 +136,7 @@ export interface GlyphPipeline {
    */
   drawTexts: (
     items: readonly SceneItem[],
-    devicePixelsPerUnit: number,
+    view: TextDrawView,
     drawFallback: (node: DesignNode) => void
   ) => void
   getStats: () => { pages: number; glyphs: number }

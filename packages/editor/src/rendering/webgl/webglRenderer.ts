@@ -2,7 +2,7 @@ import type { DesignNode } from '@designo/core'
 import { prepareCanvas } from '../prepareCanvas.ts'
 import { SHAPE_INSTANCE_FLOATS, batchScene, packShapeInstances } from '../scene.ts'
 import type { TextRuntime } from '../text/types.ts'
-import type { Scene, SceneItem, SceneRenderer, ViewUniformTarget } from '../types.ts'
+import type { Scene, SceneItem, SceneRenderer, TextDrawView, ViewUniformTarget } from '../types.ts'
 import { linkProgram, readUniforms } from './glPrograms.ts'
 import { SHAPE_FRAGMENT_SHADER, SHAPE_VERTEX_SHADER } from './shaders.ts'
 import { createGlyphPipeline } from './glyphPipeline.ts'
@@ -62,6 +62,12 @@ const setViewUniforms = (
     gl.uniform2f(uniforms.u_size, scene.size.width, scene.size.height)
   })
 }
+
+const toTextDrawView = ({ viewport, pixelRatio }: Scene): TextDrawView => ({
+  devicePixelsPerUnit: viewport.scale * pixelRatio,
+  deviceOffsetX: viewport.offsetX * pixelRatio,
+  deviceOffsetY: viewport.offsetY * pixelRatio
+})
 
 /**
  * Makes the WebGL2 renderer: shapes as instanced quads whose edges a signed distance field draws,
@@ -136,7 +142,7 @@ export const createWebglRenderer = (
 
   const drawTexts = (items: readonly SceneItem[], scene: Scene): void => {
     if (glyphPipeline) {
-      glyphPipeline.drawTexts(items, scene.viewport.scale * scene.pixelRatio, (node) =>
+      glyphPipeline.drawTexts(items, toTextDrawView(scene), (node) =>
         textureText.draw(node, scene, state.frame)
       )
       return

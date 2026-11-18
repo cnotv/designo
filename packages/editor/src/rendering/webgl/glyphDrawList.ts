@@ -131,7 +131,21 @@ interface NodePlacement {
   sine: number
   /** The premultiplied fill with the node's opacity folded into its alpha, packed as four bytes. */
   packedColor: number
+  /** Where the screen's pixel grid is, for a node that is not turned; undefined for one that is. */
+  pixelGrid: PixelGrid | undefined
 }
+
+interface PixelGrid {
+  devicePixelsPerUnit: number
+  offsetX: number
+  offsetY: number
+}
+
+// A glyph drawn at its bucket's size lands on whole pixels only if its corner does, and a corner
+// between pixels blurs it by a pixel through the filter. Turned text cannot be snapped without
+// bending its glyphs, so only upright nodes are.
+const snapToPixel = (world: number, devicePixelsPerUnit: number, offset: number): number =>
+  (Math.round(world * devicePixelsPerUnit + offset) - offset) / devicePixelsPerUnit
 
 const toByte = (channel: number): number => Math.round(channel * UINT8_MAX)
 
@@ -166,8 +180,11 @@ const writeGlyphQuad = (
   const fromCenterY = glyph.y - atlasGlyph.bearingY * unit - halfHeight
   const width = rectangle.width * unit
   const height = rectangle.height * unit
-  const originX = centerX + fromCenterX * cosine - fromCenterY * sine
-  const originY = centerY + fromCenterX * sine + fromCenterY * cosine
+  const rotatedX = centerX + fromCenterX * cosine - fromCenterY * sine
+  const rotatedY = centerY + fromCenterX * sine + fromCenterY * cosine
+  const grid = placement.pixelGrid
+  const originX = grid ? snapToPixel(rotatedX, grid.devicePixelsPerUnit, grid.offsetX) : rotatedX
+  const originY = grid ? snapToPixel(rotatedY, grid.devicePixelsPerUnit, grid.offsetY) : rotatedY
   const left = rectangle.x / atlas.pageWidth
   const top = rectangle.y / atlas.pageHeight
   const right = (rectangle.x + rectangle.width) / atlas.pageWidth
@@ -204,10 +221,11 @@ const placeNode = (
   builder: VertexBuilder,
   node: DesignNode,
   layout: TextLayout,
-  devicePixelsPerUnit: number,
+  view: TextDrawListInput['view'],
   atlas: TextDrawListInput['atlas']
 ): boolean => {
   const { fontSize, width, height } = node
+  const { devicePixelsPerUnit } = view
   const zoomBucket = bucketGlyphZoom(fontSize * devicePixelsPerUnit)
   const rotation = (node.rotation * Math.PI) / HALF_TURN_DEGREES
   const placement: NodePlacement = {
@@ -219,7 +237,11 @@ const placeNode = (
     unitsPerBitmapPixel: fontSize / zoomBucket,
     cosine: Math.cos(rotation),
     sine: Math.sin(rotation),
-    packedColor: packColor(node.fill, node.opacity)
+    packedColor: packColor(node.fill, node.opacity),
+    pixelGrid:
+      node.rotation === 0
+        ? { devicePixelsPerUnit, offsetX: view.deviceOffsetX, offsetY: view.deviceOffsetY }
+        : undefined
   }
   const mark = builder.mark()
   const placedEverything = layout.lines.every((line) =>
@@ -236,23 +258,22 @@ const placeNode = (
  * glyph path cannot draw marked for the Canvas 2D texture path in their place in the paint order.
  * It asks the atlas for every glyph, so a glyph is rasterised the first time any node shows it at
  * a zoom bucket and never again.
- * @param input - The nodes, the device pixels per world unit, the text engine and the atlas.
+ * @param input - The nodes, the view they are drawn in, the text engine and the atlas.
  * @returns The vertex data and the steps to draw it with.
  */
 export const buildTextDrawList = ({
   items,
-  devicePixelsPerUnit,
+  view,
   engine,
   atlas
 }: TextDrawListInput): TextDrawList => {
   const builder = createVertexBuilder()
   items.forEach(({ node }) => {
     const layout =
-      node.fontSize * devicePixelsPerUnit <= MAX_GLYPH_PIXELS_PER_EM
+      node.fontSize * view.devicePixelsPerUnit <= MAX_GLYPH_PIXELS_PER_EM
         ? engine.getNodeLayout(node)
         : undefined
-    const isPlaced =
-      layout !== undefined && placeNode(builder, node, layout, devicePixelsPerUnit, atlas)
+    const isPlaced = layout !== undefined && placeNode(builder, node, layout, view, atlas)
     if (!isPlaced) builder.addFallback(node)
   })
   return builder.finish()

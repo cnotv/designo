@@ -41,13 +41,23 @@ What building the glyph atlas and the WebGL text path (the rest of #10) taught.
 - **One draw per run of glyphs on a page.** WebGL2 has no base instance, so a run starts by
   pointing the instance attributes at its offset with `vertexAttribPointer`. Texts in paint
   order that sit on different pages split into runs, so overlapping text never draws out of order.
-- **Profile-guided changes.** The first working version took 100 to 130 ms a frame at 5,000
-  labels in headless Chromium. Sending the rotation's cosine and sine instead of an angle (the
-  vertex shader took them per vertex), writing instances straight into one buffer instead of an
-  array per glyph, and making `batchScene` linear took it to about 85 ms. Reading the reactive
-  document was the rest: the scene reads nodes through Vue's proxy, and ten tracked reads per
-  glyph for 60,000 glyphs was a third of a frame in the profile. Copying a node's fields out once
-  per node took it to 50 to 65 ms.
+- **Instancing was the slow part, on software GL.** The first version drew each glyph as an
+  instance of a shared quad. At 5,000 labels (60,000 glyphs) frames took 750 ms at fit-to-screen
+  zoom against 160 ms for the per-node textures it replaced, and the profile showed the main thread
+  idle: one `drawArraysInstanced` took 1.1 s to finish. A bare WebGL2 test drawing 60,000 quads
+  of 3 pixels took 1.4 s instanced and 42 ms as indexed triangles with the same shader and
+  textures. Glyphs are now four vertices each (position, atlas position, colour) over one shared
+  index pattern, with the rotation applied on the CPU. Before that, sending the rotation's cosine
+  and sine instead of an angle, writing straight into one buffer and a linear `batchScene` took
+  the instanced version from 100 to 130 ms to about 85 ms in a profile, and copying a node's
+  fields out of the reactive document once per node took it to 50 to 65 ms; those stayed.
+- **Snapping to the pixel grid.** Measured against the browser's own text (`?renderer=canvas2d`)
+  on the recorded document at device pixel ratio 2, the 90th percentile of edge gradients was 188
+  against 197 at 100% and 171 against 192 at 400% before snapping, because a glyph corner between
+  two pixels is filtered across both. Snapping upright glyphs' corners to whole device pixels
+  gave 197 against 197 at 100%, 200 against 192 at 400% and 180 against 196 at 25%, where the text
+  is shown 2x below its 16-pixel bucket and a little soft. The mean absolute difference from the
+  browser's text is 0.2 grey levels of 255 at 25%, 1.1 at 100% and 2.2 at 400%.
 - **`batchScene` was quadratic** once texts could share a batch, because each item copied the
   batch before it. It is one pass now.
 - **Fonts for the browser's own text.** The editing box and the Canvas 2D fallback use the
@@ -61,3 +71,36 @@ What building the glyph atlas and the WebGL text path (the rest of #10) taught.
   Canvas 2D instead, in colour.
 - **Inter has no `fi` ligature**, so the recorded document shows kerning and Arabic's mandatory
   lam-alef ligature instead.
+
+## Frame times with 5,000 text layers
+
+The 5,000-layer document (a hundred columns of one-line labels, 16 and 20 pixel Inter, two
+colours), headless Chromium on software GL (SwiftShader), 1400 by 900 viewport. Each cell is the
+median and 95th percentile frame time in ms over 90 frames of wheel input, panning or zooming,
+after the document had loaded and fonts were ready. "Fit" shows every label at about 5%; 25% and
+100% show about 2,300 and 150 of them. The earlier path rasterised each text node into a texture.
+
+| Device pixel ratio 1 | per-node textures | glyph atlas |
+| -------------------- | ----------------- | ----------- |
+| fit, pan             | 42 / 248          | 17 / 85     |
+| fit, zoom            | 162 / 357         | 49 / 80     |
+| 25%, pan             | 182 / 237         | 17 / 20     |
+| 25%, zoom            | 133 / 243         | 19 / 31     |
+| 100%, pan            | 17 / 36           | 17 / 18     |
+| 100%, zoom           | 17 / 23           | 17 / 24     |
+
+| Device pixel ratio 2 | per-node textures | glyph atlas |
+| -------------------- | ----------------- | ----------- |
+| fit, pan             | 48 / 228          | 19 / 60     |
+| fit, zoom            | 203 / 2478        | 43 / 70     |
+| 25%, pan             | 56 / 112          | 17 / 32     |
+| 25%, zoom            | 34 / 198          | 32 / 60     |
+| 100%, pan            | 19 / 92           | 17 / 21     |
+| 100%, zoom           | 18 / 46           | 23 / 39     |
+
+The per-node path pays again at every zoom bucket, because each of the thousands of visible
+labels is rasterised and uploaded anew; the atlas draws a glyph once per bucket however many labels
+show it. Loading the document costs the same either way (about 22 s of one long frame in this
+environment, almost all of it the layers panel and the document, not the text). The numbers
+are relative: software GL is far slower than a GPU, and the first run of the glyph path, with
+instances, was slower than the old one until it was changed to triangles.

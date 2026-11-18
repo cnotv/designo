@@ -119,12 +119,16 @@ touch a canvas or a GL context lives in `packages/editor/src/rendering/text/` an
   shown at or within a factor of two of it, which plain coverage handles, and the glyph path then
   needs no second shader. The measured comparison with the browser's own text is in the journey
   note.
-- **Draw.** `buildTextDrawList` turns a run of text nodes into a buffer of 14 floats per glyph (the
-  corner turned with the node, its size, the rotation's cosine and sine, the atlas rectangle and
-  the premultiplied fill with the node's opacity) and a list of steps: one instanced draw per run
+- **Draw.** `buildTextDrawList` turns a run of text nodes into vertex data, four vertices a glyph
+  (world position with the node's rotation already applied, atlas position as 16-bit integers, the
+  premultiplied fill with the node's opacity as four bytes), and a list of steps: one draw per run
   of glyphs on the same atlas page, in paint order, and a fallback step for each node the glyph
-  path cannot draw. `createAtlasTextures` applies the atlas's evictions and uploads to the GPU
-  textures each frame.
+  path cannot draw. Quads are plain indexed triangles over one shared index pattern, not
+  instances: software GL (headless Chromium, machines with no GPU) drew 60,000 instanced quads
+  1.4 s a frame and the same quads as triangles 42 ms. An upright node's glyph corners are snapped
+  to the device's pixel grid, so a glyph drawn at its bucket's size is not filtered across two
+  pixels; turned text is not snapped. `createAtlasTextures` applies the atlas's evictions and
+  uploads to the GPU textures each frame.
 - **Fallback.** A node is drawn the Canvas 2D way, as a texture of its own, while its fonts or
   HarfBuzz are still loading (the scene draws again when they arrive), when its text holds a
   character no bundled font covers (emoji, CJK, symbols: the browser's own fonts draw it, in

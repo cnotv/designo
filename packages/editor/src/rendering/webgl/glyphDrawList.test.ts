@@ -88,8 +88,14 @@ const readQuads = (list: TextDrawList) => {
 const run = (
   fixture: ReturnType<typeof createFixture>,
   items: SceneItem[],
-  devicePixelsPerUnit = 2
-) => buildTextDrawList({ items, devicePixelsPerUnit, ...fixture })
+  devicePixelsPerUnit = 2,
+  offset = { x: 0, y: 0 }
+) =>
+  buildTextDrawList({
+    items,
+    view: { devicePixelsPerUnit, deviceOffsetX: offset.x, deviceOffsetY: offset.y },
+    ...fixture
+  })
 
 describe('buildTextDrawList', () => {
   it('puts one quad per glyph at the glyph origin plus the bitmap bearings, scaled from the bucket to the font size', () => {
@@ -148,6 +154,26 @@ describe('buildTextDrawList', () => {
     const fixture = createFixture(layoutOf(glyph(7, 0)))
     const [quad] = readQuads(run(fixture, [item({ fill: null })]))
     expect(quad?.[0]?.color).toEqual([0, 0, 0, 255])
+  })
+
+  it('puts an upright glyph on whole device pixels, so it is not filtered across two', () => {
+    const fixture = createFixture(layoutOf(glyph(7, 3.2)), () =>
+      atlasGlyph({ bearingX: 0, bearingY: 0 })
+    )
+    const [quad] = readQuads(run(fixture, [item({ x: 100.1, y: 50.3 })], 2, { x: 0.4, y: 0.7 }))
+    const corner = quad?.[0]
+    // Device position (world * 2 + offset) is a whole number: 2 * x + 0.4 and 2 * y + 0.7.
+    expect(((corner?.x ?? 0) * 2 + 0.4) % 1).toBeCloseTo(0, 4)
+    expect(((corner?.y ?? 0) * 2 + 0.7) % 1).toBeCloseTo(0, 4)
+  })
+
+  it('leaves a turned glyph where it is, since moving its corners would bend it', () => {
+    const fixture = createFixture(layoutOf(glyph(7, 3.2)), () =>
+      atlasGlyph({ bearingX: 0, bearingY: 0 })
+    )
+    const [quad] = readQuads(run(fixture, [item({ rotation: 30 })], 2, { x: 0.4, y: 0.7 }))
+    const device = (quad?.[0]?.x ?? 0) * 2 + 0.4
+    expect(Math.abs(device - Math.round(device))).toBeGreaterThan(0.001)
   })
 
   it('turns every corner around the node centre with the node', () => {
@@ -271,7 +297,7 @@ describe('buildTextDrawList with the real atlas', () => {
       atlas.beginFrame()
       return buildTextDrawList({
         items: Array.from({ length: count }, (_, index) => item({ id: `n${index}` })),
-        devicePixelsPerUnit,
+        view: { devicePixelsPerUnit, deviceOffsetX: 0, deviceOffsetY: 0 },
         engine,
         atlas
       })
@@ -331,7 +357,7 @@ describe('buildTextDrawList while the atlas evicts', () => {
       atlas.beginFrame()
       return buildTextDrawList({
         items: ids.map((id) => item({ id })),
-        devicePixelsPerUnit: 2,
+        view: { devicePixelsPerUnit: 2, deviceOffsetX: 0, deviceOffsetY: 0 },
         engine,
         atlas
       })
