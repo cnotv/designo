@@ -135,7 +135,8 @@ export const createProductionServer = (options: ProductionServerOptions): Server
         oauthStore: createOAuthStore(options.dataDirectory, clock),
         authorizationCodes: createAuthorizationCodeStore(clock),
         registrationLimiter: createRateLimiter(REGISTRATION_LIMIT, clock),
-        tokenLimiter: createRateLimiter(TOKEN_LIMIT, clock)
+        tokenLimiter: createRateLimiter(TOKEN_LIMIT, clock),
+        rasterize: options.rasterize
       }
     : undefined
   return createServer((request, response) => {

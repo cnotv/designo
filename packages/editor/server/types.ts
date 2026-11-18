@@ -10,6 +10,7 @@ import type {
   RateLimiter,
   ReplayGuard
 } from '@designo/auth'
+import type { Rasterize } from '@designo/mcp'
 
 export type RequestHandler = (request: IncomingMessage, response: ServerResponse) => void
 
@@ -19,6 +20,8 @@ interface ProductionServerBaseOptions {
   /** Serves the built editor, which is public so the sign-in page can load. */
   serveStatic: RequestHandler
   clock?: Clock
+  /** Draws screenshots for the MCP endpoint; left out, it renders in a child process. Tests replace it. */
+  rasterize?: Rasterize
 }
 
 interface SignInOffOptions {
@@ -49,6 +52,7 @@ export interface AuthContext {
   authorizationCodes: AuthorizationCodeStore
   registrationLimiter: RateLimiter
   tokenLimiter: RateLimiter
+  rasterize?: Rasterize
 }
 
 /** What the consent page shows and sends back. */
