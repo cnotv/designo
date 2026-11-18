@@ -100,7 +100,7 @@ after the document had loaded and fonts were ready. "Fit" shows every label at a
 
 The per-node path pays again at every zoom bucket, because each of the thousands of visible
 labels is rasterised and uploaded anew; the atlas draws a glyph once per bucket however many labels
-show it. Loading the document costs the same either way (about 22 s of one long frame in this
-environment, almost all of it the layers panel and the document, not the text). The numbers
+show it. Loading the document costs the same either way: one long frame of about 22 s in this
+environment, in both paths. The numbers
 are relative: software GL is far slower than a GPU, and the first run of the glyph path, with
 instances, was slower than the old one until it was changed to triangles.
