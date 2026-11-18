@@ -6,6 +6,8 @@ import { createCanvas2dRenderer } from '../rendering/canvas2dRenderer.ts'
 import { drawOverlay } from '../rendering/drawOverlay.ts'
 import { prepareCanvas } from '../rendering/prepareCanvas.ts'
 import { buildScene, createSceneSource } from '../rendering/scene.ts'
+import { getBundledFontCssFamily } from '../rendering/text/fontFamilyList.ts'
+import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 import type { SceneRenderer } from '../rendering/types.ts'
 import { createWebglRenderer } from '../rendering/webgl/webglRenderer.ts'
 import EditorContextMenu from './EditorContextMenu.vue'
@@ -19,8 +21,16 @@ const renderer = shallowRef<SceneRenderer>()
 // `?renderer=canvas2d` forces the fallback, to compare the two or work around a driver bug.
 const prefersCanvas2d = new URLSearchParams(window.location.search).get('renderer') === 'canvas2d'
 
+const textRuntime = getSharedTextRuntime()
+
 const createRenderer = (canvas: HTMLCanvasElement): SceneRenderer | undefined =>
-  (prefersCanvas2d ? undefined : createWebglRenderer(canvas)) ?? createCanvas2dRenderer(canvas)
+  (prefersCanvas2d ? undefined : createWebglRenderer(canvas, textRuntime)) ??
+  createCanvas2dRenderer(canvas)
+
+// Fonts load after the first frame that needs them, which draws the text the Canvas 2D way; this
+// counts their arrivals so the scene is drawn again with the glyph path.
+const fontsLoaded = ref(0)
+const atlasStats = ref<{ pages: number; glyphs: number }>()
 
 // The index and paint order are rebuilt only when the document changes, not on pan or zoom.
 const sceneSource = computed(() => {
@@ -32,6 +42,7 @@ const readCssColor = (canvas: HTMLCanvasElement, name: string, fallback: string)
   getComputedStyle(canvas).getPropertyValue(name).trim() || fallback
 
 const drawScene = (): void => {
+  void fontsLoaded.value
   const source = sceneSource.value
   const size = editor.canvasSize.value
   if (!renderer.value || !source || size.width === 0) return
@@ -42,6 +53,7 @@ const drawScene = (): void => {
     size,
     pixelRatio: window.devicePixelRatio
   })
+  atlasStats.value = renderer.value.getTextStats?.()
 }
 
 const drawMarks = (): void => {
@@ -88,8 +100,25 @@ const onContextRestored = (): void => {
   if (sceneCanvas.value) renderer.value = createRenderer(sceneCanvas.value)
 }
 
+const stopListeningForFonts = textRuntime.engine.subscribe(() => {
+  fontsLoaded.value += 1
+})
+
+// The browser's copies of the fonts, which the Canvas 2D path draws with, load when first used and
+// are drawn with a stand-in until then; asking now and drawing again on arrival avoids that.
+const onBrowserFontsLoaded = (): void => {
+  fontsLoaded.value += 1
+}
+const loadBrowserFonts = (): void => {
+  document.fonts.addEventListener('loadingdone', onBrowserFontsLoaded)
+  void document.fonts.load(
+    `16px '${getBundledFontCssFamily(textRuntime.registry.catalog.defaultFontId)}'`
+  )
+}
+
 onMounted(() => {
   if (!sceneCanvas.value || !overlayCanvas.value) return
+  loadBrowserFonts()
   renderer.value = createRenderer(sceneCanvas.value)
   sceneCanvas.value.addEventListener('webglcontextlost', onContextLost)
   sceneCanvas.value.addEventListener('webglcontextrestored', onContextRestored)
@@ -97,6 +126,8 @@ onMounted(() => {
   overlayCanvas.value.addEventListener('wheel', onWheel, { passive: false })
 })
 onBeforeUnmount(() => {
+  stopListeningForFonts()
+  document.fonts.removeEventListener('loadingdone', onBrowserFontsLoaded)
   resizeObserver.disconnect()
   overlayCanvas.value?.removeEventListener('wheel', onWheel)
   sceneCanvas.value?.removeEventListener('webglcontextlost', onContextLost)
@@ -114,6 +145,8 @@ watchEffect(drawMarks)
         ref="sceneCanvas"
         class="pointer-events-none absolute inset-0 block size-full"
         :data-renderer="renderer?.kind"
+        :data-atlas-pages="atlasStats?.pages"
+        :data-atlas-glyphs="atlasStats?.glyphs"
         data-testid="design-scene"
       />
       <canvas

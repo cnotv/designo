@@ -3,6 +3,30 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* The fonts the canvas shapes text with, under names of their own so the app's own use of Inter
+   is untouched. Text the browser draws itself, the editing box and the Canvas 2D fallback, lists
+   them first so it matches the shaped text. */
+@font-face {
+  font-family: 'designo-inter';
+  src: url('/fonts/Inter-Regular.subset.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'designo-noto-sans-arabic';
+  src: url('/fonts/NotoSansArabic-Regular.subset.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'designo-noto-sans-hebrew';
+  src: url('/fonts/NotoSansHebrew-Regular.subset.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'designo-noto-sans-devanagari';
+  src: url('/fonts/NotoSansDevanagari-Regular.subset.ttf') format('truetype');
+  font-display: swap;
+}
+
 /* shadcn-vue's neutral theme, with Figma's blue as the accent that marks selection. */
 :root {
   --radius: 0.5rem;

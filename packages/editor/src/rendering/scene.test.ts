@@ -14,6 +14,7 @@ import {
   packShapeInstances,
   parseHexColor
 } from './scene.ts'
+import type { SceneItem } from './types.ts'
 
 const build = (): DesignDocument => {
   const result = applyOperations(createDocument('file', 'File', 'page'), [
@@ -126,6 +127,23 @@ describe('batchScene', () => {
       'text:label',
       'shapes:after',
       'shapes:top'
+    ])
+  })
+
+  it('groups consecutive texts that share clipping into one batch, for one pass over the atlas', () => {
+    const text = (id: string, clipIds: string[]): SceneItem => ({
+      node: { ...nodeById('label'), id },
+      clipFrames: clipIds.map((clipId) => nodeById(clipId))
+    })
+    const batches = batchScene([
+      text('one', ['frame']),
+      text('two', ['frame']),
+      text('three', []),
+      text('four', [])
+    ])
+    expect(batches.map((batch) => `${batch.kind}:${ids(batch.items).join(',')}`)).toEqual([
+      'text:one,two',
+      'text:three,four'
     ])
   })
 })
