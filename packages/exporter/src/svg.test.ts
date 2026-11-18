@@ -288,19 +288,63 @@ describe('exportNodeToSvg', () => {
     )
   })
 
-  it('splits multi-line text into tspans', () => {
+  it('splits multi-line text into tspans placed by absolute y, one line height apart', () => {
     const document = build([
       {
         kind: 'create',
         id: 'label',
         type: 'text',
         parentId: 'page',
-        properties: { text: 'one\ntwo', fontSize: 10 }
+        properties: { y: 5, text: 'one\ntwo', fontSize: 10 }
       }
     ])
     const svg = exportNodeToSvg(document, 'label')
-    expect(svg).toContain('<tspan x="0" dy="0">one</tspan>')
-    expect(svg).toContain('<tspan x="0" dy="12">two</tspan>')
+    expect(svg).toContain('<tspan x="0" y="5">one</tspan>')
+    expect(svg).toContain('<tspan x="0" y="17">two</tspan>')
+  })
+
+  // An empty tspan contributes nothing, so a line gap carried by its dy is lost: the line after
+  // a blank line must say where it is itself.
+  it('keeps a blank line by placing the line after it two line heights down', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: 'one\n\nthree', fontSize: 10 }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'label')
+    expect(svg).toContain('<tspan x="0" y="0">one</tspan>')
+    expect(svg).toContain('<tspan x="0" y="24">three</tspan>')
+    expect(svg).not.toContain('<tspan x="0" y="12">')
+  })
+
+  it('keeps a leading blank line', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: '\nlate', fontSize: 10 }
+      }
+    ])
+    expect(exportNodeToSvg(document, 'label')).toContain('<tspan x="0" y="12">late</tspan>')
+  })
+
+  it('drops characters XML cannot hold, which would make the whole SVG unreadable', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: 'a\u0001b\u000bc\ufffed', name: 'x\u0000y' }
+      }
+    ])
+    expect(exportNodeToSvg(document, 'label')).toContain('>abcd</text>')
   })
 
   it('exports a page as the bounds of its content and rejects unknown nodes', () => {

@@ -5,12 +5,36 @@ import { boundsOverlap, getPaintReach, intersectBounds, toNodeSpace } from './vi
 const LINE_HEIGHT_FACTOR = 1.2
 const DEGREES_TO_RADIANS = Math.PI / 180
 const COORDINATE_DECIMALS = 3
+const TAB = 0x9
+const LINE_FEED = 0xa
+const CARRIAGE_RETURN = 0xd
+const FIRST_PRINTABLE = 0x20
+const LAST_BEFORE_SURROGATES = 0xd7ff
+const FIRST_AFTER_SURROGATES = 0xe000
+const LAST_BASIC_CHARACTER = 0xfffd
+const FIRST_SUPPLEMENTARY_CHARACTER = 0x10000
 const EMPTY_PAGE_BOUNDS: Bounds = { x: 0, y: 0, width: 1, height: 1 }
 
 const formatNumber = (value: number): string => String(Number(value.toFixed(COORDINATE_DECIMALS)))
 
+// XML 1.0 allows tab, newline, carriage return and the ranges below; anything else, such as a
+// control character an agent pasted in, makes the parser refuse the whole document.
+const isXmlCharacter = (character: string): boolean => {
+  const codePoint = character.codePointAt(0) ?? 0
+  return (
+    codePoint === TAB ||
+    codePoint === LINE_FEED ||
+    codePoint === CARRIAGE_RETURN ||
+    (codePoint >= FIRST_PRINTABLE && codePoint <= LAST_BEFORE_SURROGATES) ||
+    (codePoint >= FIRST_AFTER_SURROGATES && codePoint <= LAST_BASIC_CHARACTER) ||
+    codePoint >= FIRST_SUPPLEMENTARY_CHARACTER
+  )
+}
+
 const escapeXml = (value: string): string =>
-  value
+  [...value]
+    .filter(isXmlCharacter)
+    .join('')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -102,14 +126,19 @@ const renderEllipse = (node: DesignNode): string => {
   ])}/>`
 }
 
+// Each line sets its own y instead of a dy from the line before: an empty tspan contributes
+// nothing, so a blank line carried by dy would vanish and the paragraphs would close up.
 const renderTextContent = (node: DesignNode): string => {
   const lines = node.text.split('\n')
   if (lines.length === 1) return escapeXml(node.text)
-  const lineHeight = formatNumber(node.fontSize * LINE_HEIGHT_FACTOR)
+  const lineHeight = node.fontSize * LINE_HEIGHT_FACTOR
   return lines
-    .map(
-      (line, index) =>
-        `<tspan x="${formatNumber(node.x)}" dy="${index === 0 ? '0' : lineHeight}">${escapeXml(line)}</tspan>`
+    .flatMap((line, index) =>
+      line === ''
+        ? []
+        : [
+            `<tspan x="${formatNumber(node.x)}" y="${formatNumber(node.y + index * lineHeight)}">${escapeXml(line)}</tspan>`
+          ]
     )
     .join('')
 }
