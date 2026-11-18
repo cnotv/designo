@@ -133,6 +133,41 @@ describe('export tools', () => {
     expect(readPngSize(image.data)).toEqual({ width: 40, height: 20 })
   })
 
+  it('get_screenshot draws Georgia text in the bundled serif, not the font a node falls back to', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Fonts' })
+    const addLabel = (id: string, fontFamily: string) =>
+      applyOperationsTool(context, {
+        fileId,
+        operations: [
+          {
+            kind: 'create',
+            id,
+            type: 'text',
+            parentId: pageId,
+            properties: {
+              x: 0,
+              y: 0,
+              width: 200,
+              height: 40,
+              text: 'Once upon',
+              fontSize: 24,
+              fontFamily
+            }
+          }
+        ]
+      })
+    await addLabel('georgia', 'Georgia')
+    await addLabel('gelasio', 'Gelasio')
+    await addLabel('inter', 'Inter')
+    const [georgia, gelasio, inter] = await Promise.all(
+      ['georgia', 'gelasio', 'inter'].map((nodeId) =>
+        getScreenshotTool(context, { fileId, nodeId })
+      )
+    )
+    expect(georgia?.data).toBe(gelasio?.data)
+    expect(georgia?.data).not.toBe(inter?.data)
+  })
+
   it('get_screenshot scales the output', async () => {
     const { fileId } = await createSquareFile()
     const image = await getScreenshotTool(context, { fileId, nodeId: 'square', scale: 2 })

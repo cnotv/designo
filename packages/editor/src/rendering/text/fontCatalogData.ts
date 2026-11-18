@@ -5,7 +5,7 @@ import type { FontCatalogData } from './types.ts'
 const NEUTRAL_RANGES = ['U+0020-0040', 'U+005B-0060', 'U+007B-007E', 'U+00A0']
 
 /**
- * The fonts the editor ships. Inter covers Latin, Greek and Cyrillic; the Noto Sans subsets cover
+ * The fonts the editor ships. Inter covers Latin, Greek and Cyrillic. Gelasio is a serif for Latin and the stand-in for Georgia. The Noto Sans subsets cover
  * the scripts Inter lacks and load only when a text uses them. The ranges are what each file was
  * subset to, and a test checks the files map nothing outside them.
  */
@@ -22,6 +22,26 @@ export const BUNDLED_FONT_CATALOG_DATA: FontCatalogData = {
         'U+0300-036F',
         'U+0370-03FF',
         'U+0400-052F',
+        'U+1E00-1EFF',
+        'U+2000-206F',
+        'U+20A0-20CF',
+        'U+2116',
+        'U+2122',
+        'U+2190-2199',
+        'U+2212',
+        'U+2215',
+        'U+2260-2265',
+        'U+25CC'
+      ]
+    },
+    {
+      id: 'gelasio',
+      family: 'Gelasio',
+      url: 'fonts/Gelasio-Regular.subset.ttf',
+      coverage: [
+        'U+0020-007E',
+        'U+00A0-024F',
+        'U+0300-036F',
         'U+1E00-1EFF',
         'U+2000-206F',
         'U+20A0-20CF',

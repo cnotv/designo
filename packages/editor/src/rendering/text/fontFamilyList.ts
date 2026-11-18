@@ -1,3 +1,4 @@
+import { withFontSubstitutes } from '@designo/core'
 import type { FontCatalog } from './types.ts'
 
 const QUOTES_PATTERN = /^["']|["']$/g
@@ -22,7 +23,7 @@ export const parseFontFamilyList = (list: string): string[] =>
  * @returns The id of a catalog font.
  */
 export const pickPrimaryFontId = (list: string, catalog: FontCatalog): string => {
-  const names = parseFontFamilyList(list).map((family) => family.toLowerCase())
+  const names = parseFontFamilyList(withFontSubstitutes(list)).map((family) => family.toLowerCase())
   const named = names
     .map((name) => catalog.fonts.find((font) => font.family.toLowerCase() === name))
     .find((font) => font !== undefined)

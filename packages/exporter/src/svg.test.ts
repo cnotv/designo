@@ -288,6 +288,19 @@ describe('exportNodeToSvg', () => {
     )
   })
 
+  it('lists the bundled stand-in after Georgia, so a renderer without Georgia still breaks lines alike', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: 'Once', fontFamily: 'Georgia, serif' }
+      }
+    ])
+    expect(exportNodeToSvg(document, 'label')).toContain('font-family="Georgia, Gelasio, serif"')
+  })
+
   it('splits multi-line text into tspans placed by absolute y, one line height apart', () => {
     const document = build([
       {

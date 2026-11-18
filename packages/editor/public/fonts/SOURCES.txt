@@ -1,4 +1,4 @@
-Fonts bundled with the editor. Each is an OFL 1.1 font; the licence text sits beside it.
+Fonts bundled with the editor. The screenshot tool in the MCP server reads this same folder. Each is an OFL 1.1 font; the licence text sits beside it.
 
 Inter-Regular.subset.ttf
   Inter 4.1 Regular, from the rsms/inter release v4.1 (extras/ttf/Inter-Regular.ttf).
@@ -11,6 +11,12 @@ NotoSansDevanagari-Regular.subset.ttf
   instantiated at weight 400 and width 100.
   Licences: OFL-NotoSansArabic.txt, OFL-NotoSansHebrew.txt, OFL-NotoSansDevanagari.txt
 
-All four were reduced with fonttools (pyftsubset --no-hinting --desubroutinize) to the code points
+Gelasio-Regular.subset.ttf
+  Gelasio Regular, from the variable font in google/fonts (ofl/gelasio/Gelasio[wght].ttf),
+  instantiated at weight 400. A serif with the same letter widths as Georgia, so it stands in for it:
+  a node set in Georgia breaks its lines in the same places whichever font draws it.
+  Licence: OFL-Gelasio.txt
+
+All five were reduced with fonttools (pyftsubset --no-hinting --desubroutinize) to the code points
 listed in src/rendering/text/fontCatalogData.ts, keeping the layout features shaping needs, and
 are raw sfnt TrueType because HarfBuzz does not read WOFF2.

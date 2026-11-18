@@ -21,6 +21,27 @@ const expectFailure = (outcome: Awaited<ReturnType<typeof rasterizeSvgToPng>>): 
   return outcome.message
 }
 
+const textSvg = (fontFamily: string): string =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="260" height="60" viewBox="0 0 260 60"><rect width="260" height="60" fill="#ffffff"/><text x="8" y="40" font-family="${fontFamily}" font-size="28" fill="#000000">Handgloves 123</text></svg>`
+
+const drawText = async (fontFamily: string): Promise<string> => {
+  const outcome = await rasterizeSvgToPng(textSvg(fontFamily), 1)
+  if (!outcome.ok) throw new Error(outcome.message)
+  return outcome.png.toString('base64')
+}
+
+describe('the fonts a screenshot draws with', () => {
+  it('draws Gelasio, Inter and an unknown family as three different faces', async () => {
+    const [serif, sans, unknown] = await Promise.all([
+      drawText('Gelasio'),
+      drawText('Inter'),
+      drawText('No Such Family')
+    ])
+    expect(serif).not.toBe(sans)
+    expect(unknown).toBe(sans)
+  })
+})
+
 describe('rasterizeSvgToPng', () => {
   it('draws an SVG to a PNG in a child process', async () => {
     const outcome = await rasterizeSvgToPng(SQUARE_SVG, 2)

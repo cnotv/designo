@@ -131,8 +131,11 @@ Prefer `apply_ops` for layouts: give `create` operations your own ids and later 
 the same batch can nest inside them. If any operation fails, nothing is saved.
 
 `get_screenshot` lets an agent check its own work. It draws SVG in Node with resvg, no browser, so
-text is plain SVG text with no shaping and differs slightly from the editor's canvas. It uses the
-fonts installed on the machine running the server.
+text is plain SVG text with no shaping and differs slightly from the editor's canvas. It draws with
+the fonts the editor ships (Inter, Gelasio and the Noto Sans subsets), never with the fonts installed
+on the machine running the server, so a screenshot looks the same everywhere. A node whose
+`fontFamily` names Georgia draws in Gelasio, which has the same letter widths; a family Designo does
+not ship draws in Inter.
 
 ### Render limits and errors
 
@@ -150,7 +153,7 @@ A crash reads `Rendering crashed (SIGABRT). ...` and any other failure, such as 
 cannot read, `Rendering failed: <reason>`. The fix for a size error is a lower `scale` or a smaller
 `nodeId`: a whole page of a big file can need more than 64 megapixels at scale 1. Drawing costs
 about 9 bytes per pixel and 33 ms per megapixel; a page of 57 megapixels measured 520 MB and
-1.9 s. Starting the child process adds about 100 ms per call (most of it loading the system fonts,
+1.9 s. Starting the child process adds about 100 ms per call (most of it loading the fonts,
 which the old in-process call did on every render too).
 
 The exported SVG leaves out what cannot show: a child that lies wholly outside its frame (a frame

@@ -26,6 +26,10 @@ describe('pickPrimaryFontId', () => {
     expect(pickPrimaryFontId('Comic Sans MS, cursive', BUNDLED_FONT_CATALOG)).toBe('inter')
   })
 
+  it('uses the bundled serif for Georgia, whose letter widths it shares', () => {
+    expect(pickPrimaryFontId('Georgia, serif', BUNDLED_FONT_CATALOG)).toBe('gelasio')
+  })
+
   it('uses the first listed family the registry has, whatever the case', () => {
     expect(pickPrimaryFontId('Papyrus, noto sans hebrew, Inter', BUNDLED_FONT_CATALOG)).toBe(
       'noto-sans-hebrew'
@@ -36,7 +40,7 @@ describe('pickPrimaryFontId', () => {
 describe('createBrowserFontStack', () => {
   it('lists the bundled fonts with the primary first, then the node list', () => {
     expect(createBrowserFontStack('Inter, system-ui, sans-serif', BUNDLED_FONT_CATALOG)).toBe(
-      `'designo-inter', 'designo-noto-sans-arabic', 'designo-noto-sans-hebrew', 'designo-noto-sans-devanagari', Inter, system-ui, sans-serif`
+      `'designo-inter', 'designo-gelasio', 'designo-noto-sans-arabic', 'designo-noto-sans-hebrew', 'designo-noto-sans-devanagari', Inter, system-ui, sans-serif`
     )
   })
 

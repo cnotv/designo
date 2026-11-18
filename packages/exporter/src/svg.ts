@@ -2,6 +2,7 @@ import {
   DEFAULT_NODE_PROPERTIES,
   getChildren,
   getPaintOrder,
+  withFontSubstitutes,
   type DesignDocument,
   type DesignNode,
   type TextAlign
@@ -173,7 +174,7 @@ const renderText = (node: DesignNode): string =>
   `<text ${joinAttributes([
     `x="${formatNumber(getTextAnchorX(node))}"`,
     `y="${formatNumber(node.y + getFirstLineOffset(node))}"`,
-    `font-family="${escapeXml(node.fontFamily)}"`,
+    `font-family="${escapeXml(withFontSubstitutes(node.fontFamily))}"`,
     `font-size="${formatNumber(node.fontSize)}"`,
     ...textAnchorAttributes(node),
     'dominant-baseline="hanging"',
