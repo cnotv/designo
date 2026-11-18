@@ -1,4 +1,4 @@
-import type { TextAlign } from '@designo/core'
+import type { DesignNode, TextAlign } from '@designo/core'
 
 export type TextDirection = 'ltr' | 'rtl'
 
@@ -104,6 +104,8 @@ export interface FontRegistry {
   catalog: FontCatalog
   /** Loads every font the text needs, and the default. Fonts load once and are shared. */
   loadFontsForText: (text: string) => Promise<void>
+  /** Loads one font by id, for a text whose family list names it. */
+  loadFont: (fontId: string) => Promise<void>
   /** The font once it has loaded; undefined while it is still being fetched. */
   getFont: (fontId: string) => ShapingFont | undefined
 }
@@ -134,6 +136,12 @@ export interface BreakChunk {
   /** Where the trailing spaces begin; equals `end` when there are none. */
   contentEnd: number
   end: number
+}
+
+/** A chunk's widths, which is all that filling lines needs to know about it. */
+export interface MeasuredWidths {
+  contentWidth: number
+  trailingWidth: number
 }
 
 export interface TextLayoutInput {
@@ -298,4 +306,95 @@ export interface AtlasPagePool {
   /** Records which glyph a page now holds, so clearing it can name them. */
   addGlyph: (pageIndex: number, glyphId: string) => void
   getPageCount: () => number
+}
+
+/** A canvas transform as the six numbers `setTransform` takes. */
+export type CanvasTransform = readonly [
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number
+]
+
+/** How to draw one outline into a bitmap at a zoom bucket. */
+export interface GlyphRasterPlan {
+  width: number
+  height: number
+  /** Bitmap pixels per font unit. */
+  scale: number
+  /** The bitmap's left edge, in pixels from the glyph origin. */
+  bearingX: number
+  /** The bitmap's top edge, in pixels above the baseline. */
+  bearingY: number
+  /** Maps the outline's font units, y up, to bitmap pixels, y down. */
+  transform: CanvasTransform
+}
+
+/** Fills an outline, given as SVG path data, into one byte of coverage per pixel. */
+export type CoverageDrawer = (plan: GlyphRasterPlan, pathData: string) => Uint8Array
+
+/** What a text layout depends on; two nodes with the same request share one layout. */
+export interface TextLayoutRequest extends TextLayoutInput {
+  /** The node's CSS-like family list, which picks the primary font. */
+  fontFamily: string
+}
+
+export interface TextEngineOptions {
+  registry: FontRegistry
+  /** Whether WebAssembly exists, which HarfBuzz needs; false keeps every text on the fallback. */
+  isShapingAvailable?: () => boolean
+  /** How many layouts to keep before the oldest are dropped. */
+  layoutLimit?: number
+}
+
+/** Lays text out with HarfBuzz, loading fonts as texts ask for them, and remembers the results. */
+export interface TextEngine {
+  /**
+   * The layout of a request. Undefined while its fonts are still loading, when it holds a
+   * character no bundled font covers, or where shaping is unavailable: the caller draws those
+   * with the Canvas 2D fallback. Asking starts the font load and, once it ends, the listeners run.
+   */
+  getLayout: (request: TextLayoutRequest) => TextLayout | undefined
+  /** `getLayout` for a node, and cheaper on a node object it has seen. */
+  getNodeLayout: (node: DesignNode) => TextLayout | undefined
+  /** The layout when it is cached or its fonts are loaded; asking never loads anything. */
+  peekLayout: (request: TextLayoutRequest) => TextLayout | undefined
+  /** Calls the listener when fonts finish loading, so a canvas can draw again. */
+  subscribe: (listener: () => void) => () => void
+}
+
+export interface FallbackTextInput {
+  text: string
+  /** The width of a fixed-width box to wrap in; undefined lets each line run as long as it is. */
+  wrapWidth: number | undefined
+  alignment: TextAlign
+  fontSize: number
+  /** The distance between lines, as a multiple of the font size. */
+  lineHeight: number
+  /** The font's ascent and descent at this size, which place the baseline in the line. */
+  ascent: number
+  descent: number
+}
+
+export interface FallbackLine {
+  text: string
+  /** Where the line starts, from the box's left edge, for its alignment. */
+  x: number
+  /** The line's advance without its hanging spaces. */
+  width: number
+  baselineY: number
+}
+
+export interface FallbackTextLayout {
+  lines: readonly FallbackLine[]
+  width: number
+  height: number
+}
+
+/** The fonts and the engine that lays text out with them. */
+export interface TextRuntime {
+  registry: FontRegistry
+  engine: TextEngine
 }

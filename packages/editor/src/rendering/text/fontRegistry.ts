@@ -36,6 +36,15 @@ const isInRange = (codePoint: number, [first, last]: CodePointRange): boolean =>
 const coversCodePoint = (font: FontDefinition, codePoint: number): boolean =>
   font.coverage.some((range) => isInRange(codePoint, range))
 
+/**
+ * Says whether any font in the catalog draws a character.
+ * @param catalog - The fonts available.
+ * @param codePoint - The character.
+ * @returns False for emoji, CJK and anything else the bundled fonts leave out.
+ */
+export const isCodePointCovered = (catalog: FontCatalog, codePoint: number): boolean =>
+  catalog.fonts.some((font) => coversCodePoint(font, codePoint))
+
 const findDefinition = (catalog: FontCatalog, fontId: string): FontDefinition | undefined =>
   catalog.fonts.find((font) => font.id === fontId)
 
@@ -119,5 +128,5 @@ export const createFontRegistry = ({
     await Promise.all([...neededIds].map(loadFont))
   }
 
-  return { catalog, loadFontsForText, getFont: (fontId) => loadedFonts.get(fontId) }
+  return { catalog, loadFontsForText, loadFont, getFont: (fontId) => loadedFonts.get(fontId) }
 }

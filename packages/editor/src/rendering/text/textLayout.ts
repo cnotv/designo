@@ -1,7 +1,14 @@
 import type { TextAlign } from '@designo/core'
 import { getTextBaselineOffset } from '../../editing/geometry.ts'
 import { getVisualOrder, resolveBidiLevels } from './bidi.ts'
-import { findBreakChunks, splitParagraphs, type Paragraph } from './lineBreaking.ts'
+import {
+  FIT_TOLERANCE,
+  findBreakChunks,
+  findGraphemeCuts,
+  fillLines,
+  splitParagraphs,
+  type Paragraph
+} from './lineBreaking.ts'
 import type {
   BreakChunk,
   LaidOutLine,
@@ -12,10 +19,6 @@ import type {
   TextLayoutInput,
   TextShaper
 } from './types.ts'
-
-const graphemeSegmenter = new Intl.Segmenter('en', { granularity: 'grapheme' })
-// Float sums of advances can miss a box's width by a hair, which must not wrap a line that fits.
-const FIT_TOLERANCE = 1e-6
 
 /** One stretch of a paragraph at one embedding level, shaped. Its glyphs are already visual. */
 interface ShapedPiece {
@@ -106,32 +109,14 @@ const measureChunk = (context: ParagraphContext, chunk: BreakChunk): MeasuredChu
 const measureRangeWidth = (context: ParagraphContext, start: number, end: number): number =>
   sumBy(shapeRange(context, start, end), (piece) => piece.width)
 
-// Cuts a word wider than the box into pieces that each fit, at character boundaries that keep a
-// letter with its combining marks. A single character wider than the box gets a line of its own.
-const findGraphemeCuts = (context: ParagraphContext, chunk: BreakChunk, wrapWidth: number) => {
-  const graphemeEnds = [
-    ...graphemeSegmenter.segment(context.paragraph.text.slice(chunk.start, chunk.contentEnd))
-  ].map((grapheme) => chunk.start + grapheme.index + grapheme.segment.length)
-  const final = graphemeEnds.reduce<{ cuts: number[]; start: number; lastEnd: number }>(
-    ({ cuts, start, lastEnd }, graphemeEnd) => {
-      const fits =
-        lastEnd === start ||
-        measureRangeWidth(context, start, graphemeEnd) <= wrapWidth + FIT_TOLERANCE
-      return fits
-        ? { cuts, start, lastEnd: graphemeEnd }
-        : { cuts: [...cuts, lastEnd], start: lastEnd, lastEnd: graphemeEnd }
-    },
-    { cuts: [], start: chunk.start, lastEnd: chunk.start }
-  )
-  return [...final.cuts, final.lastEnd]
-}
-
 const splitOversizedChunk = (
   context: ParagraphContext,
   chunk: BreakChunk,
   wrapWidth: number
 ): MeasuredChunk[] => {
-  const cuts = findGraphemeCuts(context, chunk, wrapWidth)
+  const cuts = findGraphemeCuts(context.paragraph.text, chunk, wrapWidth, (start, end) =>
+    measureRangeWidth(context, start, end)
+  )
   return cuts.map((cut, index) => {
     const start = index === 0 ? chunk.start : (cuts[index - 1] ?? chunk.start)
     const isLast = index === cuts.length - 1
@@ -148,24 +133,6 @@ const measureChunks = (context: ParagraphContext, chunks: readonly BreakChunk[])
       ? splitOversizedChunk(context, chunk, wrapWidth)
       : [measured]
   })
-
-const fillLines = (
-  chunks: readonly MeasuredChunk[],
-  wrapWidth: number | undefined
-): MeasuredChunk[][] =>
-  chunks.reduce<{ lines: MeasuredChunk[][]; advance: number }>(
-    ({ lines, advance }, chunk) => {
-      const current = lines.at(-1)
-      const fitsOnLine =
-        current !== undefined &&
-        (wrapWidth === undefined || advance + chunk.contentWidth <= wrapWidth + FIT_TOLERANCE)
-      const chunkAdvance = chunk.contentWidth + chunk.trailingWidth
-      return fitsOnLine
-        ? { lines: [...lines.slice(0, -1), [...current, chunk]], advance: advance + chunkAdvance }
-        : { lines: [...lines, [chunk]], advance: chunkAdvance }
-    },
-    { lines: [], advance: 0 }
-  ).lines
 
 const toParagraphLine = (
   context: ParagraphContext,

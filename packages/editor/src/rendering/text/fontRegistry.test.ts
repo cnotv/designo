@@ -126,6 +126,22 @@ describe('createFontRegistry', () => {
     ])
   })
 
+  it('loads one font by id, once', async () => {
+    const { registry, loadBytes } = createFixture()
+    await Promise.all([
+      registry.loadFont('noto-sans-arabic'),
+      registry.loadFont('noto-sans-arabic')
+    ])
+    expect(loadBytes.mock.calls.map(([url]) => url)).toEqual([
+      'fonts/NotoSansArabic-Regular.subset.ttf'
+    ])
+  })
+
+  it('rejects a font id the catalog does not have', async () => {
+    const { registry } = createFixture()
+    await expect(registry.loadFont('nope')).rejects.toThrow('Unknown font nope')
+  })
+
   it('loads each font once however many texts ask for it at the same time', async () => {
     const { registry, loadBytes } = createFixture()
     await Promise.all([
