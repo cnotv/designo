@@ -1,17 +1,19 @@
 import type { DesignDocument, DesignOperation } from '@designo/core'
 import { ref, watch, type Ref } from 'vue'
 import { createTextCommitOperations } from '../editing/textEditing.ts'
-import type { TextEditSession } from '../editing/types.ts'
+import type { TextBoxMeasurer, TextEditSession } from '../editing/types.ts'
 
 /**
  * Tracks which text node is being edited in place and ends the edit as one undoable step.
  * @param document - The open document.
  * @param commit - Applies, records and saves a batch of operations.
+ * @param measureTextBox - Sizes the box the committed text fills.
  * @returns The running edit and how to start and end it.
  */
 export const useTextEditing = (
   document: Ref<DesignDocument | undefined>,
-  commit: (operations: readonly DesignOperation[]) => boolean
+  commit: (operations: readonly DesignOperation[]) => boolean,
+  measureTextBox: TextBoxMeasurer
 ) => {
   const editingText = ref<TextEditSession>()
 
@@ -30,7 +32,7 @@ export const useTextEditing = (
     const current = document.value
     editingText.value = undefined
     if (!session || !current) return
-    commit(createTextCommitOperations(current, session, draftText))
+    commit(createTextCommitOperations(current, session, draftText, measureTextBox))
   }
 
   return { editingText, startTextEdit, commitTextEdit }

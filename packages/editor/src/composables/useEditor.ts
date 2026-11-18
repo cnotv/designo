@@ -30,6 +30,7 @@ import type {
   HistoryState,
   LayerOrderMode,
   SelectionChange,
+  TextBoxMeasurer,
   Tool,
   Viewport
 } from '../editing/types.ts'
@@ -209,15 +210,20 @@ const useSelectionActions = (
  * Holds the editing state for the open file: selection, tool, viewport and history. Every change
  * goes through `commit`, which applies it locally, records its inverse for undo and saves it.
  * @param files - The open file and how to save it.
+ * @param measureTextBox - Sizes a text node's box, which edits keep in step with its words.
  * @returns The editor.
  */
-export const useEditor = (files: DesignoFiles): Editor => {
+export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer): Editor => {
   const document = files.activeDocument
   const selection = ref<string[]>([])
   const tool = ref<Tool>('select')
   const { viewport, canvasSize, zoomToFit, zoomTo } = useViewport(document)
   const { history, commit, undo, redo } = useHistory(document, files)
-  const { editingText, startTextEdit, commitTextEdit } = useTextEditing(document, commit)
+  const { editingText, startTextEdit, commitTextEdit } = useTextEditing(
+    document,
+    commit,
+    measureTextBox
+  )
 
   const selectionActions = useSelectionActions(document, selection, commit)
 
@@ -246,6 +252,7 @@ export const useEditor = (files: DesignoFiles): Editor => {
     canUndo: computed(() => history.value.undoStack.length > 0),
     canRedo: computed(() => history.value.redoStack.length > 0),
     commit,
+    measureTextBox,
     editingText,
     startTextEdit,
     commitTextEdit,
@@ -263,7 +270,9 @@ export const useEditor = (files: DesignoFiles): Editor => {
       canvasSize.value = size
     },
     updateNode: (nodeId: string, patch: DesignNodePatch) =>
-      withDocument((current) => commit(createPropertyOperations(current, nodeId, patch))),
+      withDocument((current) =>
+        commit(createPropertyOperations(current, nodeId, patch, measureTextBox))
+      ),
     ...selectionActions,
     selectAll: () =>
       withDocument((current) => {

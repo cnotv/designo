@@ -13,6 +13,7 @@ import type {
   HistoryState,
   LayerOrderMode,
   SnapGuide,
+  TextBoxMeasurer,
   TextEditSession,
   Tool,
   Viewport
@@ -40,6 +41,8 @@ export interface Editor {
   canRedo: ComputedRef<boolean>
   /** Applies a batch locally, records it for undo and saves it. False when it cannot apply. */
   commit: (operations: readonly DesignOperation[]) => boolean
+  /** Sizes a text box the way the canvas lays its text out; the editing box measures with it. */
+  measureTextBox: TextBoxMeasurer
   /** The text node being edited in place on the canvas. */
   editingText: Ref<TextEditSession | undefined>
   startTextEdit: (nodeId: string, isNew: boolean) => void

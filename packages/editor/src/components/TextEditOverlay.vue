@@ -3,6 +3,8 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { Textarea } from '@/components/ui/textarea'
 import { useEditorContext } from '../composables/editorContext.ts'
 import { getTextOverlayLayout } from '../editing/textEditing.ts'
+import { BUNDLED_FONT_CATALOG } from '../rendering/text/bundledFontCatalog.ts'
+import { createBrowserFontStack } from '../rendering/text/fontFamilyList.ts'
 
 const { editor } = useEditorContext()
 
@@ -15,7 +17,14 @@ const node = computed(() => {
 })
 
 const layout = computed(() =>
-  node.value ? getTextOverlayLayout(node.value, editor.viewport.value, draft.value) : undefined
+  node.value
+    ? getTextOverlayLayout(node.value, editor.viewport.value, draft.value, editor.measureTextBox)
+    : undefined
+)
+
+// The browser's copies of the shaped fonts, so the box looks like the canvas text it stands for.
+const fontFamily = computed(() =>
+  node.value ? createBrowserFontStack(node.value.fontFamily, BUNDLED_FONT_CATALOG) : undefined
 )
 
 // A new node starts empty, as it holds only a placeholder; an existing one starts with its text.
@@ -48,8 +57,9 @@ const onKeyDown = (event: KeyboardEvent): void => {
     v-model="draft"
     data-testid="text-edit-overlay"
     spellcheck="false"
-    wrap="off"
-    class="absolute m-0 min-h-0 resize-none overflow-hidden rounded-none border-0 p-0 whitespace-pre shadow-none ring-0 focus-visible:ring-0 md:text-base dark:bg-transparent"
+    :wrap="layout.isWrapping ? 'soft' : 'off'"
+    class="absolute m-0 min-h-0 resize-none overflow-hidden rounded-none border-0 p-0 shadow-none ring-0 focus-visible:ring-0 md:text-base dark:bg-transparent"
+    :class="layout.isWrapping ? 'break-words whitespace-pre-wrap' : 'whitespace-pre'"
     :style="{
       left: `${layout.left}px`,
       top: `${layout.top}px`,
@@ -58,7 +68,7 @@ const onKeyDown = (event: KeyboardEvent): void => {
       fontSize: `${layout.fontSize}px`,
       lineHeight: `${layout.lineHeight}px`,
       textAlign: layout.textAlign,
-      fontFamily: node.fontFamily,
+      fontFamily,
       color: node.fill ?? '#000000',
       opacity: node.opacity,
       transform: `rotate(${layout.rotation}deg)`,

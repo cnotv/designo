@@ -13,6 +13,9 @@ import { provideEditorContext } from '../composables/editorContext.ts'
 import { useCanvasInteraction } from '../composables/useCanvasInteraction.ts'
 import { useDesignoFiles } from '../composables/useDesignoFiles.ts'
 import { useEditor } from '../composables/useEditor.ts'
+import { measureFallbackTextBox } from '../rendering/fallbackText.ts'
+import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
+import { createTextBoxMeasurer } from '../rendering/text/textBoxMeasurer.ts'
 import { useExport } from '../composables/useExport.ts'
 import { useEditorShortcuts } from '../composables/useEditorShortcuts.ts'
 import type { SignedInAccount } from '../editing/types.ts'
@@ -23,7 +26,10 @@ defineProps<{ account?: SignedInAccount }>()
 const emit = defineEmits<{ accessRefused: []; signOut: [] }>()
 
 const files = useDesignoFiles(() => emit('accessRefused'))
-const editor = useEditor(files)
+const editor = useEditor(
+  files,
+  createTextBoxMeasurer(getSharedTextRuntime().engine, measureFallbackTextBox)
+)
 const interaction = useCanvasInteraction(editor)
 const exporter = useExport(editor)
 useEditorShortcuts(editor, interaction.spaceHeld, exporter.run)
