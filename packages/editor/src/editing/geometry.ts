@@ -1,5 +1,5 @@
 import type { DesignNode } from '@designo/core'
-import type { Bounds, Point, ResizeHandle } from './types.ts'
+import type { Bounds, Point, ResizeHandle, TextBoxMeasurer } from './types.ts'
 
 const MIN_SIZE = 1
 const TEXT_WIDTH_PER_CHARACTER = 0.56
@@ -159,4 +159,23 @@ export const getHandlePositions = (bounds: Bounds): { handle: ResizeHandle; poin
     { handle: 'sw', point: { x: left, y: bottom } },
     { handle: 'w', point: { x: left, y: centerY } }
   ]
+}
+
+/**
+ * Sizes a text box without any font: each character is a fixed share of the font size wide, and a
+ * fixed-width box wraps where that many characters stop fitting. It is what stands in until the
+ * fonts have loaded, and what the tests measure with.
+ * @param request - The text, font size, line height and the width to wrap at.
+ * @returns The width and height.
+ */
+export const estimateTextBox: TextBoxMeasurer = ({ text, fontSize, lineHeight, wrapWidth }) => {
+  if (wrapWidth === undefined) return estimateTextSize(text, fontSize, lineHeight)
+  const charactersPerLine = Math.max(
+    1,
+    Math.floor(wrapWidth / (fontSize * TEXT_WIDTH_PER_CHARACTER))
+  )
+  const lineCount = text
+    .split('\n')
+    .reduce((count, line) => count + Math.max(1, Math.ceil(line.length / charactersPerLine)), 0)
+  return { width: wrapWidth, height: Math.ceil(lineCount * fontSize * lineHeight) }
 }

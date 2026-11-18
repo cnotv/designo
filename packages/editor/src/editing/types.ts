@@ -158,6 +158,25 @@ export interface TextEditSession {
 /** Whether a text node's box follows its words or holds a width its lines wrap at. */
 export type TextWidthMode = 'auto' | 'fixed'
 
+/** What a text node's box depends on, for a measurer to size it. */
+export interface TextBoxRequest {
+  text: string
+  fontFamily: string
+  fontSize: number
+  lineHeight: number
+  textAlign: TextAlign
+  /** The width a fixed-width box wraps at; undefined for an auto-width one. */
+  wrapWidth: number | undefined
+}
+
+export interface TextBoxSize {
+  width: number
+  height: number
+}
+
+/** Sizes a text box. The app measures with the shaped layout; tests and the first frame estimate. */
+export type TextBoxMeasurer = (request: TextBoxRequest) => TextBoxSize
+
 export interface TextOverlayLayout {
   left: number
   top: number
@@ -166,6 +185,8 @@ export interface TextOverlayLayout {
   fontSize: number
   lineHeight: number
   textAlign: TextAlign
+  /** True for a fixed-width box, whose lines wrap at the box's width. */
+  isWrapping: boolean
   rotation: number
   /** The node's centre, from the box's top-left, which the box turns around as the canvas does. */
   rotationOriginX: number
