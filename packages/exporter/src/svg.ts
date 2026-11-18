@@ -1,11 +1,6 @@
 import { getChildren, getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
-
-interface Bounds {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+import type { Bounds } from './types.ts'
+import { boundsOverlap, getPaintReach, intersectBounds, toNodeSpace } from './visibleRegion.ts'
 
 const LINE_HEIGHT_FACTOR = 1.2
 const DEGREES_TO_RADIANS = Math.PI / 180
@@ -133,25 +128,41 @@ const renderText = (node: DesignNode): string =>
 const wrapInGroup = (attributes: readonly string[], content: string): string =>
   attributes.length === 0 ? content : `<g ${joinAttributes(attributes)}>${content}</g>`
 
-const renderChildren = (document: DesignDocument, node: DesignNode): string =>
-  getChildren(document, node.id)
-    .map((child) => renderNode(document, child))
-    .join('')
+// The region is what can show, in the space the children are drawn in: the export bounds, cut
+// down by every clipping frame above. A child outside it is invisible, and it must not be written:
+// resvg aborts the whole process on a clipped group whose content lies more than a canvas size
+// beyond the canvas, which an agent's stray child of a frame far from the origin is enough to do.
+const renderChildren = (
+  document: DesignDocument,
+  node: DesignNode,
+  region: Bounds | undefined
+): string =>
+  region === undefined
+    ? ''
+    : getChildren(document, node.id)
+        .map((child) => renderNode(document, child, region))
+        .join('')
 
-const renderFrame = (document: DesignDocument, node: DesignNode): string => {
+const renderFrame = (document: DesignDocument, node: DesignNode, region: Bounds): string => {
   const clipId = toClipId(node.id)
   const background = renderRectangleShape(node, [paintAttributes(node)])
   const clip = `<clipPath id="${clipId}">${renderRectangleShape(node, [])}</clipPath>`
-  const children = `<g clip-path="url(#${clipId})">${renderChildren(document, node)}</g>`
+  const childRegion = intersectBounds(region, node)
+  const children = `<g clip-path="url(#${clipId})">${renderChildren(document, node, childRegion)}</g>`
   return wrapInGroup(presentationAttributes(node), `${background}${clip}${children}`)
 }
 
-const renderNode = (document: DesignDocument, node: DesignNode): string => {
+const isOutsideRegion = (node: DesignNode, region: Bounds): boolean =>
+  node.type !== 'page' && node.type !== 'group' && !boundsOverlap(getPaintReach(node), region)
+
+const renderNode = (document: DesignDocument, node: DesignNode, parentRegion: Bounds): string => {
   if (!node.visible) return ''
+  const region = toNodeSpace(parentRegion, node)
+  if (isOutsideRegion(node, region)) return ''
   const renderers: Record<DesignNode['type'], () => string> = {
-    page: () => renderChildren(document, node),
-    group: () => wrapInGroup(presentationAttributes(node), renderChildren(document, node)),
-    frame: () => renderFrame(document, node),
+    page: () => renderChildren(document, node, region),
+    group: () => wrapInGroup(presentationAttributes(node), renderChildren(document, node, region)),
+    frame: () => renderFrame(document, node, region),
     rectangle: () =>
       renderRectangleShape(node, [paintAttributes(node), ...presentationAttributes(node)]),
     ellipse: () => renderEllipse(node),
@@ -175,5 +186,5 @@ export const exportNodeToSvg = (document: DesignDocument, nodeId: string): strin
   const width = formatNumber(bounds.width)
   const height = formatNumber(bounds.height)
   const viewBox = `${formatNumber(bounds.x)} ${formatNumber(bounds.y)} ${width} ${height}`
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${renderNode(document, node)}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${renderNode(document, node, bounds)}</svg>`
 }

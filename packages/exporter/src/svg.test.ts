@@ -100,6 +100,156 @@ describe('exportNodeToSvg', () => {
     expect(svg.indexOf('#111111')).toBeLessThan(svg.indexOf('#222222'))
   })
 
+  it('leaves out a child that lies wholly outside its frame, because the clip hides it anyway', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'card',
+        type: 'frame',
+        parentId: 'page',
+        properties: { x: 100, y: 8400, width: 840, height: 420 }
+      },
+      {
+        kind: 'create',
+        id: 'inside',
+        type: 'ellipse',
+        parentId: 'card',
+        properties: { x: 200, y: 8500, width: 50, height: 50, fill: '#111111' }
+      },
+      {
+        kind: 'create',
+        id: 'bleeding',
+        type: 'ellipse',
+        parentId: 'card',
+        properties: { x: 900, y: 8500, width: 100, height: 50, fill: '#222222' }
+      },
+      {
+        kind: 'create',
+        id: 'far-right',
+        type: 'ellipse',
+        parentId: 'card',
+        properties: { x: 14_000, y: 8500, width: 50, height: 50, fill: '#333333' }
+      },
+      {
+        kind: 'create',
+        id: 'far-below',
+        type: 'rectangle',
+        parentId: 'card',
+        properties: { x: 200, y: 20_000, width: 50, height: 50, fill: '#444444' }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'card')
+    expect(svg).toContain('#111111')
+    expect(svg).toContain('#222222')
+    expect(svg).not.toContain('#333333')
+    expect(svg).not.toContain('#444444')
+  })
+
+  it('keeps a text that starts left of its frame but runs into it', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'card',
+        type: 'frame',
+        parentId: 'page',
+        properties: { x: 1000, y: 0, width: 300, height: 100 }
+      },
+      {
+        kind: 'create',
+        id: 'headline',
+        type: 'text',
+        parentId: 'card',
+        properties: { x: 900, y: 10, width: 10, height: 10, fontSize: 20, text: 'A'.repeat(20) }
+      }
+    ])
+    expect(exportNodeToSvg(document, 'card')).toContain('AAAAAAAAAAAAAAAAAAAA')
+  })
+
+  it('judges a nested frame child against every clip above it and the exported bounds', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'outer',
+        type: 'frame',
+        parentId: 'page',
+        properties: { x: 0, y: 0, width: 300, height: 200 }
+      },
+      {
+        kind: 'create',
+        id: 'inner',
+        type: 'frame',
+        parentId: 'outer',
+        properties: { x: 0, y: 0, width: 5000, height: 5000 }
+      },
+      {
+        kind: 'create',
+        id: 'near',
+        type: 'rectangle',
+        parentId: 'inner',
+        properties: { x: 10, y: 10, width: 20, height: 20, fill: '#aaaaaa' }
+      },
+      {
+        kind: 'create',
+        id: 'far',
+        type: 'rectangle',
+        parentId: 'inner',
+        properties: { x: 3000, y: 3000, width: 20, height: 20, fill: '#bbbbbb' }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'outer')
+    expect(svg).toContain('#aaaaaa')
+    expect(svg).not.toContain('#bbbbbb')
+  })
+
+  it('leaves out a child of a group that lies outside the exported bounds', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'cluster',
+        type: 'group',
+        parentId: 'page',
+        properties: { x: 0, y: 0, width: 100, height: 100, opacity: 0.5 }
+      },
+      {
+        kind: 'create',
+        id: 'near',
+        type: 'rectangle',
+        parentId: 'cluster',
+        properties: { x: 10, y: 10, width: 20, height: 20, fill: '#aaaaaa' }
+      },
+      {
+        kind: 'create',
+        id: 'far',
+        type: 'rectangle',
+        parentId: 'cluster',
+        properties: { x: 5000, y: 10, width: 20, height: 20, fill: '#bbbbbb' }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'cluster')
+    expect(svg).toContain('#aaaaaa')
+    expect(svg).not.toContain('#bbbbbb')
+  })
+
+  it('judges children of a rotated frame in the frame own space', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'tilted',
+        type: 'frame',
+        parentId: 'page',
+        properties: { x: 0, y: 0, width: 400, height: 100, rotation: 90 }
+      },
+      {
+        kind: 'create',
+        id: 'at-the-end',
+        type: 'rectangle',
+        parentId: 'tilted',
+        properties: { x: 380, y: 40, width: 20, height: 20, fill: '#cccccc' }
+      }
+    ])
+    expect(exportNodeToSvg(document, 'tilted')).toContain('#cccccc')
+  })
+
   it('skips hidden nodes and their children', () => {
     const document = build([
       { kind: 'create', id: 'g', type: 'group', parentId: 'page', properties: { visible: false } },

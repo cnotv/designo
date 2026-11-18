@@ -135,6 +135,38 @@ describe('export tools', () => {
     expect(readPngSize(image.data)).toEqual({ width: 80, height: 40 })
   })
 
+  // resvg aborts the whole process when a clipped group holds content more than a canvas
+  // size beyond the canvas edge, so a stray child of a frame used to take the server down.
+  it('get_screenshot renders a frame with children far outside it', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Stray children' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'card',
+          type: 'frame',
+          parentId: pageId,
+          properties: { x: 100, y: 8400, width: 840, height: 420 }
+        },
+        {
+          kind: 'create',
+          type: 'ellipse',
+          parentId: 'card',
+          properties: { x: 14_000, y: 8500, width: 50, height: 50, fill: '#8fae8b4d' }
+        },
+        {
+          kind: 'create',
+          type: 'rectangle',
+          parentId: 'card',
+          properties: { x: 15_000, y: 8600, width: 50, height: 50, fill: null, stroke: '#000000' }
+        }
+      ]
+    })
+    const image = await getScreenshotTool(context, { fileId, nodeId: 'card' })
+    expect(readPngSize(image.data)).toEqual({ width: 840, height: 420 })
+  })
+
   it('get_screenshot rejects an unknown node', async () => {
     const { fileId } = await createSquareFile()
     await expect(getScreenshotTool(context, { fileId, nodeId: 'missing' })).rejects.toThrow(
