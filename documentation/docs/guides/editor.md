@@ -114,6 +114,26 @@ circle. After drawing, the editor returns to Move.
 - **Layer order:** Ctrl/Cmd ] and [ move the selection one step forward or backward among its
   siblings; add Shift to send it to the front or the back.
 
+## Gradients, blur, blend modes and shadows
+
+The properties panel has an effects section below Stroke.
+
+![Selecting each effect in the sample file: a gradient, a radial gradient, a blur, a shadow and two multiplied circles](/img/effects.gif)
+
+- **Gradient:** the plus beside Gradient turns the fill into a two colour gradient that starts on the
+  current fill. Pick linear or radial, set the angle of a linear one, and change the colour of each
+  stop. A gradient can fill a rectangle, an ellipse or a frame. More than two stops, or stops at
+  other positions, come through the MCP tools.
+- **Blur:** a number, in pixels, for the standard deviation of a gaussian blur. Rectangles and
+  ellipses only.
+- **Blend:** how a rectangle or ellipse combines with what is behind it: Normal, Multiply, Screen,
+  Overlay, Darken or Lighten.
+- **Shadow:** the plus adds a drop shadow. Set its colour, its offset X and Y, and its blur.
+
+The editor, `get_screenshot` and `export_svg` draw these the same way. The Canvas 2D fallback
+approximates them: it blurs the shadow along with the shape, and browsers without canvas filters do
+not blur.
+
 ## Export
 
 ![The Export section of the properties panel](/img/export.png)

@@ -23,6 +23,9 @@ layout(location = 2) in vec4 a_rotationRadiusKindStroke;
 layout(location = 3) in float a_opacity;
 layout(location = 4) in vec4 a_fill;
 layout(location = 5) in vec4 a_stroke;
+layout(location = 6) in vec4 a_blurAndGradient;
+layout(location = 7) in vec4 a_shadowAndBlend;
+layout(location = 8) in vec4 a_shadowColor;
 ${PLACE_IN_VIEW}
 out vec2 v_local;
 out vec2 v_halfSize;
@@ -32,12 +35,22 @@ out float v_strokeWidth;
 out float v_opacity;
 out vec4 v_fill;
 out vec4 v_stroke;
+out vec4 v_blurAndGradient;
+out vec4 v_shadowAndBlend;
+out vec4 v_shadowColor;
+
+// A soft edge fades out within three deviations, and a shadow lies as far off as it is moved.
+float effectReach() {
+  float blurReach = a_blurAndGradient.x * 3.0;
+  float shadowReach = a_shadowColor.a > 0.0 ? length(a_shadowAndBlend.xy) + a_shadowAndBlend.z * 3.0 : 0.0;
+  return max(blurReach, shadowReach);
+}
 
 void main() {
   vec2 halfSize = a_centerAndHalfSize.zw;
   float strokeWidth = a_rotationRadiusKindStroke.w;
-  // Room for the outer half of the stroke and two CSS pixels of anti-aliasing.
-  float padding = strokeWidth * 0.5 + 2.0 / u_viewport.z;
+  // Room for the outer half of the stroke, the soft edges and two CSS pixels of anti-aliasing.
+  float padding = strokeWidth * 0.5 + 2.0 / u_viewport.z + effectReach();
   v_local = a_corner * (halfSize + padding);
   v_halfSize = halfSize;
   v_radius = a_rotationRadiusKindStroke.y;
@@ -46,6 +59,9 @@ void main() {
   v_opacity = a_opacity;
   v_fill = a_fill;
   v_stroke = a_stroke;
+  v_blurAndGradient = a_blurAndGradient;
+  v_shadowAndBlend = a_shadowAndBlend;
+  v_shadowColor = a_shadowColor;
   gl_Position = placeInView(a_centerAndHalfSize.xy, v_local, a_rotationRadiusKindStroke.x);
 }
 `
@@ -61,7 +77,14 @@ in float v_strokeWidth;
 in float v_opacity;
 in vec4 v_fill;
 in vec4 v_stroke;
+in vec4 v_blurAndGradient;
+in vec4 v_shadowAndBlend;
+in vec4 v_shadowColor;
 uniform bool u_clipPass;
+uniform sampler2D u_ramps;
+uniform sampler2D u_backdrop;
+uniform vec2 u_deviceSize;
+uniform float u_rampRows;
 out vec4 outColor;
 
 float boxDistance(vec2 point, vec2 halfSize, float radius) {
@@ -77,25 +100,90 @@ float ellipseDistance(vec2 point, vec2 radii) {
   return scaled < 1e-6 ? -min(radii.x, radii.y) : scaled * (scaled - 1.0) / gradient;
 }
 
+float shapeDistance(vec2 point) {
+  return v_kind > 0.5
+    ? ellipseDistance(point, v_halfSize)
+    : boxDistance(point, v_halfSize, v_radius);
+}
+
+// How much of a pixel the shape covers. A blurred edge is a gaussian's cumulative curve, which a
+// smoothstep two deviations either side follows closely; a sharp one is one pixel of anti-aliasing.
+// ponytail: the edge alone is blurred, so a shape thinner than its blur keeps more of its peak
+// than a true blur would; a layer pass would be exact, add it if that shows.
+float coverage(float distance, float deviation, float pixel) {
+  return deviation > 0.0
+    ? 1.0 - smoothstep(-2.0 * deviation, 2.0 * deviation, distance)
+    : clamp(0.5 - distance / pixel, 0.0, 1.0);
+}
+
+// Where a point is along the gradient, from 0 at its first stop to 1 at its last.
+float gradientPosition(vec2 point, float kind, float angle) {
+  if (kind > 1.5) return length(point / max(v_halfSize, vec2(1e-4)));
+  vec2 direction = vec2(cos(angle), sin(angle));
+  float halfLength = (abs(2.0 * v_halfSize.x * direction.x) + abs(2.0 * v_halfSize.y * direction.y)) * 0.5;
+  return dot(point, direction) / max(2.0 * halfLength, 1e-4) + 0.5;
+}
+
+vec4 fillColor(vec2 point) {
+  float kind = v_blurAndGradient.y;
+  if (kind < 0.5) return v_fill;
+  float position = clamp(gradientPosition(point, kind, v_blurAndGradient.z), 0.0, 1.0);
+  return texture(u_ramps, vec2(position, (v_blurAndGradient.w + 0.5) / u_rampRows));
+}
+
+vec3 blendChannels(int mode, vec3 backdrop, vec3 source) {
+  if (mode == 1) return backdrop * source;
+  if (mode == 2) return backdrop + source - backdrop * source;
+  if (mode == 3) {
+    vec3 dark = 2.0 * backdrop * source;
+    vec3 light = 1.0 - 2.0 * (1.0 - backdrop) * (1.0 - source);
+    return mix(dark, light, step(0.5, backdrop));
+  }
+  if (mode == 4) return min(backdrop, source);
+  return max(backdrop, source);
+}
+
+// The W3C compositing formula, on premultiplied colours: what the layer is where nothing is
+// behind it, what is behind it where the layer is clear, and the blend where both are there.
+vec4 blendOver(int mode, vec4 source) {
+  vec4 backdrop = texture(u_backdrop, gl_FragCoord.xy / u_deviceSize);
+  vec3 backdropColor = backdrop.a > 0.0 ? backdrop.rgb / backdrop.a : vec3(0.0);
+  vec3 sourceColor = source.a > 0.0 ? source.rgb / source.a : vec3(0.0);
+  vec3 mixed = blendChannels(mode, backdropColor, sourceColor);
+  vec3 color = (1.0 - backdrop.a) * source.rgb + (1.0 - source.a) * backdrop.rgb + source.a * backdrop.a * mixed;
+  return vec4(color, source.a + backdrop.a * (1.0 - source.a));
+}
+
 void main() {
-  float distance = v_kind > 0.5
-    ? ellipseDistance(v_local, v_halfSize)
-    : boxDistance(v_local, v_halfSize, v_radius);
+  float deviation = v_blurAndGradient.x;
+  float distance = shapeDistance(v_local);
   float pixel = max(fwidth(distance), 1e-4);
-  float fillCoverage = clamp(0.5 - distance / pixel, 0.0, 1.0);
+  float fillCoverage = coverage(distance, deviation, pixel);
   if (u_clipPass) {
     if (fillCoverage < 0.5) discard;
     outColor = vec4(0.0);
     return;
   }
   float strokeCoverage = v_strokeWidth > 0.0
-    ? clamp(0.5 - (abs(distance) - v_strokeWidth * 0.5) / pixel, 0.0, 1.0)
+    ? coverage(abs(distance) - v_strokeWidth * 0.5, deviation, pixel)
     : 0.0;
+  vec4 fill = fillColor(v_local);
   // Canvas 2D paints the fill, then the stroke over it, each faded by the opacity.
-  float fillAlpha = v_fill.a * fillCoverage * v_opacity;
+  float fillAlpha = fill.a * fillCoverage * v_opacity;
   float strokeAlpha = v_stroke.a * strokeCoverage * v_opacity;
-  vec3 color = v_stroke.rgb * strokeAlpha + v_fill.rgb * fillAlpha * (1.0 - strokeAlpha);
-  outColor = vec4(color, strokeAlpha + fillAlpha * (1.0 - strokeAlpha));
+  vec3 color = v_stroke.rgb * strokeAlpha + fill.rgb * fillAlpha * (1.0 - strokeAlpha);
+  vec4 body = vec4(color, strokeAlpha + fillAlpha * (1.0 - strokeAlpha));
+  // The shadow is cast by the sharp shape, moved along the node's own axes, and lies under the body.
+  vec4 shadow = vec4(0.0);
+  if (v_shadowColor.a > 0.0) {
+    vec2 shadowPoint = v_local - v_shadowAndBlend.xy;
+    float shadowDistance = shapeDistance(shadowPoint);
+    float shadowAlpha = v_shadowColor.a * fill.a * coverage(shadowDistance, v_shadowAndBlend.z, pixel) * v_opacity;
+    shadow = vec4(v_shadowColor.rgb * shadowAlpha, shadowAlpha);
+  }
+  vec4 layer = body + shadow * (1.0 - body.a);
+  int mode = int(v_shadowAndBlend.w + 0.5);
+  outColor = mode > 0 ? blendOver(mode, layer) : layer;
 }
 `
 

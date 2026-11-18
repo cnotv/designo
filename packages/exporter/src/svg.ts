@@ -1,10 +1,15 @@
 import {
   DEFAULT_NODE_PROPERTIES,
   getChildren,
+  getEffectReach,
+  getFillGradient,
+  hasLayerEffects,
+  getGradientLine,
   getPaintOrder,
   withFontSubstitutes,
   type DesignDocument,
   type DesignNode,
+  type Gradient,
   type TextAlign
 } from '@designo/core'
 import type { Bounds, SvgExportOptions } from './types.ts'
@@ -74,7 +79,13 @@ const getRotatedBounds = (node: DesignNode): Bounds => {
   const width = node.width * cosine + node.height * sine
   const height = node.width * sine + node.height * cosine
   const center = centerOf(node)
-  return { x: center.x - width / 2, y: center.y - height / 2, width, height }
+  const reach = hasFilter(node) ? getEffectReach(node) : 0
+  return {
+    x: center.x - width / 2 - reach,
+    y: center.y - height / 2 - reach,
+    width: width + reach * 2,
+    height: height + reach * 2
+  }
 }
 
 const unionBounds = (boxes: readonly Bounds[]): Bounds => {
@@ -93,9 +104,64 @@ const getExportBounds = (document: DesignDocument, node: DesignNode): Bounds => 
     : unionBounds(descendants.map((descendant) => getRotatedBounds(descendant)))
 }
 
+const toGradientId = (nodeId: string): string => `gradient-${nodeId.replaceAll(/[^\w-]/g, '-')}`
+const toEffectsId = (nodeId: string): string => `effects-${nodeId.replaceAll(/[^\w-]/g, '-')}`
+
+const renderStops = (gradient: Gradient): string =>
+  gradient.stops
+    .map(
+      (stop) =>
+        `<stop offset="${formatNumber(stop.offset)}" stop-color="${escapeXml(stop.color)}"/>`
+    )
+    .join('')
+
+// A linear gradient is placed in the node's space, so a rotated node turns its gradient with it
+// and a box that is not square keeps the angle; a radial one fills the box's inscribed ellipse.
+const renderGradientDefinition = (node: DesignNode, gradient: Gradient): string => {
+  const id = toGradientId(node.id)
+  if (gradient.kind === 'radial') {
+    return `<radialGradient id="${id}" cx="0.5" cy="0.5" r="0.5">${renderStops(gradient)}</radialGradient>`
+  }
+  const line = getGradientLine(node, gradient)
+  return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${formatNumber(node.x + line.startX)}" y1="${formatNumber(node.y + line.startY)}" x2="${formatNumber(node.x + line.endX)}" y2="${formatNumber(node.y + line.endY)}">${renderStops(gradient)}</linearGradient>`
+}
+
+// Blur, shadow and blend mode apply to the two shapes the renderers can draw them for on their own.
+const hasFilter = (node: DesignNode): boolean =>
+  hasLayerEffects(node) && (node.blur > 0 || node.shadow !== null)
+
+// The region reaches past the box by what the effects can paint, or the filter would cut a soft
+// edge short. The shadow is cast by the sharp shape, and the blur only softens the shape itself.
+const renderFilterDefinition = (node: DesignNode): string => {
+  const reach = getEffectReach(node)
+  const region = `filterUnits="userSpaceOnUse" x="${formatNumber(node.x - reach)}" y="${formatNumber(node.y - reach)}" width="${formatNumber(node.width + reach * 2)}" height="${formatNumber(node.height + reach * 2)}"`
+  const body =
+    node.blur > 0
+      ? `<feGaussianBlur in="SourceGraphic" stdDeviation="${formatNumber(node.blur)}" result="body"/>`
+      : '<feMerge result="body"><feMergeNode in="SourceGraphic"/></feMerge>'
+  const shadow = node.shadow
+    ? `<feGaussianBlur in="SourceAlpha" stdDeviation="${formatNumber(node.shadow.blur)}" result="softened"/><feOffset in="softened" dx="${formatNumber(node.shadow.x)}" dy="${formatNumber(node.shadow.y)}" result="moved"/><feFlood flood-color="${escapeXml(node.shadow.color)}"/><feComposite in2="moved" operator="in" result="shadow"/><feMerge><feMergeNode in="shadow"/><feMergeNode in="body"/></feMerge>`
+    : ''
+  return `<filter id="${toEffectsId(node.id)}" ${region}>${body}${shadow}</filter>`
+}
+
+/**
+ * The `defs` a node's gradient and filter need, written ahead of the node.
+ * @param node - The node about to be drawn.
+ * @returns A `defs` element, or an empty string when the node needs none.
+ */
+const renderDefinitions = (node: DesignNode): string => {
+  const gradient = getFillGradient(node)
+  const parts = [
+    ...(gradient ? [renderGradientDefinition(node, gradient)] : []),
+    ...(hasFilter(node) ? [renderFilterDefinition(node)] : [])
+  ]
+  return parts.length === 0 ? '' : `<defs>${parts.join('')}</defs>`
+}
+
 const paintAttributes = (node: DesignNode): string =>
   [
-    `fill="${node.fill === null ? 'none' : escapeXml(node.fill)}"`,
+    `fill="${getFillGradient(node) ? `url(#${toGradientId(node.id)})` : node.fill === null ? 'none' : escapeXml(node.fill)}"`,
     ...(node.stroke === null
       ? []
       : [`stroke="${escapeXml(node.stroke)}"`, `stroke-width="${formatNumber(node.strokeWidth)}"`])
@@ -105,6 +171,10 @@ const presentationAttributes = (node: DesignNode): string[] => {
   const center = centerOf(node)
   return [
     ...(node.opacity === 1 ? [] : [`opacity="${formatNumber(node.opacity)}"`]),
+    ...(hasFilter(node) ? [`filter="url(#${toEffectsId(node.id)})"`] : []),
+    ...(node.blendMode === 'normal' || !hasLayerEffects(node)
+      ? []
+      : [`style="mix-blend-mode:${node.blendMode}"`]),
     ...(node.rotation === 0
       ? []
       : [
@@ -130,7 +200,7 @@ const renderRectangleShape = (node: DesignNode, extraAttributes: readonly string
 
 const renderEllipse = (node: DesignNode): string => {
   const center = centerOf(node)
-  return `<ellipse ${joinAttributes([
+  return `${renderDefinitions(node)}<ellipse ${joinAttributes([
     `cx="${formatNumber(center.x)}"`,
     `cy="${formatNumber(center.y)}"`,
     `rx="${formatNumber(node.width / 2)}"`,
@@ -226,7 +296,7 @@ const renderFrame = (
   options: SvgExportOptions
 ): string => {
   const clipId = toClipId(node.id)
-  const background = renderRectangleShape(node, [paintAttributes(node)])
+  const background = `${renderDefinitions(node)}${renderRectangleShape(node, [paintAttributes(node)])}`
   const clip = `<clipPath id="${clipId}">${renderRectangleShape(node, [])}</clipPath>`
   const childRegion = intersectBounds(region, node)
   const children = `<g clip-path="url(#${clipId})">${renderChildren(document, node, childRegion, options)}</g>`
@@ -251,7 +321,7 @@ const renderNode = (
       wrapInGroup(presentationAttributes(node), renderChildren(document, node, region, options)),
     frame: () => renderFrame(document, node, region, options),
     rectangle: () =>
-      renderRectangleShape(node, [paintAttributes(node), ...presentationAttributes(node)]),
+      `${renderDefinitions(node)}${renderRectangleShape(node, [paintAttributes(node), ...presentationAttributes(node)])}`,
     ellipse: () => renderEllipse(node),
     text: () => renderText(node, options)
   }

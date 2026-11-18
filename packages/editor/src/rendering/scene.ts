@@ -1,4 +1,13 @@
-import { getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
+import {
+  BLEND_MODES,
+  getEffectReach,
+  getFillGradient,
+  getPaintOrder,
+  hasLayerEffects,
+  type DesignDocument,
+  type DesignNode,
+  type Gradient
+} from '@designo/core'
 import { getClippingFrames } from '../editing/selection.ts'
 import { searchSpatialIndex } from '../editing/spatialIndex.ts'
 import type { SpatialIndex, Viewport } from '../editing/types.ts'
@@ -13,7 +22,13 @@ const HEX_LENGTH_WITH_ALPHA = 9
 const CULL_MARGIN_PIXELS = 2
 
 /** Floats per shape instance, in the order `packShapeInstances` writes them. */
-export const SHAPE_INSTANCE_FLOATS = 17
+export const SHAPE_INSTANCE_FLOATS = 29
+
+// What the shader reads for a gradient's kind: 0 is the solid fill.
+const GRADIENT_KIND_CODES = { linear: 1, radial: 2 } as const
+
+/** Gives a gradient its row in the ramp texture, which the shader looks its colours up in. */
+export type RampRowOf = (gradient: Gradient) => number
 
 /**
  * Works out, once per document, what any scene of it needs: the spatial index and paint order.
@@ -24,7 +39,8 @@ export const SHAPE_INSTANCE_FLOATS = 17
 export const createSceneSource = (document: DesignDocument, index: SpatialIndex): SceneSource => ({
   document,
   index,
-  paintPosition: new Map(getPaintOrder(document).map((node, position) => [node.id, position]))
+  paintPosition: new Map(getPaintOrder(document).map((node, position) => [node.id, position])),
+  maxEffectReach: Math.max(0, ...Object.values(document.nodes).map(getEffectReach))
 })
 
 /**
@@ -42,7 +58,7 @@ export const buildScene = (
   size: CanvasSize,
   hiddenNodeId?: string
 ): SceneItem[] => {
-  const margin = CULL_MARGIN_PIXELS / viewport.scale
+  const margin = CULL_MARGIN_PIXELS / viewport.scale + source.maxEffectReach
   const area = {
     x: -viewport.offsetX / viewport.scale - margin,
     y: -viewport.offsetY / viewport.scale - margin,
@@ -59,6 +75,9 @@ export const buildScene = (
     })
 }
 
+const isBlended = (node: DesignNode): boolean =>
+  hasLayerEffects(node) && node.blendMode !== 'normal'
+
 const clipKey = (item: SceneItem): string => item.clipFrames.map((frame) => frame.id).join('/')
 
 /**
@@ -71,16 +90,22 @@ const clipKey = (item: SceneItem): string => item.clipFrames.map((frame) => fram
 export const batchScene = (items: readonly SceneItem[]): SceneBatch[] => {
   // Built in one pass over the items, because a scene can hold thousands and copying a growing
   // batch for each would be quadratic.
-  const batches: { kind: SceneBatch['kind']; items: SceneItem[]; clip: string }[] = []
+  const batches: {
+    kind: SceneBatch['kind']
+    items: SceneItem[]
+    clip: string
+    blended: boolean
+  }[] = []
   items.forEach((item) => {
     const kind = item.node.type === 'text' ? 'text' : 'shapes'
     const clip = clipKey(item)
+    const blended = isBlended(item.node)
     const last = batches.at(-1)
-    if (last?.kind === kind && last.clip === clip) {
+    if (last?.kind === kind && last.clip === clip && !last.blended && !blended) {
       last.items.push(item)
       return
     }
-    batches.push({ kind, items: [item], clip })
+    batches.push({ kind, items: [item], clip, blended })
   })
   return batches
 }
@@ -106,11 +131,59 @@ export const parseHexColor = (hex: string | null): RgbaColor => {
   }
 }
 
-const shapeInstance = (node: DesignNode): number[] => {
-  const halfWidth = node.width / 2
-  const halfHeight = node.height / 2
+const gradientFields = (node: DesignNode, rampRowOf: RampRowOf): number[] => {
+  const gradient = getFillGradient(node)
+  if (!gradient) return [0, 0, 0]
+  return [
+    GRADIENT_KIND_CODES[gradient.kind],
+    (gradient.angle * Math.PI) / HALF_TURN_DEGREES,
+    rampRowOf(gradient)
+  ]
+}
+
+const shadowFields = (node: DesignNode): number[] => {
+  const shadow = node.shadow
+  if (!shadow) return [0, 0, 0, 0, 0, 0, 0]
+  const { red, green, blue, alpha } = parseHexColor(shadow.color)
+  return [shadow.x, shadow.y, shadow.blur, red, green, blue, alpha]
+}
+
+// Blur, gradient, shadow and blend mode: the last twelve floats of an instance, where the shadow's
+// colour follows its blend mode so the shader reads them as two vec4s.
+const effectFields = (node: DesignNode, rampRowOf: RampRowOf): number[] => {
+  const effects = hasLayerEffects(node)
+  const [shadowX, shadowY, shadowBlur, ...shadowColor] = effects
+    ? shadowFields(node)
+    : shadowFields({ ...node, shadow: null })
+  return [
+    effects ? node.blur : 0,
+    ...gradientFields(node, rampRowOf),
+    shadowX ?? 0,
+    shadowY ?? 0,
+    shadowBlur ?? 0,
+    effects ? BLEND_MODES.indexOf(node.blendMode) : 0,
+    ...shadowColor
+  ]
+}
+
+const colorFields = (node: DesignNode): number[] => {
   const fill = parseHexColor(node.fill)
   const stroke = parseHexColor(node.stroke)
+  return [
+    fill.red,
+    fill.green,
+    fill.blue,
+    fill.alpha,
+    stroke.red,
+    stroke.green,
+    stroke.blue,
+    stroke.alpha
+  ]
+}
+
+const shapeInstance = (node: DesignNode, rampRowOf: RampRowOf): number[] => {
+  const halfWidth = node.width / 2
+  const halfHeight = node.height / 2
   const strokeWidth = node.stroke ? node.strokeWidth : 0
   return [
     node.x + halfWidth,
@@ -123,23 +196,21 @@ const shapeInstance = (node: DesignNode): number[] => {
     node.type === 'ellipse' ? 1 : 0,
     strokeWidth,
     node.opacity,
-    fill.red,
-    fill.green,
-    fill.blue,
-    fill.alpha,
-    stroke.red,
-    stroke.green,
-    stroke.blue,
-    stroke.alpha
+    ...colorFields(node),
+    ...effectFields(node, rampRowOf)
   ]
 }
 
 /**
  * Packs shapes into the instance buffer the WebGL2 shape shader reads: centre, half size,
  * rotation in radians, corner radius, kind (0 box, 1 ellipse), stroke width, opacity, fill and
- * stroke colour.
+ * stroke colour, then blur, gradient kind, angle and ramp row, shadow offset and blur, blend mode
+ * index, and shadow colour.
  * @param nodes - The shapes, back to front.
+ * @param rampRowOf - Where each gradient's colours are in the ramp texture.
  * @returns `SHAPE_INSTANCE_FLOATS` floats per shape.
  */
-export const packShapeInstances = (nodes: readonly DesignNode[]): Float32Array =>
-  new Float32Array(nodes.flatMap(shapeInstance))
+export const packShapeInstances = (
+  nodes: readonly DesignNode[],
+  rampRowOf: RampRowOf = () => 0
+): Float32Array => new Float32Array(nodes.flatMap((node) => shapeInstance(node, rampRowOf)))

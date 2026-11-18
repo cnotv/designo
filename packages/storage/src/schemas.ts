@@ -1,4 +1,9 @@
-import { CURRENT_FORMAT_VERSION, MAX_LINE_HEIGHT, MIN_LINE_HEIGHT } from '@designo/core'
+import {
+  BLEND_MODES,
+  CURRENT_FORMAT_VERSION,
+  MAX_LINE_HEIGHT,
+  MIN_LINE_HEIGHT
+} from '@designo/core'
 import { z } from 'zod'
 
 const MAX_TEXT_LENGTH = 10_000
@@ -11,7 +16,39 @@ export const fileIdSchema = z
 
 export const nodeIdSchema = z.string().regex(/^[\w:-]{1,64}$/, 'Letters, digits, :, - and _ only')
 
-const colorSchema = z.string().regex(HEX_COLOR, 'A hex colour: #rrggbb or #rrggbbaa').nullable()
+const hexColorSchema = z.string().regex(HEX_COLOR, 'A hex colour: #rrggbb or #rrggbbaa')
+
+const colorSchema = hexColorSchema.nullable()
+
+const MAX_GRADIENT_STOPS = 16
+
+const gradientSchema = z
+  .object({
+    kind: z.enum(['linear', 'radial']),
+    angle: z
+      .number()
+      .describe('Linear only: degrees clockwise from pointing right, so 90 runs top to bottom.'),
+    stops: z
+      .array(z.object({ offset: z.number().min(0).max(1), color: hexColorSchema }).strict())
+      .min(2)
+      .max(MAX_GRADIENT_STOPS)
+  })
+  .strict()
+  .describe('Paints the fill instead of `fill`. Stops must be in increasing offset order.')
+  .refine(
+    ({ stops }) =>
+      stops.every((stop, index) => index === 0 || stop.offset >= (stops[index - 1]?.offset ?? 0)),
+    {
+      message: 'Gradient stops must be in increasing offset order'
+    }
+  )
+  .nullable()
+
+const shadowSchema = z
+  .object({ x: z.number(), y: z.number(), blur: z.number().min(0), color: hexColorSchema })
+  .strict()
+  .describe('A drop shadow: offset x and y, blur as a standard deviation, and a colour.')
+  .nullable()
 
 export const nodePatchSchema = z
   .object({
@@ -24,6 +61,10 @@ export const nodePatchSchema = z
     opacity: z.number().min(0).max(1),
     visible: z.boolean(),
     fill: colorSchema,
+    gradient: gradientSchema,
+    blur: z.number().min(0).describe('A layer blur as a standard deviation in pixels. 0 is sharp.'),
+    blendMode: z.enum(BLEND_MODES).describe('How the node combines with what is behind it.'),
+    shadow: shadowSchema,
     stroke: colorSchema,
     strokeWidth: z.number().min(0),
     cornerRadius: z.number().min(0),

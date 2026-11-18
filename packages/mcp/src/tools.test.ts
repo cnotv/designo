@@ -318,6 +318,57 @@ describe('text properties on the node tools', () => {
     })
   })
 
+  it('takes a gradient, blur, blend mode and shadow, saves them, and refuses a bad one', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Effects' })
+    const client = await connectClient()
+    const gradient = {
+      kind: 'radial',
+      angle: 0,
+      stops: [
+        { offset: 0, color: '#ff0000' },
+        { offset: 1, color: '#0000ff80' }
+      ]
+    }
+    const shadow = { x: 2, y: 3, blur: 4, color: '#00000080' }
+    const created = await client.callTool({
+      name: 'create_node',
+      arguments: {
+        fileId,
+        type: 'ellipse',
+        parentId: pageId,
+        properties: { gradient, blur: 6, blendMode: 'multiply', shadow }
+      }
+    })
+    expect(created.isError).toBeFalsy()
+    expect(await getNodeTool(context, { fileId, nodeId: 'ellipse-3' })).toMatchObject({
+      gradient,
+      blur: 6,
+      blendMode: 'multiply',
+      shadow
+    })
+    const refused = await Promise.all(
+      [
+        { blur: -1 },
+        { blendMode: 'dissolve' },
+        { gradient: { kind: 'linear', angle: 0, stops: [{ offset: 0, color: '#ff0000' }] } },
+        {
+          gradient: {
+            kind: 'linear',
+            angle: 0,
+            stops: [
+              { offset: 1, color: '#ff0000' },
+              { offset: 0, color: '#0000ff' }
+            ]
+          }
+        },
+        { shadow: { x: 0, y: 0, blur: -2, color: '#000000' } }
+      ].map((patch) =>
+        client.callTool({ name: 'update_node', arguments: { fileId, nodeId: 'ellipse-3', patch } })
+      )
+    )
+    expect(refused.every((result) => result.isError)).toBe(true)
+  })
+
   it('refuses an alignment, a line height or a wrap switch the schema does not allow', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Refused' })
     const client = await connectClient()
