@@ -9,10 +9,12 @@ const HTTP_BAD_REQUEST = 400
 const HTTP_UNAUTHORIZED = 401
 const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_PAYLOAD_TOO_LARGE = 413
+const HTTP_INTERNAL_SERVER_ERROR = 500
 
 const JSON_RPC_PARSE_ERROR = -32_700
 const JSON_RPC_INVALID_REQUEST = -32_600
 const JSON_RPC_METHOD_NOT_ALLOWED = -32_000
+const JSON_RPC_INTERNAL_ERROR = -32_603
 const MAX_TOKEN_LENGTH = 512
 const BEARER_PATTERN = /^bearer ([\w+./~-]+=*)$/i
 
@@ -85,6 +87,22 @@ const readRequestBody = async (
   return { body }
 }
 
+// A tool that fails comes back to the agent as a result with isError, so what reaches this catch
+// is the plumbing around the tools. It still has to be an answer the agent can read, not a bare 500.
+const answerPlumbingFailure = (error: unknown, response: ServerResponse): void => {
+  console.error(`MCP request failed: ${error instanceof Error ? error.name : 'unknown error'}`)
+  if (response.headersSent) {
+    response.end()
+    return
+  }
+  sendRpcError(
+    response,
+    HTTP_INTERNAL_SERVER_ERROR,
+    JSON_RPC_INTERNAL_ERROR,
+    'The server could not run the tool. Try again; if it repeats, tell the person who runs Designo.'
+  )
+}
+
 // Stateless: a server and a transport for this one request, with the tools pointed at the
 // folder of the account the token belongs to and at nothing else. There is nothing to remember
 // between requests, so any number of Designo processes could answer them.
@@ -96,21 +114,26 @@ const serveToolCall = async (
 ): Promise<void> => {
   const parsed = await readRequestBody(request, response)
   if (!parsed) return
-  const { createDesignoServer, StreamableHTTPServerTransport } = await loadMcpRuntime()
-  const server = createDesignoServer({
-    dataDirectory: accountDirectory(context.dataDirectory, account.id),
-    generateId: createShortId
-  })
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-    enableJsonResponse: true
-  })
-  response.on('close', () => {
-    void transport.close()
-    void server.close()
-  })
-  await server.connect(transport)
-  await transport.handleRequest(request, response, parsed.body)
+  try {
+    const { createDesignoServer, StreamableHTTPServerTransport } = await loadMcpRuntime()
+    const server = createDesignoServer({
+      dataDirectory: accountDirectory(context.dataDirectory, account.id),
+      generateId: createShortId,
+      rasterize: context.rasterize
+    })
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true
+    })
+    response.on('close', () => {
+      void transport.close()
+      void server.close()
+    })
+    await server.connect(transport)
+    await transport.handleRequest(request, response, parsed.body)
+  } catch (error) {
+    answerPlumbingFailure(error, response)
+  }
 }
 
 /**

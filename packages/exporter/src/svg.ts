@@ -1,21 +1,40 @@
 import { getChildren, getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
-
-interface Bounds {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+import type { Bounds } from './types.ts'
+import { boundsOverlap, getPaintReach, intersectBounds, toNodeSpace } from './visibleRegion.ts'
 
 const LINE_HEIGHT_FACTOR = 1.2
 const DEGREES_TO_RADIANS = Math.PI / 180
 const COORDINATE_DECIMALS = 3
+const TAB = 0x9
+const LINE_FEED = 0xa
+const CARRIAGE_RETURN = 0xd
+const FIRST_PRINTABLE = 0x20
+const LAST_BEFORE_SURROGATES = 0xd7ff
+const FIRST_AFTER_SURROGATES = 0xe000
+const LAST_BASIC_CHARACTER = 0xfffd
+const FIRST_SUPPLEMENTARY_CHARACTER = 0x10000
 const EMPTY_PAGE_BOUNDS: Bounds = { x: 0, y: 0, width: 1, height: 1 }
 
 const formatNumber = (value: number): string => String(Number(value.toFixed(COORDINATE_DECIMALS)))
 
+// XML 1.0 allows tab, newline, carriage return and the ranges below; anything else, such as a
+// control character an agent pasted in, makes the parser refuse the whole document.
+const isXmlCharacter = (character: string): boolean => {
+  const codePoint = character.codePointAt(0) ?? 0
+  return (
+    codePoint === TAB ||
+    codePoint === LINE_FEED ||
+    codePoint === CARRIAGE_RETURN ||
+    (codePoint >= FIRST_PRINTABLE && codePoint <= LAST_BEFORE_SURROGATES) ||
+    (codePoint >= FIRST_AFTER_SURROGATES && codePoint <= LAST_BASIC_CHARACTER) ||
+    codePoint >= FIRST_SUPPLEMENTARY_CHARACTER
+  )
+}
+
 const escapeXml = (value: string): string =>
-  value
+  [...value]
+    .filter(isXmlCharacter)
+    .join('')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -107,14 +126,19 @@ const renderEllipse = (node: DesignNode): string => {
   ])}/>`
 }
 
+// Each line sets its own y instead of a dy from the line before: an empty tspan contributes
+// nothing, so a blank line carried by dy would vanish and the paragraphs would close up.
 const renderTextContent = (node: DesignNode): string => {
   const lines = node.text.split('\n')
   if (lines.length === 1) return escapeXml(node.text)
-  const lineHeight = formatNumber(node.fontSize * LINE_HEIGHT_FACTOR)
+  const lineHeight = node.fontSize * LINE_HEIGHT_FACTOR
   return lines
-    .map(
-      (line, index) =>
-        `<tspan x="${formatNumber(node.x)}" dy="${index === 0 ? '0' : lineHeight}">${escapeXml(line)}</tspan>`
+    .flatMap((line, index) =>
+      line === ''
+        ? []
+        : [
+            `<tspan x="${formatNumber(node.x)}" y="${formatNumber(node.y + index * lineHeight)}">${escapeXml(line)}</tspan>`
+          ]
     )
     .join('')
 }
@@ -133,25 +157,41 @@ const renderText = (node: DesignNode): string =>
 const wrapInGroup = (attributes: readonly string[], content: string): string =>
   attributes.length === 0 ? content : `<g ${joinAttributes(attributes)}>${content}</g>`
 
-const renderChildren = (document: DesignDocument, node: DesignNode): string =>
-  getChildren(document, node.id)
-    .map((child) => renderNode(document, child))
-    .join('')
+// The region is what can show, in the space the children are drawn in: the export bounds, cut
+// down by every clipping frame above. A child outside it is invisible, and it must not be written:
+// resvg aborts the whole process on a clipped group whose content lies more than a canvas size
+// beyond the canvas, which an agent's stray child of a frame far from the origin is enough to do.
+const renderChildren = (
+  document: DesignDocument,
+  node: DesignNode,
+  region: Bounds | undefined
+): string =>
+  region === undefined
+    ? ''
+    : getChildren(document, node.id)
+        .map((child) => renderNode(document, child, region))
+        .join('')
 
-const renderFrame = (document: DesignDocument, node: DesignNode): string => {
+const renderFrame = (document: DesignDocument, node: DesignNode, region: Bounds): string => {
   const clipId = toClipId(node.id)
   const background = renderRectangleShape(node, [paintAttributes(node)])
   const clip = `<clipPath id="${clipId}">${renderRectangleShape(node, [])}</clipPath>`
-  const children = `<g clip-path="url(#${clipId})">${renderChildren(document, node)}</g>`
+  const childRegion = intersectBounds(region, node)
+  const children = `<g clip-path="url(#${clipId})">${renderChildren(document, node, childRegion)}</g>`
   return wrapInGroup(presentationAttributes(node), `${background}${clip}${children}`)
 }
 
-const renderNode = (document: DesignDocument, node: DesignNode): string => {
+const isOutsideRegion = (node: DesignNode, region: Bounds): boolean =>
+  node.type !== 'page' && node.type !== 'group' && !boundsOverlap(getPaintReach(node), region)
+
+const renderNode = (document: DesignDocument, node: DesignNode, parentRegion: Bounds): string => {
   if (!node.visible) return ''
+  const region = toNodeSpace(parentRegion, node)
+  if (isOutsideRegion(node, region)) return ''
   const renderers: Record<DesignNode['type'], () => string> = {
-    page: () => renderChildren(document, node),
-    group: () => wrapInGroup(presentationAttributes(node), renderChildren(document, node)),
-    frame: () => renderFrame(document, node),
+    page: () => renderChildren(document, node, region),
+    group: () => wrapInGroup(presentationAttributes(node), renderChildren(document, node, region)),
+    frame: () => renderFrame(document, node, region),
     rectangle: () =>
       renderRectangleShape(node, [paintAttributes(node), ...presentationAttributes(node)]),
     ellipse: () => renderEllipse(node),
@@ -175,5 +215,5 @@ export const exportNodeToSvg = (document: DesignDocument, nodeId: string): strin
   const width = formatNumber(bounds.width)
   const height = formatNumber(bounds.height)
   const viewBox = `${formatNumber(bounds.x)} ${formatNumber(bounds.y)} ${width} ${height}`
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${renderNode(document, node)}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${renderNode(document, node, bounds)}</svg>`
 }

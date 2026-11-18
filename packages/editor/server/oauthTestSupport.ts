@@ -5,6 +5,7 @@ import { createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import type { AuthSettings, VerifiedIdentity } from '@designo/auth'
+import type { Rasterize } from '@designo/mcp'
 import { createFakeIdentityProvider } from '@designo/auth/testing'
 import { z } from 'zod'
 import { createProductionServer } from './createProductionServer.ts'
@@ -52,10 +53,12 @@ const freePort = (): Promise<number> =>
  * Starts the production server with sign-in on and the fake identity provider, on a port chosen
  * first so the public URL, which is the issuer, names the address clients really connect to.
  * @param overrides - Settings to change from the defaults.
+ * @param rasterize - Replaces the screenshot renderer, to force a crash or a timeout.
  * @returns The running server and what a test needs to drive and clean it up.
  */
 export const startOAuthServer = async (
-  overrides: Partial<AuthSettings> = {}
+  overrides: Partial<AuthSettings> = {},
+  rasterize?: Rasterize
 ): Promise<OAuthServer> => {
   const dataDirectory = await mkdtemp(path.join(tmpdir(), 'designo-oauth-server-'))
   const port = await freePort()
@@ -67,6 +70,7 @@ export const startOAuthServer = async (
       response.end('static editor')
     },
     clock: () => time.now,
+    rasterize,
     settings: {
       googleClientId: 'client-id.example.com',
       googleClientSecret: 'google-client-secret-that-must-never-leak',

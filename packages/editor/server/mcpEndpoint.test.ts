@@ -1,8 +1,10 @@
-import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { accountDirectory, createAccountStore, type Account } from '@designo/auth'
 import { createDocument } from '@designo/core'
 import { writeDocument } from '@designo/storage'
+import { createSvgRasterizer, DEFAULT_RENDER_LIMITS, type Rasterize } from '@designo/mcp'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import {
   UnauthorizedError,
@@ -492,5 +494,93 @@ describe('refusals at /mcp', () => {
     } finally {
       await off.close()
     }
+  })
+})
+
+describe('get_screenshot when the renderer fails', () => {
+  const scriptDirectories: string[] = []
+
+  afterEach(async () => {
+    await Promise.all(
+      scriptDirectories
+        .splice(0)
+        .map((directory) => rm(directory, { recursive: true, force: true }))
+    )
+  })
+
+  const rasterizerRunning = async (
+    script: string,
+    timeoutMilliseconds?: number
+  ): Promise<Rasterize> => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'designo-worker-'))
+    scriptDirectories.push(directory)
+    const workerPath = path.join(directory, 'worker.ts')
+    await writeFile(workerPath, script)
+    return createSvgRasterizer({
+      workerPath,
+      limits: { ...DEFAULT_RENDER_LIMITS, ...(timeoutMilliseconds ? { timeoutMilliseconds } : {}) }
+    })
+  }
+
+  const signInWith = async (rasterize?: Rasterize) => {
+    await app.close()
+    app = await startOAuthServer({}, rasterize)
+    const { client } = await signInThroughMcpClient('admin')
+    const created = JSON.parse(textOf(await callTool(client, 'create_file', { name: 'Shots' })))
+    const frame = JSON.parse(
+      textOf(
+        await callTool(client, 'create_node', {
+          fileId: created.fileId,
+          type: 'frame',
+          parentId: created.pageId,
+          properties: { width: 100, height: 100 }
+        })
+      )
+    )
+    return { client, fileId: created.fileId as string, frameId: frame.createdNodeIds[0] as string }
+  }
+
+  it('reports a crashed render as a tool error, keeps the server up and answers the next call', async () => {
+    const { client, fileId } = await signInWith(await rasterizerRunning('process.abort()'))
+    const crashed = await callTool(client, 'get_screenshot', { fileId })
+    expect(crashed.isError).toBe(true)
+    expect(textOf(crashed)).toContain('Rendering crashed (SIGABRT)')
+    expect(JSON.parse(textOf(await callTool(client, 'list_files')))).toHaveLength(1)
+    expect(textOf(await callTool(client, 'export_svg', { fileId }))).toContain('<svg')
+  })
+
+  it('reports a render that hangs as a tool error naming the time limit', async () => {
+    const { client, fileId } = await signInWith(
+      await rasterizerRunning('setInterval(() => undefined, 1000)', 300)
+    )
+    const timedOut = await callTool(client, 'get_screenshot', { fileId })
+    expect(timedOut.isError).toBe(true)
+    expect(textOf(timedOut)).toContain('Rendering timed out after 0.3 s')
+    expect(JSON.parse(textOf(await callTool(client, 'list_files')))).toHaveLength(1)
+  })
+
+  it('refuses a render too large to draw, with the real renderer, and then draws a small one', async () => {
+    const { client, fileId, frameId } = await signInWith()
+    const pageId = JSON.parse(textOf(await callTool(client, 'get_document_tree', { fileId }))).node
+      .id
+    const created = JSON.parse(
+      textOf(
+        await callTool(client, 'create_node', {
+          fileId,
+          type: 'frame',
+          parentId: pageId,
+          properties: { width: 20_000, height: 20_000 }
+        })
+      )
+    )
+    const huge = await callTool(client, 'get_screenshot', {
+      fileId,
+      nodeId: created.createdNodeIds[0],
+      scale: 4
+    })
+    expect(huge.isError).toBe(true)
+    expect(textOf(huge)).toContain('Rendering is too large: 80000 x 80000 px is 6400 megapixels')
+    const small = await callTool(client, 'get_screenshot', { fileId, nodeId: frameId, scale: 0.5 })
+    expect(small.isError).toBeFalsy()
   })
 })
