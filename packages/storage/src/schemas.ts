@@ -1,9 +1,7 @@
-import { CURRENT_FORMAT_VERSION } from '@designo/core'
+import { CURRENT_FORMAT_VERSION, MAX_LINE_HEIGHT, MIN_LINE_HEIGHT } from '@designo/core'
 import { z } from 'zod'
 
 const MAX_TEXT_LENGTH = 10_000
-const MIN_LINE_HEIGHT = 0.5
-const MAX_LINE_HEIGHT = 10
 
 const HEX_COLOR = /^#(?:[\da-f]{6}|[\da-f]{8})$/i
 

@@ -1,6 +1,8 @@
 import {
+  DEFAULT_NODE_PROPERTIES,
   getSubtreeIds,
   type DesignDocument,
+  type DesignNode,
   type DesignNodePatch,
   type DesignOperation
 } from '@designo/core'
@@ -146,7 +148,11 @@ export const createDrawOperation = ({
   keepSquare
 }: DrawRequest): DesignOperation => {
   if (tool === 'text') {
-    const size = estimateTextSize(DEFAULT_TEXT, DEFAULT_FONT_SIZE)
+    const size = estimateTextSize(
+      DEFAULT_TEXT,
+      DEFAULT_FONT_SIZE,
+      DEFAULT_NODE_PROPERTIES.lineHeight
+    )
     const properties: DesignNodePatch = {
       name: NAME_BY_TOOL.text,
       x: start.x,
@@ -185,8 +191,30 @@ export const createDeleteOperations = (
     .filter((nodeId) => nodeId !== document.rootId && document.nodes[nodeId])
     .map((nodeId) => ({ kind: 'delete', id: nodeId }))
 
+const TEXT_BOX_PROPERTIES = ['text', 'fontSize', 'lineHeight', 'textWrap'] as const
+
+const changesTextBox = (patch: DesignNodePatch): boolean =>
+  TEXT_BOX_PROPERTIES.some((property) => property in patch)
+
+// A fixed-width box keeps the width it was given and only grows taller; an auto-width box
+// follows its words in both directions.
+const fitTextBox = (
+  node: DesignNode,
+  patch: DesignNodePatch,
+  isFixedWidth: boolean
+): DesignNodePatch => {
+  const { width, height } = estimateTextSize(
+    patch.text ?? node.text,
+    patch.fontSize ?? node.fontSize,
+    patch.lineHeight ?? node.lineHeight
+  )
+  return isFixedWidth ? { height } : { width, height }
+}
+
 /**
- * Builds the update for a property edit, keeping a text node's box in step with its words.
+ * Builds the update for a property edit, keeping a text node's box in step with its words. A
+ * width typed into a text node makes it a fixed-width box, because an auto-width box would give
+ * the number back the next time its words changed.
  * @param document - The document.
  * @param nodeId - The node being edited.
  * @param patch - The changed properties.
@@ -199,9 +227,11 @@ export const createPropertyOperations = (
 ): DesignOperation[] => {
   const node = document.nodes[nodeId]
   if (!node) return []
-  const changesText = node.type === 'text' && ('text' in patch || 'fontSize' in patch)
-  const size = changesText
-    ? estimateTextSize(patch.text ?? node.text, patch.fontSize ?? node.fontSize)
-    : {}
-  return [{ kind: 'update', id: nodeId, patch: { ...patch, ...size } }]
+  if (node.type !== 'text') return [{ kind: 'update', id: nodeId, patch }]
+  const setsWidth = 'width' in patch && !('textWrap' in patch)
+  const typedPatch: DesignNodePatch = setsWidth ? { ...patch, textWrap: true } : patch
+  const isFixedWidth = typedPatch.textWrap ?? node.textWrap
+  // Judged on what was asked, not on the textWrap added above, so a typed width keeps the height.
+  const size = changesTextBox(patch) ? fitTextBox(node, typedPatch, isFixedWidth) : {}
+  return [{ kind: 'update', id: nodeId, patch: { ...typedPatch, ...size } }]
 }

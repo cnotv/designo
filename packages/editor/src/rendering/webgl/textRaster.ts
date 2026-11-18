@@ -1,5 +1,4 @@
 import type { DesignNode } from '@designo/core'
-import { TEXT_LINE_HEIGHT } from '../../editing/geometry.ts'
 import type { TextRasterSize } from '../types.ts'
 
 const MIN_RASTER_SCALE = 0.125
@@ -44,7 +43,7 @@ export const measureTextRaster = (node: DesignNode, widestLine: number): TextRas
   const lineCount = node.text.split('\n').length
   return {
     width: Math.max(node.width, widestLine + OVERHANG_PADDING),
-    height: Math.max(node.height, lineCount * node.fontSize * TEXT_LINE_HEIGHT)
+    height: Math.max(node.height, lineCount * node.fontSize * node.lineHeight)
   }
 }
 

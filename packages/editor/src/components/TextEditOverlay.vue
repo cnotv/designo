@@ -57,6 +57,7 @@ const onKeyDown = (event: KeyboardEvent): void => {
       height: `${layout.height}px`,
       fontSize: `${layout.fontSize}px`,
       lineHeight: `${layout.lineHeight}px`,
+      textAlign: layout.textAlign,
       fontFamily: node.fontFamily,
       color: node.fill ?? '#000000',
       opacity: node.opacity,

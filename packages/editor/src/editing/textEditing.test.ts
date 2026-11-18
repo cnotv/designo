@@ -32,9 +32,22 @@ describe('getTextOverlayLayout', () => {
       left: 210,
       top: 120,
       fontSize: 32,
-      lineHeight: 40,
+      lineHeight: 38.4,
       rotation: 30
     })
+  })
+
+  it('takes its line spacing and alignment from the node', () => {
+    const roomy = { ...label, lineHeight: 2, textAlign: 'right' as const }
+    expect(getTextOverlayLayout(roomy, { offsetX: 0, offsetY: 0, scale: 2 }, 'Hi')).toMatchObject({
+      lineHeight: 64,
+      textAlign: 'right'
+    })
+  })
+
+  it('stays as wide as a fixed-width node, however short the draft', () => {
+    const fixed = { ...label, width: 300, textWrap: true }
+    expect(getTextOverlayLayout(fixed, { offsetX: 0, offsetY: 0, scale: 1 }, 'Hi').width).toBe(300)
   })
 
   it('turns around the node centre, as the canvas does, even as the draft grows', () => {
@@ -73,7 +86,7 @@ describe('createTextCommitOperations', () => {
       { nodeId: 'label', isNew: false },
       'one\ntwo\nthree'
     )
-    expect(operation).toMatchObject({ patch: { height: 60 } })
+    expect(operation).toMatchObject({ patch: { height: 58 } })
   })
 
   it('does nothing when the text is unchanged', () => {

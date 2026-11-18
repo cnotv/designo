@@ -1,4 +1,4 @@
-import type { DesignNode, DesignOperation } from '@designo/core'
+import type { DesignNode, DesignOperation, TextAlign } from '@designo/core'
 
 export interface Point {
   x: number
@@ -155,6 +155,9 @@ export interface TextEditSession {
 }
 
 /** Where the text editor overlay sits on the canvas, in CSS pixels. */
+/** Whether a text node's box follows its words or holds a width its lines wrap at. */
+export type TextWidthMode = 'auto' | 'fixed'
+
 export interface TextOverlayLayout {
   left: number
   top: number
@@ -162,6 +165,7 @@ export interface TextOverlayLayout {
   height: number
   fontSize: number
   lineHeight: number
+  textAlign: TextAlign
   rotation: number
   /** The node's centre, from the box's top-left, which the box turns around as the canvas does. */
   rotationOriginX: number

@@ -1,4 +1,5 @@
-import { getTextBaselineOffset, TEXT_LINE_HEIGHT } from '../../editing/geometry.ts'
+import type { TextAlign } from '@designo/core'
+import { getTextBaselineOffset } from '../../editing/geometry.ts'
 import { getVisualOrder, resolveBidiLevels } from './bidi.ts'
 import { findBreakChunks, splitParagraphs, type Paragraph } from './lineBreaking.ts'
 import type {
@@ -6,7 +7,6 @@ import type {
   LaidOutLine,
   PlacedGlyph,
   ShapedRun,
-  TextAlignment,
   TextDirection,
   TextLayout,
   TextLayoutInput,
@@ -206,7 +206,7 @@ const breakParagraphIntoLines = (
   return lines.map((lineChunks) => toParagraphLine(context, lineChunks))
 }
 
-const alignmentOffset = (alignment: TextAlignment, boxWidth: number, lineWidth: number): number => {
+const alignmentOffset = (alignment: TextAlign, boxWidth: number, lineWidth: number): number => {
   if (alignment === 'center') return (boxWidth - lineWidth) / 2
   return alignment === 'right' ? boxWidth - lineWidth : 0
 }
@@ -264,19 +264,20 @@ const placeLineGlyphs = (
  *
  * Lines break at hard line breaks and, when `wrapWidth` is set, at Unicode word boundaries
  * measured with shaped advances; a word wider than the box breaks between characters. Lines are
- * `TEXT_LINE_HEIGHT` times the font size apart with the baseline placed as CSS does, so the canvas
+ * `lineHeight` times the font size apart with the baseline placed as CSS does, so the canvas
  * agrees with the text editor's textarea. Alignment is physical: `left` is the left edge for
  * right to left text too.
- * @param input - The text, font size, alignment and the wrap width of a fixed-width box, if any.
+ * @param input - The text, font size, alignment, line height and the wrap width of a fixed-width
+ *   box, if any.
  * @param shaper - Shapes strings into glyphs; its fonts must already be loaded.
  * @returns The lines with their glyphs, and the width and height of the text box.
  */
 export const layoutText = (input: TextLayoutInput, shaper: TextShaper): TextLayout => {
-  const { text, fontSize, alignment, wrapWidth } = input
+  const { text, fontSize, alignment, lineHeight: lineHeightMultiple, wrapWidth } = input
   const metrics = shaper.getPrimaryMetrics()
   const ascent = (metrics.ascender / metrics.unitsPerEm) * fontSize
   const descent = (-metrics.descender / metrics.unitsPerEm) * fontSize
-  const lineHeight = fontSize * TEXT_LINE_HEIGHT
+  const lineHeight = fontSize * lineHeightMultiple
 
   const paragraphLines = splitParagraphs(text).flatMap((paragraph) =>
     breakParagraphIntoLines(paragraph, shaper, fontSize, wrapWidth)
@@ -285,7 +286,13 @@ export const layoutText = (input: TextLayoutInput, shaper: TextShaper): TextLayo
 
   const lines = paragraphLines.map((line, lineIndex): LaidOutLine => {
     const x = alignmentOffset(alignment, boxWidth, line.width)
-    const baselineY = getTextBaselineOffset(lineIndex, fontSize, ascent, descent)
+    const baselineY = getTextBaselineOffset(
+      lineIndex,
+      fontSize,
+      lineHeightMultiple,
+      ascent,
+      descent
+    )
     return {
       glyphs: placeLineGlyphs(line, x, baselineY, fontSize),
       x,

@@ -53,6 +53,7 @@ export const paintText = (
     const baseline = getTextBaselineOffset(
       lineIndex,
       node.fontSize,
+      node.lineHeight,
       metrics.fontBoundingBoxAscent,
       metrics.fontBoundingBoxDescent
     )

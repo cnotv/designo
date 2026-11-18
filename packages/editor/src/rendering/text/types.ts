@@ -1,3 +1,5 @@
+import type { TextAlign } from '@designo/core'
+
 export type TextDirection = 'ltr' | 'rtl'
 
 /** An inclusive range of Unicode code points. */
@@ -117,8 +119,6 @@ export interface TextShaper {
   getPrimaryMetrics: () => FontLineMetrics
 }
 
-export type TextAlignment = 'left' | 'center' | 'right'
-
 /** The embedding level of every UTF-16 unit of a paragraph: even reads left to right, odd right to left. */
 export interface BidiLevels {
   baseDirection: TextDirection
@@ -139,7 +139,9 @@ export interface BreakChunk {
 export interface TextLayoutInput {
   text: string
   fontSize: number
-  alignment: TextAlignment
+  alignment: TextAlign
+  /** The distance between lines, as a multiple of the font size. */
+  lineHeight: number
   /** The width of a fixed-width box to wrap in; undefined lets each line run as long as it is. */
   wrapWidth: number | undefined
 }

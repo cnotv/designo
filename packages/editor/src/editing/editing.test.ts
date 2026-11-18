@@ -1,7 +1,9 @@
 import {
   applyOperations,
   createDocument,
+  DEFAULT_NODE_PROPERTIES,
   type DesignDocument,
+  type DesignNodePatch,
   type OperationResult
 } from '@designo/core'
 import { describe, expect, it } from 'vitest'
@@ -111,11 +113,17 @@ describe('selection', () => {
 describe('getTextBaselineOffset', () => {
   it('centres the font in the line height, as CSS does', () => {
     // 20px text: a 25px line, 18 + 4 of font, so 1.5 above the ascent.
-    expect(getTextBaselineOffset(0, 20, 18, 4)).toBe(19.5)
+    expect(getTextBaselineOffset(0, 20, 1.25, 18, 4)).toBe(19.5)
   })
 
   it('steps one line height per line', () => {
-    expect(getTextBaselineOffset(2, 20, 18, 4)).toBe(69.5)
+    expect(getTextBaselineOffset(2, 20, 1.25, 18, 4)).toBe(69.5)
+  })
+
+  it('follows the line height: a taller line puts more space above the font', () => {
+    // 20px text in a 40px line: 18 + 4 of font leaves 18 to split, so 9 above the ascent.
+    expect(getTextBaselineOffset(0, 20, 2, 18, 4)).toBe(27)
+    expect(getTextBaselineOffset(1, 20, 2, 18, 4)).toBe(67)
   })
 })
 
@@ -148,9 +156,13 @@ describe('geometry', () => {
   })
 
   it('sizes text by its longest line and line count', () => {
-    const size = estimateTextSize('ab\nabcd', 10)
+    const size = estimateTextSize('ab\nabcd', 10, 1.25)
     expect(size.height).toBe(25)
-    expect(size.width).toBeGreaterThan(estimateTextSize('ab', 10).width)
+    expect(size.width).toBeGreaterThan(estimateTextSize('ab', 10, 1.25).width)
+  })
+
+  it('sizes text height by the line height', () => {
+    expect(estimateTextSize('a\nb', 10, 2).height).toBe(40)
   })
 })
 
@@ -216,6 +228,73 @@ describe('operations', () => {
       operation?.kind === 'update' &&
         (operation.patch.width ?? 0) > (withText.nodes.label?.width ?? 0)
     ).toBe(true)
+  })
+
+  describe('text boxes that follow their words or hold a fixed width', () => {
+    const withLabel = (properties: DesignNodePatch) =>
+      unwrap(
+        applyOperations(document, [
+          { kind: 'create', id: 'note', type: 'text', parentId: 'page', properties }
+        ])
+      )
+    const patchOf = (
+      state: DesignDocument,
+      patch: DesignNodePatch
+    ): DesignNodePatch | undefined => {
+      const [operation] = createPropertyOperations(state, 'note', patch)
+      return operation?.kind === 'update' ? operation.patch : undefined
+    }
+
+    it('sizes a newly drawn text node by the default line height', () => {
+      const operation = createDrawOperation({
+        tool: 'text',
+        nodeId: 'new',
+        parentId: 'page',
+        start: { x: 0, y: 0 },
+        current: { x: 0, y: 0 },
+        keepSquare: false
+      })
+      expect(operation.kind === 'create' && operation.properties?.height).toBe(
+        Math.ceil(16 * DEFAULT_NODE_PROPERTIES.lineHeight)
+      )
+    })
+
+    it('resizes the height when the line height changes', () => {
+      const state = withLabel({ text: 'one\ntwo', fontSize: 10, width: 30, height: 24 })
+      expect(patchOf(state, { lineHeight: 2 })).toMatchObject({ lineHeight: 2, height: 40 })
+    })
+
+    it('leaves the box alone when only the alignment changes', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33 })
+      expect(patchOf(state, { textAlign: 'center' })).toEqual({ textAlign: 'center' })
+    })
+
+    it('keeps a fixed-width box at its width while its words change', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33, textWrap: true })
+      const patch = patchOf(state, { text: 'a much longer label than before' })
+      expect(patch).toHaveProperty('height')
+      expect(patch).not.toHaveProperty('width')
+    })
+
+    it('makes a text node fixed-width when its width is typed in', () => {
+      const state = withLabel({ text: 'one', width: 77, height: 33 })
+      expect(patchOf(state, { width: 150 })).toEqual({ width: 150, textWrap: true })
+    })
+
+    it('does not make a shape fixed-width when its width is typed in', () => {
+      expect(createPropertyOperations(document, 'box', { width: 150 })).toEqual([
+        { kind: 'update', id: 'box', patch: { width: 150 } }
+      ])
+    })
+
+    it('fits the box to the words again when it goes back to auto width', () => {
+      const state = withLabel({ text: 'one', fontSize: 10, width: 300, height: 33, textWrap: true })
+      expect(patchOf(state, { textWrap: false })).toMatchObject({
+        textWrap: false,
+        width: estimateTextSize('one', 10, 1.2).width,
+        height: estimateTextSize('one', 10, 1.2).height
+      })
+    })
   })
 })
 

@@ -15,6 +15,7 @@ const text: DesignNode = {
   order: 0,
   text: 'One\nTwo',
   fontSize: 20,
+  lineHeight: 1.25,
   width: 50,
   height: 10
 }
@@ -42,6 +43,12 @@ describe('measureTextRaster', () => {
       width: 300,
       height: 80
     })
+  })
+})
+
+describe('measureTextRaster and the line height', () => {
+  it('is as tall as its lines are spaced', () => {
+    expect(measureTextRaster({ ...text, lineHeight: 2 }, 120).height).toBe(80)
   })
 })
 

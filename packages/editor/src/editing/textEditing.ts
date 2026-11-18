@@ -1,5 +1,5 @@
 import type { DesignDocument, DesignNode, DesignOperation } from '@designo/core'
-import { estimateTextSize, TEXT_LINE_HEIGHT } from './geometry.ts'
+import { estimateTextSize } from './geometry.ts'
 import { createDeleteOperations, createPropertyOperations } from './operations.ts'
 import type { TextEditSession, TextOverlayLayout, Viewport } from './types.ts'
 import { worldToScreen } from './viewport.ts'
@@ -18,14 +18,16 @@ export const getTextOverlayLayout = (
   draftText: string
 ): TextOverlayLayout => {
   const origin = worldToScreen(viewport, { x: node.x, y: node.y })
-  const fitted = estimateTextSize(draftText, node.fontSize)
+  const fitted = estimateTextSize(draftText, node.fontSize, node.lineHeight)
   return {
     left: origin.x,
     top: origin.y,
-    width: Math.max(node.width, fitted.width) * viewport.scale,
+    // A fixed-width box is as wide as it was made; an auto-width one grows with the draft.
+    width: (node.textWrap ? node.width : Math.max(node.width, fitted.width)) * viewport.scale,
     height: fitted.height * viewport.scale,
     fontSize: node.fontSize * viewport.scale,
-    lineHeight: node.fontSize * TEXT_LINE_HEIGHT * viewport.scale,
+    lineHeight: node.fontSize * node.lineHeight * viewport.scale,
+    textAlign: node.textAlign,
     rotation: node.rotation,
     rotationOriginX: (node.width / 2) * viewport.scale,
     rotationOriginY: (node.height / 2) * viewport.scale

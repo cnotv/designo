@@ -1,12 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { getTextBaselineOffset, TEXT_LINE_HEIGHT } from '../../editing/geometry.ts'
+import type { TextAlign } from '@designo/core'
+import { getTextBaselineOffset } from '../../editing/geometry.ts'
 import { BUNDLED_FONT_CATALOG } from './bundledFontCatalog.ts'
 import { readBundledFontBytes } from './fixtures/fontFiles.ts'
 import { createFontRegistry } from './fontRegistry.ts'
 import { createHarfBuzzShapingFont } from './harfBuzzFont.ts'
 import { layoutText } from './textLayout.ts'
 import { createTextShaper } from './textShaper.ts'
-import type { TextAlignment, TextLayoutInput, TextShaper } from './types.ts'
+import type { TextLayoutInput, TextShaper } from './types.ts'
 
 // A shaper with no font: every UTF-16 unit is one glyph, 500 units wide in a 1000-unit em, so at
 // font size 20 each character is 10 world units wide and the arithmetic can be done by eye.
@@ -34,11 +35,19 @@ const monospaceShaper: TextShaper = {
 
 const FONT_SIZE = 20
 const CHARACTER_WIDTH = 10
-const LINE_HEIGHT = FONT_SIZE * TEXT_LINE_HEIGHT
+const LINE_HEIGHT_MULTIPLE = 1.2
+const LINE_HEIGHT = FONT_SIZE * LINE_HEIGHT_MULTIPLE
 
 const layout = (text: string, options: Partial<TextLayoutInput> = {}) =>
   layoutText(
-    { text, fontSize: FONT_SIZE, alignment: 'left', wrapWidth: undefined, ...options },
+    {
+      text,
+      fontSize: FONT_SIZE,
+      alignment: 'left',
+      lineHeight: LINE_HEIGHT_MULTIPLE,
+      wrapWidth: undefined,
+      ...options
+    },
     monospaceShaper
   )
 
@@ -51,7 +60,7 @@ describe('layoutText without wrapping', () => {
     const [line] = result.lines
     expect(line?.glyphs.map((glyph) => glyph.x)).toEqual([0, 10, 20, 30, 40])
     expect(new Set(line?.glyphs.map((glyph) => glyph.y))).toEqual(
-      new Set([getTextBaselineOffset(0, FONT_SIZE, 16, 4)])
+      new Set([getTextBaselineOffset(0, FONT_SIZE, LINE_HEIGHT_MULTIPLE, 16, 4)])
     )
     expect(line?.glyphs[0]).toMatchObject({ fontId: 'mono', glyphId: 104, scale: 0.02 })
   })
@@ -67,7 +76,9 @@ describe('layoutText without wrapping', () => {
     const result = layout('ab\ncd')
     expect(result.lines).toHaveLength(2)
     expect(result.lines[1]?.top).toBe(LINE_HEIGHT)
-    expect(result.lines[1]?.baselineY).toBe(getTextBaselineOffset(1, FONT_SIZE, 16, 4))
+    expect(result.lines[1]?.baselineY).toBe(
+      getTextBaselineOffset(1, FONT_SIZE, LINE_HEIGHT_MULTIPLE, 16, 4)
+    )
     expect(clustersOf(result, 1)).toEqual([3, 4])
     expect(result.lines[1]).toMatchObject({ start: 3, end: 5 })
   })
@@ -153,8 +164,37 @@ describe('layoutText wrapping in a fixed-width box', () => {
   })
 })
 
+describe('layoutText line height', () => {
+  it('spaces lines by the line height times the font size', () => {
+    const result = layout('a\nb\nc', { lineHeight: 2 })
+    expect(result.lines.map((line) => line.top)).toEqual([0, 40, 80])
+    expect(result.lineHeight).toBe(40)
+    expect(result.height).toBe(120)
+  })
+
+  it('places each baseline as CSS centres the font in a line of that height', () => {
+    const result = layout('a\nb', { lineHeight: 1.5 })
+    expect(result.lines.map((line) => line.baselineY)).toEqual([
+      getTextBaselineOffset(0, FONT_SIZE, 1.5, 16, 4),
+      getTextBaselineOffset(1, FONT_SIZE, 1.5, 16, 4)
+    ])
+  })
+
+  it('moves the glyphs with their baseline', () => {
+    const tight = layout('a', { lineHeight: 1 }).lines[0]?.glyphs[0]?.y ?? 0
+    const loose = layout('a', { lineHeight: 2 }).lines[0]?.glyphs[0]?.y ?? 0
+    expect(loose - tight).toBe(10)
+  })
+
+  it('breaks the same lines whatever the line height', () => {
+    const wrapped = (lineHeight: number) =>
+      layout('aaaa bbbb', { wrapWidth: 50, lineHeight }).lines.map((line) => [line.start, line.end])
+    expect(wrapped(3)).toEqual(wrapped(1))
+  })
+})
+
 describe('layoutText alignment', () => {
-  const xOf = (alignment: TextAlignment, options: Partial<TextLayoutInput> = {}) =>
+  const xOf = (alignment: TextAlign, options: Partial<TextLayoutInput> = {}) =>
     layout('aaaa\naa', { alignment, ...options }).lines.map((line) => [line.x, line.glyphs[0]?.x])
 
   it('starts lines at the left edge by default', () => {
@@ -236,7 +276,13 @@ describe('layoutText with right to left and mixed text', () => {
 
 describe('layoutText with the bundled fonts', () => {
   const text = 'Hello مرحبا world'
-  const input: TextLayoutInput = { text, fontSize: 20, alignment: 'left', wrapWidth: undefined }
+  const input: TextLayoutInput = {
+    text,
+    fontSize: 20,
+    alignment: 'left',
+    lineHeight: 1.2,
+    wrapWidth: undefined
+  }
   let shaper: TextShaper
   let result: ReturnType<typeof layoutText>
 
@@ -282,7 +328,7 @@ describe('layoutText with the bundled fonts', () => {
       .reduce((sum, run) => sum + (run.glyphs[0]?.xAdvance ?? 0) * (20 / run.unitsPerEm), 0)
     expect(xOfCluster(text.length - 1) + lastAdvance).toBeCloseTo(result.width)
     expect(result.lines[0]?.width).toBeCloseTo(result.width)
-    expect(result.height).toBe(20 * TEXT_LINE_HEIGHT)
+    expect(result.height).toBe(20 * 1.2)
   })
 
   it('wraps mixed text and keeps the Arabic word in one piece', () => {

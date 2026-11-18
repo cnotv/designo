@@ -1,14 +1,24 @@
 <script setup lang="ts">
 import type { DesignNodePatch } from '@designo/core'
-import { Minus, Plus, Trash2 } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { AlignCenter, AlignLeft, AlignRight, Minus, Plus, Trash2 } from 'lucide-vue-next'
+import { computed, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
+import {
+  readLineHeightInput,
+  readTextAlign,
+  readTextWidthMode,
+  TEXT_ALIGN_OPTIONS,
+  TEXT_WIDTH_MODE_OPTIONS,
+  textWidthModeOf
+} from '../editing/textProperties.ts'
 import ExportSection from './ExportSection.vue'
 
 const { editor } = useEditorContext()
@@ -29,6 +39,12 @@ const geometryFields: { key: NumberKey; label: string }[] = [
   { key: 'rotation', label: 'Rotation' }
 ]
 
+const ALIGN_ICONS: Record<string, Component> = {
+  left: AlignLeft,
+  center: AlignCenter,
+  right: AlignRight
+}
+
 const node = computed(() => {
   const [nodeId] = editor.selection.value
   return editor.selection.value.length === 1 && nodeId
@@ -47,6 +63,21 @@ const updateNumber = (key: NumberKey, event: Event, minimum = Number.NEGATIVE_IN
   const value = Number(inputValue(event))
   if (inputValue(event).trim() !== '' && Number.isFinite(value))
     update({ [key]: Math.max(minimum, value) })
+}
+
+const updateTextAlign = (raw: unknown): void => {
+  const textAlign = readTextAlign(raw)
+  if (textAlign) update({ textAlign })
+}
+
+const updateTextWidthMode = (raw: unknown): void => {
+  const mode = readTextWidthMode(raw)
+  if (mode) update({ textWrap: mode === 'fixed' })
+}
+
+const updateLineHeight = (event: Event): void => {
+  const lineHeight = readLineHeightInput(inputValue(event))
+  if (lineHeight !== undefined) update({ lineHeight })
 }
 
 const updateOpacity = (event: Event): void => {
@@ -143,6 +174,54 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             class="h-7 text-xs tabular-nums"
             @change="updateNumber('fontSize', $event, 1)"
           />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="property-line-height">Line height</Label>
+          <Input
+            id="property-line-height"
+            type="number"
+            min="0.5"
+            max="10"
+            step="0.1"
+            :model-value="node.lineHeight"
+            class="h-7 text-xs tabular-nums"
+            @change="updateLineHeight"
+          />
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <ToggleGroup
+            type="single"
+            size="sm"
+            aria-label="Text alignment"
+            :model-value="node.textAlign"
+            @update:model-value="updateTextAlign"
+          >
+            <Tooltip v-for="option in TEXT_ALIGN_OPTIONS" :key="option.value">
+              <TooltipTrigger as-child>
+                <ToggleGroupItem :value="option.value" :aria-label="option.label">
+                  <component :is="ALIGN_ICONS[option.value]" />
+                </ToggleGroupItem>
+              </TooltipTrigger>
+              <TooltipContent>{{ option.label }}</TooltipContent>
+            </Tooltip>
+          </ToggleGroup>
+          <ToggleGroup
+            type="single"
+            size="sm"
+            aria-label="Text width"
+            :model-value="textWidthModeOf(node)"
+            @update:model-value="updateTextWidthMode"
+          >
+            <ToggleGroupItem
+              v-for="option in TEXT_WIDTH_MODE_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+              :aria-label="option.label"
+              class="px-2 text-xs"
+            >
+              {{ option.label }}
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </template>
 
