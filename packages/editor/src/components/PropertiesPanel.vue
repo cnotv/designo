@@ -18,6 +18,7 @@ import {
   TEXT_WIDTH_MODE_OPTIONS,
   textWidthModeOf
 } from '../editing/textProperties.ts'
+import EffectsSection from './EffectsSection.vue'
 import ExportSection from './ExportSection.vue'
 import FontPicker from './FontPicker.vue'
 
@@ -316,6 +317,8 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
           />
         </div>
       </div>
+      <Separator />
+      <EffectsSection :node="node" @update="update" />
     </template>
 
     <div v-else-if="editor.selection.value.length > 1" class="flex flex-col gap-2">

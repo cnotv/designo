@@ -190,6 +190,29 @@ and a `width` to have long text wrap instead of adding line breaks by hand. `exp
 `get_screenshot` draw text without shaping, so they honour `textAlign` and `lineHeight` but never
 wrap: they draw each line as it is written, aligned inside `width`.
 
+### Effects
+
+`create_node`, `update_node` and `apply_ops` take these. Each is optional; `get_node` always returns
+all four, and `get_screenshot` and `export_svg` draw them.
+
+| Property    | Values                                                         | Default  | Does                                                                      |
+| ----------- | -------------------------------------------------------------- | -------- | ------------------------------------------------------------------------- |
+| `gradient`  | `{ kind, angle, stops }` or `null`                             | `null`   | Paints the fill instead of `fill`                                         |
+| `blur`      | a number, 0 or more                                            | `0`      | A gaussian blur of the shape, as a standard deviation in pixels           |
+| `blendMode` | `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten` | `normal` | How the shape combines with what is behind it                             |
+| `shadow`    | `{ x, y, blur, color }` or `null`                              | `null`   | A drop shadow: offset `x` and `y`, `blur` as a standard deviation, colour |
+
+A gradient's `kind` is `linear` or `radial`. A linear one runs along `angle`, in degrees clockwise
+from pointing right (90 runs top to bottom), from one corner of the box to the opposite one; a
+radial one runs from the centre to the box's edge and ignores `angle`. `stops` is two to sixteen
+`{ offset, color }` entries, `offset` from 0 to 1 and in increasing order, with colours as above.
+
+`blur`, `blendMode` and `shadow` take effect on rectangles and ellipses only; a gradient also fills
+a frame's background. Text, groups and frames ignore the other three, because they would need to be
+drawn to a layer first. A shadow is cast by the sharp shape, and `blur` softens the shape itself.
+Several translucent, blurred, gradient shapes with `blendMode: "multiply"` give watercolour washes
+with far fewer nodes than stacked ellipses.
+
 ## Try it
 
 Ask the agent: "Create a Designo file called Palette and lay out five colour swatches in a

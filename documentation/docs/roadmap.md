@@ -59,7 +59,7 @@ The order follows how much each item improves what a person sees, per week of wo
    screenshots, and a Font field in the properties panel picks any Google family. What is left of fonts
    comes with text styles below: weight and style, fonts uploaded per account, and drawing text as paths,
    because resvg can draw boxes when one line needs two different fallback fonts.
-2. **Blur, gradients, blend modes and shadows.** Hard-edged stacked ellipses are what make the washes in the
+2. **Blur, gradients, blend modes and shadows, done** (#50). Hard-edged stacked ellipses are what make the washes in the
    template look flat. One blurred, gradient-filled shape replaces five of them. This is the larger half of the
    visual gap, and the harder half, since the WebGL editor and the SVG and PNG exporter must both draw it.
 3. **The MCP fixes**, a few days: wrapping in screenshots and SVG export, a warning for a node outside its
@@ -70,6 +70,8 @@ The order follows how much each item improves what a person sees, per week of wo
 **Render parity** runs alongside step 2. Designo draws with three renderers: WebGL in the editor, resvg for
 screenshots and a PDF writer later. The screenshot is the only way an agent sees its work, so one file is
 rendered by every renderer and compared, and each new effect lands with that comparison, not after it.
+The effects of #50 were compared by eye, the editor in a browser against resvg; an automated pixel
+comparison needs a headless GL context and is still to do.
 
 ## Risks
 
