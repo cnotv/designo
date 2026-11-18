@@ -179,3 +179,121 @@ export interface TextLayout {
   height: number
   lineHeight: number
 }
+
+/** A rectangle of texels on one atlas page. */
+export interface AtlasRectangle {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** A row of the page that rectangles of up to `height` are packed along, left to right. */
+export interface Shelf {
+  y: number
+  height: number
+  usedWidth: number
+}
+
+export interface ShelfPackerState {
+  pageWidth: number
+  pageHeight: number
+  shelves: readonly Shelf[]
+  /** Where the next shelf would start: the page below the last one is still free. */
+  nextShelfY: number
+}
+
+export interface PackResult {
+  state: ShelfPackerState
+  rectangle: AtlasRectangle
+}
+
+/** Names a glyph as the atlas stores it. */
+export interface GlyphKey {
+  fontId: string
+  glyphId: number
+  /** Device pixels per em rounded up to a power of two, from `bucketGlyphZoom`. */
+  zoomBucket: number
+}
+
+/** A glyph drawn into 8-bit coverage, row by row from the top, at its zoom bucket's size. */
+export interface RasterizedGlyph {
+  width: number
+  height: number
+  /** How far the bitmap's left edge sits from the glyph origin, at the bucket's size. */
+  bearingX: number
+  /** How far the bitmap's top edge sits above the baseline, at the bucket's size. */
+  bearingY: number
+  pixels: Uint8Array
+}
+
+/** Draws a glyph's outline into pixels. The atlas does not know how; the renderer supplies it. */
+export type GlyphRasterizer = (key: GlyphKey) => RasterizedGlyph
+
+/** Where a glyph's pixels are in the atlas. */
+export interface AtlasGlyph {
+  pageIndex: number
+  /** The glyph's own pixels, without the padding around them. */
+  rectangle: AtlasRectangle
+  bearingX: number
+  bearingY: number
+  /** True for glyphs with nothing to draw, such as a space; they take no room. */
+  isEmpty: boolean
+}
+
+/** Pixels the renderer must copy into a page's texture. */
+export interface AtlasUpload {
+  pageIndex: number
+  rectangle: AtlasRectangle
+  pixels: Uint8Array
+}
+
+export interface GlyphAtlasOptions {
+  pageWidth: number
+  pageHeight: number
+  /** How many pages the atlas may grow to before it evicts. */
+  maxPages: number
+  /** Empty texels around each glyph, so filtering at its edge does not pick up a neighbour. */
+  padding: number
+  rasterizeGlyph: GlyphRasterizer
+}
+
+export interface GlyphAtlas {
+  pageWidth: number
+  pageHeight: number
+  /**
+   * Starts a frame. Pages used since this call are not evicted, so a glyph placed earlier in the
+   * frame is never overwritten by one placed later.
+   */
+  beginFrame: () => void
+  /**
+   * Finds a glyph, drawing and packing it the first time. Undefined when it cannot be placed:
+   * larger than a page, or every page is in use this frame.
+   */
+  lookupGlyph: (key: GlyphKey) => AtlasGlyph | undefined
+  /** Hands over the pixels placed since the last call, once, for the renderer to upload. */
+  takePendingUploads: () => AtlasUpload[]
+  /** Hands over the pages evicted since the last call, once; every glyph on them is gone. */
+  takeClearedPages: () => number[]
+  getPageCount: () => number
+  getGlyphCount: () => number
+}
+
+/** Where a rectangle went, and the page cleared to make room for it, if one was. */
+export interface PagePlacement {
+  pageIndex: number
+  rectangle: AtlasRectangle
+  evicted: { pageIndex: number; glyphIds: readonly string[] } | undefined
+}
+
+/** The atlas's pages: packing, growing and choosing which to clear. */
+export interface AtlasPagePool {
+  beginFrame: () => void
+  /** Finds room for a rectangle: on a page, on a new one, or on the page cleared for it. */
+  place: (width: number, height: number) => PagePlacement | undefined
+  /** Notes a lookup on a page, so it is not the next to go. */
+  markUsed: (pageIndex: number) => void
+  /** Records which glyph a page now holds, so clearing it can name them. */
+  addGlyph: (pageIndex: number, glyphId: string) => void
+  getPageCount: () => number
+}

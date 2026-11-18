@@ -87,6 +87,15 @@ top, always Canvas 2D, carries selection, guides and the marquee and takes the p
   node's chain increments it, and the node draws where it equals the chain's length.
 - **Text, for now,** is rasterised per node with Canvas 2D into a texture, cached by content and a
   power-of-two zoom bucket, until HarfBuzz and a glyph atlas replace it (#10).
+- **Text foundations (#10, not drawn yet).** `packages/editor/src/rendering/text/` holds the pure
+  parts of the HarfBuzz pipeline, none of which touches the DOM or a GL context. A font catalog
+  and registry load the bundled Inter and, lazily, Noto Sans subsets for Arabic, Hebrew and
+  Devanagari from `public/fonts/`, and pick a font per character by coverage. `harfbuzzjs` shapes
+  each run into glyphs in font units. `layoutText` breaks lines with `Intl.Segmenter` and shaped
+  advances, orders mixed-direction lines with a subset of the Unicode bidirectional algorithm,
+  aligns them and returns every glyph's position. A shelf packer and a zoom-bucketed glyph cache
+  pack glyph bitmaps into atlas pages, growing to a second page and then clearing the page used
+  least recently; the rasteriser that draws an outline into pixels is injected.
 - **Fallback.** Without WebGL2, or with `?renderer=canvas2d`, the same scene is painted with
   Canvas 2D. A lost WebGL context is rebuilt when the browser restores it.
 
@@ -223,4 +232,5 @@ test in `migrations.test.ts` with a sample of the old file.
 
 ## Still open
 
-- **Text shaping:** HarfBuzz compiled to WebAssembly is the likely choice for the WebGL renderer (#10).
+- **Text drawing:** shaping and layout are chosen and built (above); drawing the glyph atlas in
+  the WebGL renderer, and its Canvas 2D fallback, is the rest of #10.
