@@ -7,7 +7,7 @@ import {
   type DesignNode,
   type TextAlign
 } from '@designo/core'
-import type { Bounds } from './types.ts'
+import type { Bounds, SvgExportOptions } from './types.ts'
 import { boundsOverlap, getPaintReach, intersectBounds, toNodeSpace } from './visibleRegion.ts'
 
 // Where a line is anchored across the node's width. Left sets no attribute, so a left-aligned
@@ -148,18 +148,34 @@ const getTextAnchorX = (node: DesignNode): number =>
 const getFirstLineOffset = (node: DesignNode): number =>
   ((node.lineHeight - DEFAULT_NODE_PROPERTIES.lineHeight) * node.fontSize) / 2
 
+// Where a line's text sits, from the top of the box: its alphabetic baseline when the font's
+// metrics are known, placed as the editor places it (the line box centred on the font's ascent
+// and descent), or the top of the line, hanging, when they are not.
+const lineOffsets = (
+  node: DesignNode,
+  options: SvgExportOptions
+): { firstLine: number; hanging: boolean } => {
+  const metrics = options.getFontMetrics?.(node.fontFamily)
+  if (!metrics) return { firstLine: getFirstLineOffset(node), hanging: true }
+  const lineHeight = node.fontSize * node.lineHeight
+  const ascent = (metrics.ascender / metrics.unitsPerEm) * node.fontSize
+  const descent = (-metrics.descender / metrics.unitsPerEm) * node.fontSize
+  return { firstLine: (lineHeight - ascent - descent) / 2 + ascent, hanging: false }
+}
+
 // Each line sets its own y instead of a dy from the line before: an empty tspan contributes
 // nothing, so a blank line carried by dy would vanish and the paragraphs would close up.
-const renderTextContent = (node: DesignNode): string => {
+const renderTextContent = (node: DesignNode, options: SvgExportOptions): string => {
   const lines = node.text.split('\n')
   if (lines.length === 1) return escapeXml(node.text)
   const lineHeight = node.fontSize * node.lineHeight
+  const { firstLine } = lineOffsets(node, options)
   return lines
     .flatMap((line, index) =>
       line === ''
         ? []
         : [
-            `<tspan x="${formatNumber(getTextAnchorX(node))}" y="${formatNumber(node.y + getFirstLineOffset(node) + index * lineHeight)}">${escapeXml(line)}</tspan>`
+            `<tspan x="${formatNumber(getTextAnchorX(node))}" y="${formatNumber(node.y + firstLine + index * lineHeight)}">${escapeXml(line)}</tspan>`
           ]
     )
     .join('')
@@ -170,17 +186,19 @@ const textAnchorAttributes = (node: DesignNode): string[] => {
   return attribute === undefined ? [] : [`text-anchor="${attribute}"`]
 }
 
-const renderText = (node: DesignNode): string =>
-  `<text ${joinAttributes([
+const renderText = (node: DesignNode, options: SvgExportOptions): string => {
+  const { firstLine, hanging } = lineOffsets(node, options)
+  return `<text ${joinAttributes([
     `x="${formatNumber(getTextAnchorX(node))}"`,
-    `y="${formatNumber(node.y + getFirstLineOffset(node))}"`,
-    `font-family="${escapeXml(withFontSubstitutes(node.fontFamily))}"`,
+    `y="${formatNumber(node.y + firstLine)}"`,
+    `font-family="${escapeXml(options.resolveFontFamily?.(node.fontFamily) ?? withFontSubstitutes(node.fontFamily))}"`,
     `font-size="${formatNumber(node.fontSize)}"`,
     ...textAnchorAttributes(node),
-    'dominant-baseline="hanging"',
+    ...(hanging ? ['dominant-baseline="hanging"'] : []),
     paintAttributes(node),
     ...presentationAttributes(node)
-  ])}>${renderTextContent(node)}</text>`
+  ])}>${renderTextContent(node, options)}</text>`
+}
 
 const wrapInGroup = (attributes: readonly string[], content: string): string =>
   attributes.length === 0 ? content : `<g ${joinAttributes(attributes)}>${content}</g>`
@@ -192,38 +210,50 @@ const wrapInGroup = (attributes: readonly string[], content: string): string =>
 const renderChildren = (
   document: DesignDocument,
   node: DesignNode,
-  region: Bounds | undefined
+  region: Bounds | undefined,
+  options: SvgExportOptions
 ): string =>
   region === undefined
     ? ''
     : getChildren(document, node.id)
-        .map((child) => renderNode(document, child, region))
+        .map((child) => renderNode(document, child, region, options))
         .join('')
 
-const renderFrame = (document: DesignDocument, node: DesignNode, region: Bounds): string => {
+const renderFrame = (
+  document: DesignDocument,
+  node: DesignNode,
+  region: Bounds,
+  options: SvgExportOptions
+): string => {
   const clipId = toClipId(node.id)
   const background = renderRectangleShape(node, [paintAttributes(node)])
   const clip = `<clipPath id="${clipId}">${renderRectangleShape(node, [])}</clipPath>`
   const childRegion = intersectBounds(region, node)
-  const children = `<g clip-path="url(#${clipId})">${renderChildren(document, node, childRegion)}</g>`
+  const children = `<g clip-path="url(#${clipId})">${renderChildren(document, node, childRegion, options)}</g>`
   return wrapInGroup(presentationAttributes(node), `${background}${clip}${children}`)
 }
 
 const isOutsideRegion = (node: DesignNode, region: Bounds): boolean =>
   node.type !== 'page' && node.type !== 'group' && !boundsOverlap(getPaintReach(node), region)
 
-const renderNode = (document: DesignDocument, node: DesignNode, parentRegion: Bounds): string => {
+const renderNode = (
+  document: DesignDocument,
+  node: DesignNode,
+  parentRegion: Bounds,
+  options: SvgExportOptions
+): string => {
   if (!node.visible) return ''
   const region = toNodeSpace(parentRegion, node)
   if (isOutsideRegion(node, region)) return ''
   const renderers: Record<DesignNode['type'], () => string> = {
-    page: () => renderChildren(document, node, region),
-    group: () => wrapInGroup(presentationAttributes(node), renderChildren(document, node, region)),
-    frame: () => renderFrame(document, node, region),
+    page: () => renderChildren(document, node, region, options),
+    group: () =>
+      wrapInGroup(presentationAttributes(node), renderChildren(document, node, region, options)),
+    frame: () => renderFrame(document, node, region, options),
     rectangle: () =>
       renderRectangleShape(node, [paintAttributes(node), ...presentationAttributes(node)]),
     ellipse: () => renderEllipse(node),
-    text: () => renderText(node)
+    text: () => renderText(node, options)
   }
   return renderers[node.type]()
 }
@@ -236,14 +266,20 @@ const renderNode = (document: DesignDocument, node: DesignNode, parentRegion: Bo
  * as written.
  * @param document - The document to read.
  * @param nodeId - The page, frame or any node to export.
+ * @param options - Which font draws each text and where its baseline sits; the node's own family
+ *   list, hanging from the top of its box, without them.
  * @returns The SVG source.
  */
-export const exportNodeToSvg = (document: DesignDocument, nodeId: string): string => {
+export const exportNodeToSvg = (
+  document: DesignDocument,
+  nodeId: string,
+  options: SvgExportOptions = {}
+): string => {
   const node = document.nodes[nodeId]
   if (!node) throw new Error(`Node ${nodeId} does not exist`)
   const bounds = getExportBounds(document, node)
   const width = formatNumber(bounds.width)
   const height = formatNumber(bounds.height)
   const viewBox = `${formatNumber(bounds.x)} ${formatNumber(bounds.y)} ${width} ${height}`
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${renderNode(document, node, bounds)}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${renderNode(document, node, bounds, options)}</svg>`
 }

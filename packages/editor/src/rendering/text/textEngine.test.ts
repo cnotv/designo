@@ -1,7 +1,7 @@
 import type { DesignNode } from '@designo/core'
 import { describe, expect, it, vi } from 'vitest'
-import { BUNDLED_FONT_CATALOG } from './bundledFontCatalog.ts'
-import { createFontRegistry } from './fontRegistry.ts'
+import { createFixtureFontLibrary } from './fixtures/fontFiles.ts'
+import { createFontStore } from './fontRegistry.ts'
 import { createTextEngine } from './textEngine.ts'
 import { toTextLayoutRequest } from './textLayoutRequest.ts'
 import type { ShapingFont, TextLayoutRequest } from './types.ts'
@@ -27,13 +27,11 @@ const setup = (options: { shaping?: boolean; failLoad?: boolean; layoutLimit?: n
     if (options.failLoad) throw new Error('offline')
     return new Uint8Array([1])
   })
-  const registry = createFontRegistry({
-    catalog: BUNDLED_FONT_CATALOG,
-    loadBytes,
-    createShapingFont: async () => font
-  })
+  const library = createFixtureFontLibrary(
+    createFontStore({ loadBytes, createShapingFont: async () => font })
+  )
   const engine = createTextEngine({
-    registry,
+    library,
     isShapingAvailable: () => options.shaping ?? true,
     layoutLimit: options.layoutLimit
   })
@@ -145,9 +143,7 @@ describe('createTextEngine', () => {
     const { engine, loadBytes } = setup()
     expect(engine.getLayout(request({ text: 'שלום' }))).toBeUndefined()
     await settle()
-    expect(loadBytes.mock.calls.map(([url]) => url)).toContain(
-      'fonts/NotoSansHebrew-Regular.subset.ttf'
-    )
+    expect(loadBytes.mock.calls.map(([url]) => url)).toContain('NotoSansHebrew-Regular.subset.ttf')
     expect(engine.getLayout(request({ text: 'שלום' }))).toBeDefined()
   })
 
@@ -155,9 +151,7 @@ describe('createTextEngine', () => {
     const { engine, loadBytes } = setup()
     engine.getLayout(request({ fontFamily: 'Noto Sans Arabic, sans-serif', text: '123' }))
     await settle()
-    expect(loadBytes.mock.calls.map(([url]) => url)).toEqual([
-      'fonts/NotoSansArabic-Regular.subset.ttf'
-    ])
+    expect(loadBytes.mock.calls.map(([url]) => url)).toEqual(['NotoSansArabic-Regular.subset.ttf'])
   })
 
   it('leaves a text with an uncovered character, such as an emoji, to the fallback', async () => {

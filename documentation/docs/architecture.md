@@ -24,6 +24,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/mcp`      | built   | MCP server for agents (stdio)                                                             |
 | `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP         |
 | `@designo/exporter` | built   | Pure SVG export of a node; the MCP server draws it with resvg in a child process          |
+| `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files    |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
 | `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11) next     |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
@@ -96,11 +97,19 @@ Text is shaped by HarfBuzz, compiled to WebAssembly (`harfbuzzjs`, loaded on fir
 by pure code, and drawn as one textured quad per glyph from a shared atlas. All of it that does not
 touch a canvas or a GL context lives in `packages/editor/src/rendering/text/` and is tested in Node.
 
-- **Fonts.** A catalog and registry load the bundled Inter (Latin, Greek and Cyrillic) and, lazily,
-  Noto Sans subsets for Arabic, Hebrew and Devanagari from `public/fonts/`, and pick a font per
-  character by coverage. A node's `fontFamily` is a CSS-like list: the first family the catalog
-  has is the primary font, which sets the baseline and wins any character it covers; a list that
-  names none uses Inter, because the editor cannot read the fonts of the user's system.
+- **Fonts.** No font ships with Designo. `listFontCandidates` in `@designo/core` turns a node's
+  `fontFamily`, a CSS-like list, into the families to look up: those it names, with fonts the API
+  cannot have (Georgia, Arial and others) replaced by open stand-ins with the same letter widths,
+  generic names by a real family, then the fallbacks: Inter, Noto Sans Arabic, Hebrew and
+  Devanagari, Noto Sans Symbols and Symbols 2. `@designo/fonts` asks the Fontsource API for each,
+  validated by a schema in `@designo/storage`, and gets one TrueType file per subset (Latin,
+  Cyrillic and so on) with the characters it was cut for, served by jsDelivr. In the editor the
+  font library turns a list into a catalog, the first family's files first, its Latin file the
+  default that sets the baseline, and loads each file once, when a text needs it, into a store
+  every list shares. A character goes to the first file whose range names it; once that file has
+  loaded its own glyphs decide, because a subset can lack a character its range names. Letters go
+  to the first file that has them; a space, digit or punctuation mark stays with the file of the
+  text around it.
 - **Layout.** `layoutText` breaks lines with `Intl.Segmenter` and shaped advances, orders
   mixed-direction lines with a subset of the Unicode bidirectional algorithm, aligns them and
   returns every glyph's position. The `TextEngine` wraps it: it loads the fonts a text needs, asks
@@ -131,21 +140,29 @@ touch a canvas or a GL context lives in `packages/editor/src/rendering/text/` an
   uploads to the GPU textures each frame.
 - **Fallback.** A node is drawn the Canvas 2D way, as a texture of its own, while its fonts or
   HarfBuzz are still loading (the scene draws again when they arrive), when its text holds a
-  character no bundled font covers (emoji, CJK, symbols: the browser's own fonts draw it, in
-  colour), when its glyphs are shown larger than 512 device pixels per em, and when a glyph does
+  character none of its fonts draws (emoji, CJK: the browser's own fonts draw it, in colour), when
+  the font API cannot be reached, when its glyphs are shown larger than 512 device pixels per em, and when a glyph does
   not fit the atlas. Without WebGL2, or without WebAssembly, every text takes that path for good.
   `layoutFallbackText` gives it the same lines, alignment, line height and wrap width through the
   same chunking and greedy fill as the shaped layout, measured by the browser, so it can differ
   from the shaped layout by a kerning pair at a word boundary. A glyph a font lacks draws that
-  font's missing-glyph shape, which the bundled Inter subset leaves empty.
+  font's missing-glyph shape.
 - **Editing.** A text node's box comes from the layout: `createPropertyOperations` sizes it with a
   `TextBoxMeasurer`, which asks the engine for the layout the canvas draws (the browser's
   measurement while fonts load, a character-count estimate where there is no canvas). A fixed-width
   box keeps its width and is as tall as its lines wrap to; an auto-width box is as wide as its
   longest line. The in-place editor is a textarea sized by the same measurement, wrapping (`wrap`
   soft, `white-space: pre-wrap`) and aligned like the drawn text, in the browser's copies of the
-  bundled fonts (`@font-face` in `style.css`, under `designo-` names so the app's own Inter is
-  untouched).
+  same files: each file is registered as a `FontFace` from the bytes the shaper loaded, with its
+  range as `unicode-range`, under a `designo-` name so the app's own Inter is untouched.
+- **Screenshots.** `get_screenshot` finds fonts the same way and keeps the files in a cache folder.
+  resvg picks one font per family name and, for a missing character, reshapes the whole text with
+  another font and keeps the result only when the glyph count matches, so each downloaded file is
+  renamed to a family of its own (`designo-` and a hash), a text is drawn with the file that has
+  most of its characters, and the files with the rest are loaded for resvg's fallback. Naming a
+  font per run of text does not work: resvg shapes the whole line with every run's font and drops
+  the text when their glyph counts differ. Lines sit on the alphabetic baseline the editor computes
+  from the first family's metrics, read from the file, so mixed fonts share it.
 - **Limits.** Bidi is a subset (no explicit embeddings or isolates); there is no CJK or colour emoji
   in the glyph path; text has one font size, weight and colour per node; the glyph path does not
   hint, so a glyph between two zoom buckets is filtered down from the larger; a text box an agent

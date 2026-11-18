@@ -45,14 +45,17 @@ export const drawCoverageOnCanvas: CoverageDrawer = (plan, pathData) => {
  * Makes the rasteriser the glyph atlas calls the first time it is asked for a glyph at a zoom
  * bucket. It reads the outline from the font, so a glyph the font lacks gets the font's own
  * missing-glyph shape, and one it cannot draw at all gets an empty bitmap, never an error.
- * @param registry - The fonts, which must be loaded for the glyphs asked for.
+ * @param fonts - Where the loaded fonts are; they must be loaded for the glyphs asked for.
  * @param drawCoverage - Fills an outline into coverage; the browser's canvas by default.
  * @returns The rasteriser.
  */
 export const createGlyphRasterizer =
-  (registry: FontRegistry, drawCoverage: CoverageDrawer = drawCoverageOnCanvas): GlyphRasterizer =>
+  (
+    fonts: Pick<FontRegistry, 'getFont'>,
+    drawCoverage: CoverageDrawer = drawCoverageOnCanvas
+  ): GlyphRasterizer =>
   (key: GlyphKey): RasterizedGlyph => {
-    const font = registry.getFont(key.fontId)
+    const font = fonts.getFont(key.fontId)
     if (!font) return NO_GLYPH
     const outline = font.getGlyphOutline(key.glyphId)
     const plan = planGlyphRaster(outline.extents, font.metrics.unitsPerEm, key.zoomBucket)

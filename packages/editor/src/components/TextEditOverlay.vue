@@ -3,8 +3,8 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { Textarea } from '@/components/ui/textarea'
 import { useEditorContext } from '../composables/editorContext.ts'
 import { getTextOverlayLayout } from '../editing/textEditing.ts'
-import { BUNDLED_FONT_CATALOG } from '../rendering/text/bundledFontCatalog.ts'
 import { createBrowserFontStack } from '../rendering/text/fontFamilyList.ts'
+import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 
 const { editor } = useEditorContext()
 
@@ -24,7 +24,12 @@ const layout = computed(() =>
 
 // The browser's copies of the shaped fonts, so the box looks like the canvas text it stands for.
 const fontFamily = computed(() =>
-  node.value ? createBrowserFontStack(node.value.fontFamily, BUNDLED_FONT_CATALOG) : undefined
+  node.value
+    ? createBrowserFontStack(
+        node.value.fontFamily,
+        getSharedTextRuntime().library.getRegistry(node.value.fontFamily)
+      )
+    : undefined
 )
 
 // A new node starts empty, as it holds only a placeholder; an existing one starts with its text.

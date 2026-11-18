@@ -1,0 +1,17 @@
+{
+  "name": "@designo/fonts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Finds the font files a text needs through the Fontsource API, in the browser and in Node.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@designo/core": "workspace:*",
+    "@designo/storage": "workspace:*"
+  }
+}

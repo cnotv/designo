@@ -6,7 +6,6 @@ import { createCanvas2dRenderer } from '../rendering/canvas2dRenderer.ts'
 import { drawOverlay } from '../rendering/drawOverlay.ts'
 import { prepareCanvas } from '../rendering/prepareCanvas.ts'
 import { buildScene, createSceneSource } from '../rendering/scene.ts'
-import { getBundledFontCssFamily } from '../rendering/text/fontFamilyList.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 import type { SceneRenderer } from '../rendering/types.ts'
 import { createWebglRenderer } from '../rendering/webgl/webglRenderer.ts'
@@ -104,21 +103,15 @@ const stopListeningForFonts = textRuntime.engine.subscribe(() => {
   fontsLoaded.value += 1
 })
 
-// The browser's copies of the fonts, which the Canvas 2D path draws with, load when first used and
-// are drawn with a stand-in until then; asking now and drawing again on arrival avoids that.
+// The browser's copies of the fonts, which the Canvas 2D path draws with, finish loading after
+// the shaper's; drawing again on arrival swaps the stand-in for them.
 const onBrowserFontsLoaded = (): void => {
   fontsLoaded.value += 1
-}
-const loadBrowserFonts = (): void => {
-  document.fonts.addEventListener('loadingdone', onBrowserFontsLoaded)
-  void document.fonts.load(
-    `16px '${getBundledFontCssFamily(textRuntime.registry.catalog.defaultFontId)}'`
-  )
 }
 
 onMounted(() => {
   if (!sceneCanvas.value || !overlayCanvas.value) return
-  loadBrowserFonts()
+  document.fonts.addEventListener('loadingdone', onBrowserFontsLoaded)
   renderer.value = createRenderer(sceneCanvas.value)
   sceneCanvas.value.addEventListener('webglcontextlost', onContextLost)
   sceneCanvas.value.addEventListener('webglcontextrestored', onContextRestored)

@@ -1,7 +1,7 @@
 import type { DesignNode } from '@designo/core'
-import { BUNDLED_FONT_CATALOG } from './text/bundledFontCatalog.ts'
 import { layoutFallbackText } from './text/fallbackTextLayout.ts'
 import { createBrowserFontStack } from './text/fontFamilyList.ts'
+import { getSharedTextRuntime } from './text/sharedTextEngine.ts'
 import { toTextLayoutRequest } from './text/textLayoutRequest.ts'
 import type { TextBoxSize } from '../editing/types.ts'
 import type { FallbackTextLayout, TextLayoutRequest } from './text/types.ts'
@@ -13,7 +13,10 @@ const DEFAULT_ASCENT_RATIO = 0.8
 const DEFAULT_DESCENT_RATIO = 0.2
 
 const fallbackFont = (request: Pick<TextLayoutRequest, 'fontSize' | 'fontFamily'>): string =>
-  `${request.fontSize}px ${createBrowserFontStack(request.fontFamily, BUNDLED_FONT_CATALOG)}`
+  `${request.fontSize}px ${createBrowserFontStack(
+    request.fontFamily,
+    getSharedTextRuntime().library.getRegistry(request.fontFamily)
+  )}`
 
 /**
  * Lays text out with the browser measuring it, for the paths that draw with Canvas 2D.

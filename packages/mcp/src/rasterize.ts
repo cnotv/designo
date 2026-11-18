@@ -108,11 +108,11 @@ const interpretExit = (
  * Builds a rasterizer that draws each SVG in a fresh child process: a crash, a hang or a render
  * that is too big ends that one call with an explanation and leaves the server running.
  * @param options - The worker script and the limits it must stay within.
- * @returns A function from SVG and scale to a PNG or an explanation of why there is none.
+ * @returns A function from SVG, scale and font files to a PNG or an explanation of why there is none.
  */
 export const createSvgRasterizer =
   (options: RasterizerOptions): Rasterize =>
-  async (svg, scale) => {
+  async (svg, scale, fontFiles) => {
     // An empty environment: the worker needs nothing from the server's, which holds secrets.
     const worker = spawn(
       process.execPath,
@@ -120,7 +120,8 @@ export const createSvgRasterizer =
         '--no-warnings',
         options.workerPath,
         String(clampScale(scale)),
-        String(options.limits.maxPixels)
+        String(options.limits.maxPixels),
+        ...fontFiles
       ],
       { stdio: ['pipe', 'pipe', 'pipe'], env: {} }
     )

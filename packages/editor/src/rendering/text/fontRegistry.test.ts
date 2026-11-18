@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { BUNDLED_FONT_CATALOG } from './bundledFontCatalog.ts'
+import { FIXTURE_FONT_CATALOG } from './fixtures/fontFiles.ts'
 import {
   compileFontCatalog,
   createFontRegistry,
+  createFontStore,
   findFontForCodePoint,
   splitIntoFontRuns
 } from './fontRegistry.ts'
 import type { ShapingFont } from './types.ts'
 
-const catalog = BUNDLED_FONT_CATALOG
+const catalog = FIXTURE_FONT_CATALOG
 
 const describeRuns = (text: string) =>
   splitIntoFontRuns(text, catalog).map((run) => [run.fontId, text.slice(run.start, run.end)])
@@ -100,7 +101,10 @@ describe('createFontRegistry', () => {
   const createFixture = () => {
     const loadBytes = vi.fn(async (_url: string) => new Uint8Array([1]))
     const createShapingFont = vi.fn(async (_bytes: Uint8Array) => createFakeFont())
-    const registry = createFontRegistry({ catalog, loadBytes, createShapingFont })
+    const registry = createFontRegistry({
+      catalog,
+      store: createFontStore({ loadBytes, createShapingFont })
+    })
     return { loadBytes, createShapingFont, registry }
   }
 
@@ -112,7 +116,7 @@ describe('createFontRegistry', () => {
   it('loads only the default font for Latin text', async () => {
     const { registry, loadBytes } = createFixture()
     await registry.loadFontsForText('Hello')
-    expect(loadBytes.mock.calls.map(([url]) => url)).toEqual(['fonts/Inter-Regular.subset.ttf'])
+    expect(loadBytes.mock.calls.map(([url]) => url)).toEqual(['Inter-Regular.subset.ttf'])
     expect(registry.getFont('inter')).toBeDefined()
     expect(registry.getFont('noto-sans-arabic')).toBeUndefined()
   })
@@ -121,8 +125,8 @@ describe('createFontRegistry', () => {
     const { registry, loadBytes } = createFixture()
     await registry.loadFontsForText('שלום')
     expect(loadBytes.mock.calls.map(([url]) => url).toSorted()).toEqual([
-      'fonts/Inter-Regular.subset.ttf',
-      'fonts/NotoSansHebrew-Regular.subset.ttf'
+      'Inter-Regular.subset.ttf',
+      'NotoSansHebrew-Regular.subset.ttf'
     ])
   })
 
@@ -132,9 +136,7 @@ describe('createFontRegistry', () => {
       registry.loadFont('noto-sans-arabic'),
       registry.loadFont('noto-sans-arabic')
     ])
-    expect(loadBytes.mock.calls.map(([url]) => url)).toEqual([
-      'fonts/NotoSansArabic-Regular.subset.ttf'
-    ])
+    expect(loadBytes.mock.calls.map(([url]) => url)).toEqual(['NotoSansArabic-Regular.subset.ttf'])
   })
 
   it('rejects a font id the catalog does not have', async () => {
@@ -160,11 +162,43 @@ describe('createFontRegistry', () => {
       .mockResolvedValue(new Uint8Array([1]))
     const registry = createFontRegistry({
       catalog,
-      loadBytes,
-      createShapingFont: async () => createFakeFont()
+      store: createFontStore({ loadBytes, createShapingFont: async () => createFakeFont() })
     })
     await expect(registry.loadFontsForText('Hello')).rejects.toThrow('offline')
     await registry.loadFontsForText('Hello')
     expect(registry.getFont('inter')).toBeDefined()
+  })
+
+  it('passes a character on when a loaded font lacks it though its range names it', async () => {
+    const arrows = compileFontCatalog({
+      defaultFontId: 'latin',
+      fonts: [
+        { id: 'latin', family: 'A', url: 'latin.ttf', coverage: ['U+0000-00FF', 'U+2192'] },
+        { id: 'symbols', family: 'B', url: 'symbols.ttf', coverage: ['U+2190-21FF'] }
+      ]
+    })
+    const fonts: Record<string, ShapingFont> = {
+      'latin.ttf': { ...createFakeFont(), hasGlyph: (codePoint) => codePoint < 0x100 },
+      'symbols.ttf': createFakeFont()
+    }
+    const loadBytes = vi.fn(async (url: string) => new TextEncoder().encode(url))
+    const registry = createFontRegistry({
+      catalog: arrows,
+      store: createFontStore({
+        loadBytes,
+        createShapingFont: async (bytes) => {
+          const font = fonts[new TextDecoder().decode(bytes)]
+          if (!font) throw new Error('unknown font')
+          return font
+        }
+      })
+    })
+    expect(splitIntoFontRuns('a→', arrows).map((run) => run.fontId)).toEqual(['latin'])
+    await registry.loadFontsForText('a→')
+    expect(loadBytes.mock.calls.map(([url]) => url)).toEqual(['latin.ttf', 'symbols.ttf'])
+    expect(splitIntoFontRuns('a→', arrows, registry.getFont).map((run) => run.fontId)).toEqual([
+      'latin',
+      'symbols'
+    ])
   })
 })

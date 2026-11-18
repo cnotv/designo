@@ -93,3 +93,21 @@ export const operationBatchSchema = z
   .array(operationInputSchema)
   .min(1)
   .max(MAX_OPERATIONS_PER_BATCH)
+
+const HTTPS_URL = /^https:\/\/\S+$/
+
+const fontsourceFilesSchema = z.object({ url: z.object({ ttf: z.string().regex(HTTPS_URL) }) })
+
+/**
+ * A family as the Fontsource API describes it: its subsets with the characters each covers, and a
+ * font file for every weight, style and subset.
+ */
+export const fontsourceFamilySchema = z.object({
+  id: z.string().min(1),
+  family: z.string().min(1),
+  subsets: z.array(z.string()),
+  weights: z.array(z.number()),
+  styles: z.array(z.string()),
+  unicodeRange: z.record(z.string(), z.string()),
+  variants: z.record(z.string(), z.record(z.string(), z.record(z.string(), fontsourceFilesSchema)))
+})

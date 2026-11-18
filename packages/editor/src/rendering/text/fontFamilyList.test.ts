@@ -1,54 +1,46 @@
 import { describe, expect, it } from 'vitest'
-import { BUNDLED_FONT_CATALOG } from './bundledFontCatalog.ts'
-import { createBrowserFontStack, parseFontFamilyList, pickPrimaryFontId } from './fontFamilyList.ts'
+import { FIXTURE_FONT_CATALOG, createFixtureFontRegistry } from './fixtures/fontFiles.ts'
+import { compileFontCatalog } from './fontRegistry.ts'
+import { createBrowserFontStack, getLoadedFontCssFamily, toUnicodeRange } from './fontFamilyList.ts'
 
-describe('parseFontFamilyList', () => {
-  it('splits on commas, trims and drops quotes', () => {
-    expect(parseFontFamilyList(`Inter, "Noto Sans Arabic" , 'Helvetica Neue',sans-serif`)).toEqual([
-      'Inter',
-      'Noto Sans Arabic',
-      'Helvetica Neue',
-      'sans-serif'
-    ])
-  })
-
-  it('has nothing for an empty list', () => {
-    expect(parseFontFamilyList('  ')).toEqual([])
+describe('getLoadedFontCssFamily', () => {
+  it('names a family the way nothing else in the app does', () => {
+    expect(getLoadedFontCssFamily('Noto Sans Arabic')).toBe('designo-noto-sans-arabic')
   })
 })
 
-describe('pickPrimaryFontId', () => {
-  it('uses the default font for the usual list', () => {
-    expect(pickPrimaryFontId('Inter, system-ui, sans-serif', BUNDLED_FONT_CATALOG)).toBe('inter')
-  })
-
-  it('uses the default font when the list names nothing the registry has', () => {
-    expect(pickPrimaryFontId('Comic Sans MS, cursive', BUNDLED_FONT_CATALOG)).toBe('inter')
-  })
-
-  it('uses the bundled serif for Georgia, whose letter widths it shares', () => {
-    expect(pickPrimaryFontId('Georgia, serif', BUNDLED_FONT_CATALOG)).toBe('gelasio')
-  })
-
-  it('uses the first listed family the registry has, whatever the case', () => {
-    expect(pickPrimaryFontId('Papyrus, noto sans hebrew, Inter', BUNDLED_FONT_CATALOG)).toBe(
-      'noto-sans-hebrew'
-    )
+describe('toUnicodeRange', () => {
+  it('writes ranges and single code points the CSS way', () => {
+    const [font] = compileFontCatalog({
+      defaultFontId: 'a',
+      fonts: [{ id: 'a', family: 'A', url: 'a.ttf', coverage: ['U+0000-00FF', 'U+0131'] }]
+    }).fonts
+    expect(font && toUnicodeRange(font)).toBe('U+0000-00FF, U+0131')
   })
 })
 
 describe('createBrowserFontStack', () => {
-  it('lists the bundled fonts with the primary first, then the node list', () => {
-    expect(createBrowserFontStack('Inter, system-ui, sans-serif', BUNDLED_FONT_CATALOG)).toBe(
-      `'designo-inter', 'designo-gelasio', 'designo-noto-sans-arabic', 'designo-noto-sans-hebrew', 'designo-noto-sans-devanagari', Inter, system-ui, sans-serif`
+  it('lists the fonts the shaper uses, preferred first, then the node list', () => {
+    expect(createBrowserFontStack('Inter, sans-serif', createFixtureFontRegistry())).toBe(
+      `'designo-inter', 'designo-noto-sans-arabic', 'designo-noto-sans-hebrew', 'designo-noto-sans-devanagari', Inter, sans-serif`
     )
   })
 
-  it('puts the font a list names first', () => {
-    expect(
-      createBrowserFontStack('Noto Sans Hebrew, serif', BUNDLED_FONT_CATALOG).startsWith(
-        `'designo-noto-sans-hebrew', 'designo-inter'`
-      )
-    ).toBe(true)
+  it('names each family once, however many subset files it has', () => {
+    const catalog = compileFontCatalog({
+      defaultFontId: 'gelasio:latin',
+      fonts: [
+        { id: 'gelasio:latin', family: 'Gelasio', url: 'a.ttf', coverage: ['U+0000-00FF'] },
+        { id: 'gelasio:latin-ext', family: 'Gelasio', url: 'b.ttf', coverage: ['U+0100-024F'] }
+      ]
+    })
+    expect(createBrowserFontStack('Georgia', createFixtureFontRegistry(catalog))).toBe(
+      `'designo-gelasio', Georgia`
+    )
+  })
+
+  it('is the node list alone while the fonts are still being found', () => {
+    expect(createBrowserFontStack('Lora, serif', undefined)).toBe('Lora, serif')
+    expect(FIXTURE_FONT_CATALOG.fonts.length).toBeGreaterThan(0)
   })
 })

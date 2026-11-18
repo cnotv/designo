@@ -43,7 +43,7 @@ const shapeFontRun = (
  */
 export const createTextShaper = (registry: FontRegistry): TextShaper => ({
   shapeRuns: (text, direction) => {
-    const shaped = splitIntoFontRuns(text, registry.catalog).map((run) =>
+    const shaped = splitIntoFontRuns(text, registry.catalog, registry.getFont).map((run) =>
       shapeFontRun(registry, text, run, direction)
     )
     return direction === 'rtl' ? shaped.toReversed() : shaped

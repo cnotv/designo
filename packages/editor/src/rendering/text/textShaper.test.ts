@@ -1,8 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { BUNDLED_FONT_CATALOG } from './bundledFontCatalog.ts'
-import { readBundledFontBytes } from './fixtures/fontFiles.ts'
-import { createFontRegistry } from './fontRegistry.ts'
-import { createHarfBuzzShapingFont } from './harfBuzzFont.ts'
+import { createFixtureFontRegistry } from './fixtures/fontFiles.ts'
 import { createTextShaper } from './textShaper.ts'
 import type { FontRegistry, TextShaper } from './types.ts'
 
@@ -11,11 +8,7 @@ describe('createTextShaper', () => {
   let shaper: TextShaper
 
   beforeAll(async () => {
-    registry = createFontRegistry({
-      catalog: BUNDLED_FONT_CATALOG,
-      loadBytes: readBundledFontBytes,
-      createShapingFont: createHarfBuzzShapingFont
-    })
+    registry = createFixtureFontRegistry()
     await registry.loadFontsForText('Hello שלום مرحبا')
     shaper = createTextShaper(registry)
   })
@@ -50,22 +43,12 @@ describe('createTextShaper', () => {
   })
 
   it('says to load fonts first when one is missing', () => {
-    const emptyShaper = createTextShaper(
-      createFontRegistry({
-        catalog: BUNDLED_FONT_CATALOG,
-        loadBytes: readBundledFontBytes,
-        createShapingFont: createHarfBuzzShapingFont
-      })
-    )
+    const emptyShaper = createTextShaper(createFixtureFontRegistry())
     expect(() => emptyShaper.shapeRuns('Hello', 'ltr')).toThrow('loadFontsForText')
   })
 
   it('draws a script whose font has not loaded with the default font rather than failing', () => {
-    const latinOnly = createFontRegistry({
-      catalog: BUNDLED_FONT_CATALOG,
-      loadBytes: readBundledFontBytes,
-      createShapingFont: createHarfBuzzShapingFont
-    })
+    const latinOnly = createFixtureFontRegistry()
     return latinOnly.loadFontsForText('Hello').then(() => {
       const runs = createTextShaper(latinOnly).shapeRuns('שלום', 'rtl')
       expect(runs.map((run) => run.fontId)).toEqual(['inter'])

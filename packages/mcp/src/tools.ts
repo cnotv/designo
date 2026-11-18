@@ -1,5 +1,12 @@
 import { exportNodeToSvg } from '@designo/exporter'
-import { createDocument, getNodeTree, type DesignNode, type DesignNodeTree } from '@designo/core'
+import {
+  createDocument,
+  getNodeTree,
+  getSubtreeIds,
+  type DesignDocument,
+  type DesignNode,
+  type DesignNodeTree
+} from '@designo/core'
 import {
   applyOperationsToFile,
   listDocuments,
@@ -9,7 +16,8 @@ import {
   type OperationInput
 } from '@designo/storage'
 import { rasterizeSvgToPng } from './rasterize.ts'
-import type { DesignoToolContext, ScreenshotImage } from './types.ts'
+import { loadScreenshotFonts } from './screenshotFonts.ts'
+import type { DesignoToolContext, ScreenshotImage, ScreenshotText } from './types.ts'
 
 /**
  * Lists the files an agent can open.
@@ -100,6 +108,14 @@ export const exportSvgTool = async (
   return exportNodeToSvg(document, input.nodeId ?? document.rootId)
 }
 
+const collectTexts = (document: DesignDocument, nodeId: string): ScreenshotText[] =>
+  getSubtreeIds(document, nodeId).flatMap((id) => {
+    const node = document.nodes[id]
+    return node?.type === 'text' && node.text !== ''
+      ? [{ fontFamily: node.fontFamily, text: node.text }]
+      : []
+  })
+
 /**
  * Renders a node (the page by default) to a PNG so an agent can see what it made.
  * @param context - Where files live and how ids are made.
@@ -110,8 +126,16 @@ export const getScreenshotTool = async (
   context: DesignoToolContext,
   input: { fileId: string; nodeId?: string; scale?: number }
 ): Promise<ScreenshotImage> => {
-  const svg = await exportSvgTool(context, input)
-  const outcome = await (context.rasterize ?? rasterizeSvgToPng)(svg, input.scale ?? 1)
+  const document = await readDocument(context.dataDirectory, input.fileId)
+  const nodeId = input.nodeId ?? document.rootId
+  const fonts = await (context.loadScreenshotFonts ?? loadScreenshotFonts)(
+    collectTexts(document, nodeId)
+  )
+  const svg = exportNodeToSvg(document, nodeId, {
+    resolveFontFamily: fonts.resolveFontFamily,
+    getFontMetrics: fonts.getFontMetrics
+  })
+  const outcome = await (context.rasterize ?? rasterizeSvgToPng)(svg, input.scale ?? 1, fonts.files)
   if (!outcome.ok) throw new Error(outcome.message)
   return { mimeType: 'image/png', data: outcome.png.toString('base64') }
 }

@@ -131,11 +131,17 @@ Prefer `apply_ops` for layouts: give `create` operations your own ids and later 
 the same batch can nest inside them. If any operation fails, nothing is saved.
 
 `get_screenshot` lets an agent check its own work. It draws SVG in Node with resvg, no browser, so
-text is plain SVG text with no shaping and differs slightly from the editor's canvas. It draws with
-the fonts the editor ships (Inter, Gelasio and the Noto Sans subsets), never with the fonts installed
-on the machine running the server, so a screenshot looks the same everywhere. A node whose
-`fontFamily` names Georgia draws in Gelasio, which has the same letter widths; a family Designo does
-not ship draws in Inter.
+text is plain SVG text without wrapping and differs slightly from the editor's canvas. Its fonts
+come from the same place as the editor's: for each `fontFamily` on the page the server asks the
+[Fontsource](https://fontsource.org) API for the families, downloads the files the characters need
+into a cache folder (`designo-fonts` in the system's temporary folder) and draws each text with the
+file that has most of its characters, on the baseline the editor uses. Any family the API has
+works, Georgia and the other fonts it cannot have draw in their open stand-ins (Gelasio for
+Georgia), and the first screenshot of a new font takes a second or two longer. A line that needs
+more than one fallback font at once, such as an arrow and a Polish letter in a Georgia sentence,
+can draw boxes for them, because resvg keeps only one font per text; a script on a line of its own
+draws right. When the API cannot be reached the
+screenshot is still drawn, with whatever fonts the machine has (DejaVu in the Docker image).
 
 ### Render limits and errors
 
