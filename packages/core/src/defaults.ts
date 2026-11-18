@@ -1,11 +1,13 @@
 import type { DesignNodeProperties } from './types.ts'
 
 /** The file format version this code writes. Bumping it needs one migration step in the storage package. */
-export const CURRENT_FORMAT_VERSION = 3
+export const CURRENT_FORMAT_VERSION = 4
 
 /** The range a text node's `lineHeight` may take, as a multiple of the font size. */
 export const MIN_LINE_HEIGHT = 0.5
 export const MAX_LINE_HEIGHT = 10
+
+export const BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten'] as const
 
 export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   name: '',
@@ -17,6 +19,10 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   opacity: 1,
   visible: true,
   fill: '#d9d9d9',
+  gradient: null,
+  blur: 0,
+  blendMode: 'normal',
+  shadow: null,
   stroke: null,
   strokeWidth: 1,
   cornerRadius: 0,

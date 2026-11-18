@@ -1,4 +1,4 @@
-import type { DesignNode } from '@designo/core'
+import { getFillGradient, getGradientLine, hasLayerEffects, type DesignNode } from '@designo/core'
 import { getBoundsCenter } from '../editing/rotation.ts'
 import { paintText } from './fallbackText.ts'
 import { prepareCanvas } from './prepareCanvas.ts'
@@ -21,12 +21,74 @@ const traceShape = (context: CanvasRenderingContext2D, node: DesignNode): void =
   context.roundRect(0, 0, node.width, node.height, node.cornerRadius)
 }
 
-const paintShape = (context: CanvasRenderingContext2D, node: DesignNode): void => {
+const makeGradientStyle = (
+  context: CanvasRenderingContext2D,
+  node: DesignNode
+): CanvasGradient | undefined => {
+  const gradient = getFillGradient(node)
+  if (!gradient) return undefined
+  const style =
+    gradient.kind === 'radial'
+      ? context.createRadialGradient(0, 0, 0, 0, 0, 1)
+      : (() => {
+          const line = getGradientLine(node, gradient)
+          return context.createLinearGradient(line.startX, line.startY, line.endX, line.endY)
+        })()
+  gradient.stops.forEach((stop) => style.addColorStop(stop.offset, stop.color))
+  return style
+}
+
+// A radial gradient is made as a unit circle and stretched to the box when it paints, so an
+// ellipse gets an elliptical gradient. The path was traced before the stretch and is not moved.
+const fillWithGradient = (context: CanvasRenderingContext2D, node: DesignNode): void => {
+  const style = makeGradientStyle(context, node)
+  if (!style) return
+  context.save()
+  if (getFillGradient(node)?.kind === 'radial') {
+    context.translate(node.width / 2, node.height / 2)
+    context.scale(node.width / 2, node.height / 2)
+  }
+  context.fillStyle = style
+  context.fill()
+  context.restore()
+}
+
+// Shadow offsets and blurs are in device pixels, never turned or scaled with the canvas, so
+// they are worked out for the node's turn and the view's zoom.
+const applyShadow = (
+  context: CanvasRenderingContext2D,
+  node: DesignNode,
+  devicePixelsPerUnit: number
+): void => {
+  if (!node.shadow) return
+  const radians = (node.rotation * Math.PI) / 180
+  const { x, y, blur, color } = node.shadow
+  context.shadowColor = color
+  context.shadowBlur = blur * 2 * devicePixelsPerUnit
+  context.shadowOffsetX = (x * Math.cos(radians) - y * Math.sin(radians)) * devicePixelsPerUnit
+  context.shadowOffsetY = (x * Math.sin(radians) + y * Math.cos(radians)) * devicePixelsPerUnit
+}
+
+const paintShape = (
+  context: CanvasRenderingContext2D,
+  node: DesignNode,
+  devicePixelsPerUnit: number
+): void => {
+  const effects = hasLayerEffects(node)
+  if (effects) {
+    context.globalCompositeOperation = node.blendMode === 'normal' ? 'source-over' : node.blendMode
+    // ponytail: the fallback blurs the shadow along with the shape, and does not blur on Safari
+    // versions without canvas filters; the WebGL path is the reference.
+    if (node.blur > 0) context.filter = `blur(${node.blur * devicePixelsPerUnit}px)`
+    applyShadow(context, node, devicePixelsPerUnit)
+  }
   traceShape(context, node)
-  if (node.fill) {
+  if (getFillGradient(node)) fillWithGradient(context, node)
+  else if (node.fill) {
     context.fillStyle = node.fill
     context.fill()
   }
+  context.shadowColor = 'transparent'
   if (node.stroke && node.strokeWidth > 0) {
     context.strokeStyle = node.stroke
     context.lineWidth = node.strokeWidth
@@ -53,7 +115,8 @@ const clipToFrame = (context: CanvasRenderingContext2D, frame: DesignNode): void
 
 const paintSceneItem = (
   context: CanvasRenderingContext2D,
-  { node, clipFrames }: SceneItem
+  { node, clipFrames }: SceneItem,
+  devicePixelsPerUnit: number
 ): void => {
   if (node.type === 'group') return
   context.save()
@@ -61,7 +124,7 @@ const paintSceneItem = (
   context.globalAlpha = node.opacity
   moveToNodeOrigin(context, node)
   if (node.type === 'text') paintText(context, node)
-  else paintShape(context, node)
+  else paintShape(context, node, devicePixelsPerUnit)
   context.restore()
 }
 
@@ -81,7 +144,8 @@ export const createCanvas2dRenderer = (canvas: HTMLCanvasElement): SceneRenderer
       context.clearRect(0, 0, scene.size.width, scene.size.height)
       context.translate(scene.viewport.offsetX, scene.viewport.offsetY)
       context.scale(scene.viewport.scale, scene.viewport.scale)
-      scene.items.forEach((item) => paintSceneItem(context, item))
+      const devicePixelsPerUnit = scene.viewport.scale * scene.pixelRatio
+      scene.items.forEach((item) => paintSceneItem(context, item, devicePixelsPerUnit))
     },
     dispose: () => undefined
   }

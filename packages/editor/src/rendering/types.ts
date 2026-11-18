@@ -18,6 +18,8 @@ export interface SceneSource {
   index: SpatialIndex
   /** Each drawn node's position in paint order. */
   paintPosition: ReadonlyMap<string, number>
+  /** The furthest any node's blur or shadow reaches past its box, so culling keeps soft edges. */
+  maxEffectReach: number
 }
 
 /** One node to draw, with the frames that clip it, outermost first. */
@@ -30,6 +32,8 @@ export interface SceneItem {
 export interface SceneBatch {
   kind: 'shapes' | 'text'
   items: readonly SceneItem[]
+  /** True for a shape with a blend mode, which is drawn alone against a copy of what is behind it. */
+  blended: boolean
 }
 
 export interface CanvasSize {

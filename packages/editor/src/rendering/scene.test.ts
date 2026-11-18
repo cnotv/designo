@@ -196,3 +196,44 @@ describe('packShapeInstances', () => {
     expect(packed[7]).toBe(3)
   })
 })
+
+describe('effects in a scene', () => {
+  const sharp = nodeById('inside')
+
+  it('packs blur, gradient, shadow and blend mode after the stroke colour', () => {
+    const node = {
+      ...sharp,
+      blur: 4,
+      blendMode: 'multiply' as const,
+      shadow: { x: 2, y: 3, blur: 5, color: '#00ff0080' },
+      gradient: {
+        kind: 'linear' as const,
+        angle: 90,
+        stops: [
+          { offset: 0, color: '#000000' },
+          { offset: 1, color: '#ffffff' }
+        ]
+      }
+    }
+    const packed = packShapeInstances([node], () => 7)
+    expect([...packed.slice(17, 25)]).toEqual([4, 1, expect.closeTo(Math.PI / 2), 7, 2, 3, 5, 1])
+    expect(packed[28]).toBeCloseTo(128 / 255)
+  })
+
+  it('leaves frames sharp even if they carry a blur', () => {
+    const packed = packShapeInstances([{ ...sharp, type: 'frame', blur: 9, blendMode: 'screen' }])
+    expect(packed[17]).toBe(0)
+    expect(packed[24]).toBe(0)
+  })
+
+  it('draws a blended shape alone, between runs of plain shapes', () => {
+    const plain = { node: sharp, clipFrames: [] }
+    const blended = { node: { ...sharp, blendMode: 'multiply' as const }, clipFrames: [] }
+    const batches = batchScene([plain, plain, blended, plain])
+    expect(batches.map((batch) => [batch.items.length, batch.blended])).toEqual([
+      [2, false],
+      [1, true],
+      [1, false]
+    ])
+  })
+})

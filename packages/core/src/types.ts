@@ -1,8 +1,36 @@
-import type { CURRENT_FORMAT_VERSION } from './defaults.ts'
+import type { BLEND_MODES, CURRENT_FORMAT_VERSION } from './defaults.ts'
 export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text'
 
 /** Which edge a text node's lines sit against, inside the node's width. */
 export type TextAlign = 'left' | 'center' | 'right'
+
+/** How a node's pixels combine with what is painted beneath it. */
+export type BlendMode = (typeof BLEND_MODES)[number]
+
+/** One colour along a gradient; `offset` runs from 0 at the start to 1 at the end. */
+export interface GradientStop {
+  offset: number
+  color: string
+}
+
+/**
+ * A fill that blends colours across the node's box. A linear gradient runs along `angle`, in
+ * degrees clockwise from pointing right; a radial one runs from the centre to the box's edge
+ * and ignores `angle`.
+ */
+export interface Gradient {
+  kind: 'linear' | 'radial'
+  angle: number
+  stops: readonly GradientStop[]
+}
+
+/** A soft copy of the node drawn behind it, moved by `x` and `y` and blurred by `blur`. */
+export interface Shadow {
+  x: number
+  y: number
+  blur: number
+  color: string
+}
 
 export interface DesignNodeProperties {
   name: string
@@ -14,6 +42,12 @@ export interface DesignNodeProperties {
   opacity: number
   visible: boolean
   fill: string | null
+  /** When set, paints the node's fill instead of `fill`. */
+  gradient: Gradient | null
+  /** A gaussian blur of the whole node, as a standard deviation in world units. 0 is sharp. */
+  blur: number
+  blendMode: BlendMode
+  shadow: Shadow | null
   stroke: string | null
   strokeWidth: number
   cornerRadius: number

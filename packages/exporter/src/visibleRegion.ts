@@ -1,4 +1,4 @@
-import type { DesignNode } from '@designo/core'
+import { getEffectReach, type DesignNode } from '@designo/core'
 import type { Bounds } from './types.ts'
 
 const DEGREES_TO_RADIANS = Math.PI / 180
@@ -98,5 +98,7 @@ export const getPaintReach = (node: DesignNode): Bounds => {
     node.type === 'text'
       ? growBounds(textBox(node), node.fontSize)
       : { x: node.x, y: node.y, width: node.width, height: node.height }
-  return node.stroke === null ? own : growBounds(own, node.strokeWidth * STROKE_REACH_FACTOR)
+  const stroked =
+    node.stroke === null ? own : growBounds(own, node.strokeWidth * STROKE_REACH_FACTOR)
+  return growBounds(stroked, getEffectReach(node))
 }
