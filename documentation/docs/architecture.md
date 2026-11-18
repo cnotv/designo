@@ -225,6 +225,16 @@ test in `migrations.test.ts` with a sample of the old file.
 | 2       | A node turns around its centre; rotated nodes move so they are drawn exactly where they were                       | `migrateRotationPivot.ts`  |
 | 3       | Every node carries `textAlign`, `lineHeight` and `textWrap`; old files get the defaults, which draw text as before | `migrateTextProperties.ts` |
 
+A new property every node carries needs a version, even with a default: the stored schema requires
+every property, so version 3 added `textAlign` (`left`), `lineHeight` (`1.2`) and `textWrap`
+(`false`) through `migrateTextProperties.ts` rather than loosening the schema. The migration holds
+its own copy of the defaults, so a later change to the live defaults never rewrites an old step.
+
+A text node is one of two boxes. With `textWrap` false its `width` follows its words and its lines
+break only at newlines; with `textWrap` true the `width` is a wrap width, which the layout in
+`rendering/text/` breaks lines at. The SVG exporter has no shaper, so it aligns lines inside the
+`width` but never wraps them.
+
 ## Decisions
 
 - **UI library:** shadcn-vue, on Reka UI, with Tailwind CSS v4. Its components are copied into

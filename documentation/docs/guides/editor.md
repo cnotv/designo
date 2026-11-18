@@ -71,6 +71,13 @@ circle. After drawing, the editor returns to Move.
   text layer left empty is removed. Shortcuts are paused while you type.
 - **Properties:** position, size, rotation, opacity, corner radius, fill, stroke, and text with
   its size. A field applies when you press Enter or leave it; Escape leaves the field.
+- **Text layout:** a text layer's properties also hold its **Line height**, a multiple of the font
+  size (1.2 by default, from 0.5 to 10), three buttons to align its lines left, centre or right
+  inside its width, and **Auto width** or **Fixed width**. An auto-width box follows its words and
+  never wraps them; a fixed-width box keeps its width and wraps its lines there. Typing a width
+  into a text layer makes it fixed-width, and choosing **Auto width** fits the box to the words
+  again. Each change is one undo step, and the in-place text editor follows the alignment and line
+  height. Files saved before these existed open with the defaults, which draw text as before.
 - **Hide and show:** the eye beside a layer in the layers panel.
 - **Delete:** Delete or Backspace.
 - **Duplicate:** Ctrl/Cmd D copies the selection with everything in it, 10 px down and right, and
@@ -96,7 +103,8 @@ The Export section sits at the bottom of the properties panel.
 - **What it exports:** each selected layer, one file apiece, or the whole page when nothing is
   selected. A layer is drawn with everything inside it.
 - **SVG:** a vector file named `<layer name>.svg`. Text is plain SVG text, so it may differ from
-  the canvas where fonts differ.
+  the canvas where fonts differ. It follows a text layer's alignment and line height, but never
+  wraps: a fixed-width layer is drawn line by line as written.
 - **PNG:** pick 1x, 2x or 3x; the file is `<layer name>@<scale>x.png`. The browser draws the SVG
   onto a canvas, so nothing is uploaded. A very large layer is shrunk to fit the browser's canvas
   limit of 8192 pixels on the long side.
