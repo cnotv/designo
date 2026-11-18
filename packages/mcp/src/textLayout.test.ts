@@ -1,74 +1,58 @@
-import { Resvg } from '@resvg/resvg-js'
-import { applyOperations, createDocument } from '@designo/core'
-import { exportNodeToSvg } from '@designo/exporter'
-import { describe, expect, it } from 'vitest'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createNodeLayoutText } from './textLayout.ts'
 
-const FONT_SIZE = 30
-const LINE_HEIGHT = FONT_SIZE * 1.2
-const DARK_CHANNEL_LIMIT = 128
-const CHANNELS_PER_PIXEL = 4
+const INTER = await readFile(
+  new URL('../../text/src/fixtures/Inter-Regular.subset.ttf', import.meta.url)
+)
 
-const drawText = (text: string): string => {
-  const result = applyOperations(createDocument('file', 'Text', 'page'), [
-    {
-      kind: 'create',
-      id: 'sheet',
-      type: 'frame',
-      parentId: 'page',
-      properties: { width: 200, height: 200, fill: '#ffffff' }
-    },
-    {
-      kind: 'create',
-      id: 'words',
-      type: 'text',
-      parentId: 'sheet',
-      properties: {
-        x: 10,
-        y: 10,
-        fontSize: FONT_SIZE,
-        fontFamily: 'DejaVu Sans',
-        fill: '#000000',
-        text
-      }
+const inter = {
+  id: 'inter',
+  family: 'Inter',
+  subsets: ['all'],
+  weights: [400],
+  styles: ['normal'],
+  unicodeRange: { all: 'U+0000-04FF' },
+  variants: { '400': { normal: { all: { url: { ttf: 'https://fonts.test/inter.ttf' } } } } }
+}
+
+const answer = (status: number, body: unknown = null) => ({
+  ok: status === 200,
+  status,
+  json: () => Promise.resolve(body)
+})
+
+let parent: string
+
+beforeEach(async () => {
+  parent = await mkdtemp(path.join(tmpdir(), 'designo-layout-'))
+})
+
+afterEach(async () => {
+  await rm(parent, { recursive: true, force: true })
+})
+
+describe('createNodeLayoutText', () => {
+  // The cache folder does not exist before the first layout, and it must not stop that layout.
+  it('lays text out with fonts from the font API, into a cache folder it creates', async () => {
+    const fetchBytes = vi.fn(async () => new Uint8Array(INTER))
+    const layoutText = createNodeLayoutText({
+      fetchJson: async (url) => (url.endsWith('/inter') ? answer(200, inter) : answer(404)),
+      fetchBytes,
+      cacheDirectory: path.join(parent, 'not-yet')
+    })
+    const request = {
+      text: 'one two three four',
+      fontFamily: 'Inter',
+      fontSize: 20,
+      lineHeight: 1.2,
+      alignment: 'left' as const,
+      wrapWidth: 80
     }
-  ])
-  if (!result.ok) throw new Error(result.error)
-  return exportNodeToSvg(result.document, 'sheet')
-}
-
-/** The top row of every run of rows that holds dark pixels: one entry per drawn line of text. */
-const inkRowTops = (svg: string): number[] => {
-  const image = new Resvg(svg, { font: { loadSystemFonts: true } }).render()
-  const pixels = image.pixels
-  const rowHasInk = Array.from({ length: image.height }, (_, row) =>
-    Array.from({ length: image.width }).some(
-      (_unused, column) =>
-        (pixels[(row * image.width + column) * CHANNELS_PER_PIXEL] ?? 255) < DARK_CHANNEL_LIMIT
-    )
-  )
-  return rowHasInk.flatMap((hasInk, row) => (hasInk && !rowHasInk[row - 1] ? [row] : []))
-}
-
-describe('multi-line text, drawn', () => {
-  it('draws lines one line height apart', () => {
-    const [first, second] = inkRowTops(drawText('H\nH'))
-    expect((second ?? 0) - (first ?? 0)).toBeCloseTo(LINE_HEIGHT, 0)
-  })
-
-  it('keeps the gap of a blank line between two paragraphs', () => {
-    const tops = inkRowTops(drawText('H\n\nH'))
-    expect(tops).toHaveLength(2)
-    expect((tops[1] ?? 0) - (tops[0] ?? 0)).toBeCloseTo(LINE_HEIGHT * 2, 0)
-  })
-
-  it('keeps several blank lines and a leading one', () => {
-    const [first] = inkRowTops(drawText('H'))
-    const tops = inkRowTops(drawText('\nH\n\n\nH'))
-    expect((tops[0] ?? 0) - (first ?? 0)).toBeCloseTo(LINE_HEIGHT, 0)
-    expect((tops[1] ?? 0) - (tops[0] ?? 0)).toBeCloseTo(LINE_HEIGHT * 3, 0)
-  })
-
-  it('still draws text that holds characters XML forbids', () => {
-    expect(inkRowTops(drawText('H\u0001'))).toHaveLength(1)
+    expect((await layoutText(request))?.lines.length).toBeGreaterThan(1)
+    expect((await layoutText({ ...request, text: 'again' }))?.lines).toHaveLength(1)
+    expect(fetchBytes).toHaveBeenCalledTimes(1)
   })
 })

@@ -25,6 +25,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP         |
 | `@designo/exporter` | built   | Pure SVG export of a node; the MCP server draws it with resvg in a child process          |
 | `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files    |
+| `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
 | `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11) next     |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
@@ -95,7 +96,9 @@ top, always Canvas 2D, carries selection, guides and the marquee and takes the p
 
 Text is shaped by HarfBuzz, compiled to WebAssembly (`harfbuzzjs`, loaded on first use), laid out
 by pure code, and drawn as one textured quad per glyph from a shared atlas. All of it that does not
-touch a canvas or a GL context lives in `packages/editor/src/rendering/text/` and is tested in Node.
+touch a canvas or a GL context is tested in Node. The layout itself (fonts, shaping, line breaking,
+the engine) is `@designo/text`, shared by the editor and the MCP server; the glyph atlas and the
+browser font handling stay in `packages/editor/src/rendering/text/`.
 
 - **Fonts.** No font ships with Designo. `listFontCandidates` in `@designo/core` turns a node's
   `fontFamily`, a CSS-like list, into the families to look up: those it names, with fonts the API
@@ -156,6 +159,9 @@ touch a canvas or a GL context lives in `packages/editor/src/rendering/text/` an
   same files: each file is registered as a `FontFace` from the bytes the shaper loaded, with its
   range as `unicode-range`, under a `designo-` name so the app's own Inter is untouched.
 - **Screenshots.** `get_screenshot` finds fonts the same way and keeps the files in a cache folder.
+  Fixed-width text wraps where the editor wraps it: the server runs the `@designo/text` engine over
+  the same fonts (kept in a `layout` folder of the cache, unrenamed because HarfBuzz reads the real
+  file) and hands the exporter each line's range of the text. `measure_text` asks the same engine.
   resvg picks one font per family name and, for a missing character, reshapes the whole text with
   another font and keeps the result only when the glyph count matches, so each downloaded file is
   renamed to a family of its own (`designo-` and a hash), a text is drawn with the file that has
@@ -302,8 +308,9 @@ its own copy of the defaults, so a later change to the live defaults never rewri
 
 A text node is one of two boxes. With `textWrap` false its `width` follows its words and its lines
 break only at newlines; with `textWrap` true the `width` is a wrap width, which the layout in
-`rendering/text/` breaks lines at. The SVG exporter has no shaper, so it aligns lines inside the
-`width` but never wraps them.
+`@designo/text` breaks lines at. The SVG exporter has no shaper of its own: it breaks a fixed-width
+text where the `getTextLines` option says, and the MCP server fills that from the layout engine.
+Without the option it aligns lines inside the `width` but never wraps them.
 
 ## Decisions
 

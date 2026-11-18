@@ -1,6 +1,6 @@
 import type { DesignNode } from '@designo/core'
 import { layoutFallbackRequest, paintText } from '../fallbackText.ts'
-import { toTextLayoutRequest } from '../text/textLayoutRequest.ts'
+import { toTextLayoutRequest } from '@designo/text'
 import type { TextTexture, TextTextureCache } from '../types.ts'
 import {
   bucketRasterScale,

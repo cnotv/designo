@@ -7,6 +7,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDocument } from '@designo/core'
 import { readDocument } from '@designo/storage'
+import { createFixtureFontLibrary } from '@designo/text/fixtures'
+import { createTextEngine, loadTextLayout } from '@designo/text'
 import { createDesignoServer } from './server.ts'
 import {
   applyOperationsTool,
@@ -15,7 +17,8 @@ import {
   getDocumentTreeTool,
   getNodeTool,
   getScreenshotTool,
-  listFilesTool
+  listFilesTool,
+  measureTextTool
 } from './tools.ts'
 import type { DesignoToolContext, ScreenshotFonts, ScreenshotText } from './types.ts'
 
@@ -27,7 +30,7 @@ const NO_FONTS: ScreenshotFonts = {
 
 // The editor's test font, standing in for a file the font API gives.
 const NOTO_SANS_FIXTURE = fileURLToPath(
-  new URL('../../editor/src/rendering/text/fixtures/NotoSans-Latin.fixture.ttf', import.meta.url)
+  new URL('../../text/src/fixtures/NotoSans-Latin.fixture.ttf', import.meta.url)
 )
 
 const createCountingIdGenerator = () => {
@@ -38,6 +41,12 @@ const createCountingIdGenerator = () => {
   }
 }
 
+const fixtureLibrary = createFixtureFontLibrary()
+const fixtureRuntime = {
+  library: fixtureLibrary,
+  engine: createTextEngine({ library: fixtureLibrary })
+}
+
 let context: DesignoToolContext
 
 beforeEach(async () => {
@@ -45,7 +54,8 @@ beforeEach(async () => {
   context = {
     dataDirectory,
     generateId: createCountingIdGenerator(),
-    loadScreenshotFonts: async () => NO_FONTS
+    loadScreenshotFonts: async () => NO_FONTS,
+    layoutText: (request) => loadTextLayout(fixtureRuntime, request)
   }
 })
 
@@ -73,6 +83,110 @@ describe('MCP tools', () => {
     expect(result.createdNodeIds).toEqual(['card', 'text-3'])
     const tree = await getDocumentTreeTool(context, { fileId })
     expect(tree.children[0]?.children[0]?.node.text).toBe('Hello')
+  })
+
+  it('warns about a node that lies outside its parent frame, and about no other', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Frames' })
+    const result = await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'card',
+          type: 'frame',
+          parentId: pageId,
+          properties: { x: 500, y: 500, width: 100, height: 100 }
+        },
+        {
+          kind: 'create',
+          id: 'inside',
+          type: 'rectangle',
+          parentId: 'card',
+          properties: { x: 510, y: 510, width: 10, height: 10 }
+        },
+        {
+          kind: 'create',
+          id: 'relative',
+          type: 'rectangle',
+          parentId: 'card',
+          properties: { x: 10, y: 10, width: 10, height: 10 }
+        }
+      ]
+    })
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toContain('relative')
+    expect(result.warnings[0]).toContain('absolute on the page')
+  })
+
+  it('warns when an update moves a node out of its frame', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Moved' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'card',
+          type: 'frame',
+          parentId: pageId,
+          properties: { width: 100, height: 100 }
+        },
+        {
+          kind: 'create',
+          id: 'dot',
+          type: 'ellipse',
+          parentId: 'card',
+          properties: { width: 10, height: 10 }
+        }
+      ]
+    })
+    const result = await applyOperationsTool(context, {
+      fileId,
+      operations: [{ kind: 'update', id: 'dot', patch: { x: 900 } }]
+    })
+    expect(result.warnings[0]).toContain('dot')
+  })
+
+  it('wraps a fixed-width text in export_svg where the editor wraps it', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Wrap' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'story',
+          type: 'text',
+          parentId: pageId,
+          properties: {
+            text: 'one two three four five six',
+            fontFamily: 'Inter',
+            fontSize: 20,
+            width: 80,
+            textWrap: true
+          }
+        }
+      ]
+    })
+    const svg = await exportSvgTool(context, { fileId })
+    expect(svg.match(/<tspan/g)?.length).toBeGreaterThan(1)
+    expect(svg).toContain('>three</tspan>')
+  })
+
+  it('measures text without a node, wrapped at the width given', async () => {
+    const free = await measureTextTool(context, { text: 'one two three', fontFamily: 'Inter' })
+    expect(free.lineCount).toBe(1)
+    const narrow = await measureTextTool(context, {
+      text: 'one two three',
+      fontFamily: 'Inter',
+      width: 50
+    })
+    expect(narrow.lineCount).toBeGreaterThan(1)
+    expect(narrow.width).toBe(50)
+    expect(narrow.height).toBeGreaterThan(free.height)
+    expect(narrow.lines.join(' ')).toBe('one two three')
+  })
+
+  it('says so when text cannot be measured', async () => {
+    await expect(measureTextTool(context, { text: '日本' })).rejects.toThrow('fonts')
   })
 
   it('saves nothing when one operation in the batch fails', async () => {

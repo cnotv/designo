@@ -1,5 +1,5 @@
 import type { TextAlign } from '@designo/core'
-import { getTextBaselineOffset } from '../../editing/geometry.ts'
+import { getTextBaselineOffset } from './baseline.ts'
 import { getVisualOrder, resolveBidiLevels } from './bidi.ts'
 import {
   FIT_TOLERANCE,

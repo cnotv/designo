@@ -2,9 +2,9 @@ import type { DesignNode } from '@designo/core'
 import { layoutFallbackText } from './text/fallbackTextLayout.ts'
 import { createBrowserFontStack } from './text/fontFamilyList.ts'
 import { getSharedTextRuntime } from './text/sharedTextEngine.ts'
-import { toTextLayoutRequest } from './text/textLayoutRequest.ts'
+import { toTextLayoutRequest } from '@designo/text'
 import type { TextBoxSize } from '../editing/types.ts'
-import type { FallbackTextLayout, TextLayoutRequest } from './text/types.ts'
+import type { FallbackTextLayout, TextLayoutRequest } from '@designo/text'
 
 type TextContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 

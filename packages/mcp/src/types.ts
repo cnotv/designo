@@ -1,6 +1,7 @@
 import type { FontLineMetrics } from '@designo/exporter'
 import type { FontFetch } from '@designo/fonts'
 import type { GenerateId } from '@designo/storage'
+import type { TextLayout, TextLayoutRequest } from '@designo/text'
 
 /** The outcome of rasterizing: the PNG, or one sentence an agent can act on. */
 export type RasterizeOutcome = { ok: true; png: Buffer } | { ok: false; message: string }
@@ -57,6 +58,16 @@ export interface RasterizerOptions {
   limits: RenderLimits
 }
 
+/** Lays a text out with the same engine the editor draws with; undefined when it cannot. */
+export type LayoutText = (request: TextLayoutRequest) => Promise<TextLayout | undefined>
+
+/** What the text layout needs from outside, so tests can replace the network and the disk. */
+export interface TextLayoutFetchers {
+  fetchJson?: FontFetch
+  fetchBytes?: (url: string) => Promise<Uint8Array>
+  cacheDirectory?: string
+}
+
 export interface DesignoToolContext {
   dataDirectory: string
   generateId: GenerateId
@@ -64,10 +75,21 @@ export interface DesignoToolContext {
   rasterize?: Rasterize
   /** Finds the fonts a screenshot needs; the default asks the Fontsource API. Tests replace it. */
   loadScreenshotFonts?: LoadScreenshotFonts
+  /** Wraps and measures text; the default shapes with fonts from the Fontsource API. Tests replace it. */
+  layoutText?: LayoutText
 }
 
 export interface ScreenshotImage {
   mimeType: 'image/png'
   /** Base64-encoded PNG bytes. */
   data: string
+}
+
+/** What `measure_text` answers: the box a text fills and how it breaks into lines. */
+export interface TextMeasurement {
+  width: number
+  height: number
+  lineCount: number
+  /** The text of each line, as it breaks. */
+  lines: string[]
 }

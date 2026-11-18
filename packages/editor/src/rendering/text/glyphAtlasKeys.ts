@@ -1,4 +1,4 @@
-import type { GlyphKey } from './types.ts'
+import type { GlyphKey } from '@designo/text'
 
 const SMALLEST_ZOOM_BUCKET = 8
 const LARGEST_ZOOM_BUCKET = 256

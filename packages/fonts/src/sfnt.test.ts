@@ -4,9 +4,7 @@ import { readCharacterMap, readLineMetrics, renameFontFamily } from './sfnt.ts'
 
 // The editor's test fonts: Inter has a format 4 map only, Noto Sans Arabic a format 12 one too.
 const readFixture = async (name: string): Promise<Uint8Array> =>
-  new Uint8Array(
-    await readFile(new URL(`../../editor/src/rendering/text/fixtures/${name}`, import.meta.url))
-  )
+  new Uint8Array(await readFile(new URL(`../../text/src/fixtures/${name}`, import.meta.url)))
 
 const INTER = await readFixture('Inter-Regular.subset.ttf')
 const ARABIC = await readFixture('NotoSansArabic-Regular.subset.ttf')

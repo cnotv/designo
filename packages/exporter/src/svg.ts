@@ -233,11 +233,19 @@ const lineOffsets = (
   return { firstLine: (lineHeight - ascent - descent) / 2 + ascent, hanging: false }
 }
 
+// A fixed-width node wraps where the layout engine says; any other breaks at its line breaks.
+const splitIntoLines = (node: DesignNode, options: SvgExportOptions): string[] => {
+  const ranges = node.textWrap ? options.getTextLines?.(node) : undefined
+  return ranges
+    ? ranges.map((range) => node.text.slice(range.start, range.end))
+    : node.text.split('\n')
+}
+
 // Each line sets its own y instead of a dy from the line before: an empty tspan contributes
 // nothing, so a blank line carried by dy would vanish and the paragraphs would close up.
 const renderTextContent = (node: DesignNode, options: SvgExportOptions): string => {
-  const lines = node.text.split('\n')
-  if (lines.length === 1) return escapeXml(node.text)
+  const lines = splitIntoLines(node, options)
+  if (lines.length === 1) return escapeXml(lines[0] ?? '')
   const lineHeight = node.fontSize * node.lineHeight
   const { firstLine } = lineOffsets(node, options)
   return lines
@@ -332,8 +340,8 @@ const renderNode = (
  * Draws a node and everything inside it as a standalone SVG. Coordinates stay absolute on the
  * page and the viewBox is the node's bounds (for a page, the bounds of its visible content).
  * Text is plain SVG text without shaping, so it will not match the canvas exactly: lines follow
- * `textAlign` and `lineHeight`, but never wrap, so a fixed-width text node is drawn line by line
- * as written.
+ * `textAlign` and `lineHeight`. A fixed-width text node wraps where `getTextLines` says, and is
+ * drawn line by line as written without it.
  * @param document - The document to read.
  * @param nodeId - The page, frame or any node to export.
  * @param options - Which font draws each text and where its baseline sits; the node's own family

@@ -122,6 +122,7 @@ which also still works with sign-in on (set `DESIGNO_ACCOUNT`, as above).
 | `get_node`          | Reads one node with every property                                                 |
 | `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)        |
 | `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                              |
+| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line      |
 | `create_node`       | Creates one frame, group, rectangle, ellipse or text node                          |
 | `update_node`       | Changes some properties of one node                                                |
 | `delete_node`       | Deletes a node and everything inside it                                            |
@@ -131,7 +132,7 @@ Prefer `apply_ops` for layouts: give `create` operations your own ids and later 
 the same batch can nest inside them. If any operation fails, nothing is saved.
 
 `get_screenshot` lets an agent check its own work. It draws SVG in Node with resvg, no browser, so
-text is plain SVG text without wrapping and differs slightly from the editor's canvas. Its fonts
+text is plain SVG text and differs slightly from the editor's canvas, though a fixed-width text wraps where the editor wraps it. Its fonts
 come from the same place as the editor's: for each `fontFamily` on the page the server asks the
 [Fontsource](https://fontsource.org) API for the families, downloads the files the characters need
 into a cache folder (`designo-fonts` in the system's temporary folder) and draws each text with the
@@ -165,7 +166,9 @@ which the old in-process call did on every render too).
 The exported SVG leaves out what cannot show: a child that lies wholly outside its frame (a frame
 clips its children), or outside the exported bounds. A child far from its frame, for example one
 given coordinates relative to the frame when the tools expect absolute ones, is therefore simply
-not drawn, and `get_node` still shows it. Coordinates are absolute on the page.
+not drawn, and `get_node` still shows it. Coordinates are absolute on the page. `create_node`,
+`update_node` and `apply_ops` return a `warnings` list that names each node they created or
+changed that lies wholly outside its parent frame, so that mistake is no longer silent.
 
 Text keeps its blank lines in `export_svg` and `get_screenshot`: a line break in `text` moves down
 one line height (1.2 times `fontSize`), and an empty line leaves a gap of one.
@@ -187,8 +190,14 @@ degrees) turns a node around its centre.
 With `textWrap` off, `width` is only the box the text sits in, which the editor keeps in step with
 the words; lines break where the text has a newline and never anywhere else. Set `textWrap: true`
 and a `width` to have long text wrap instead of adding line breaks by hand. `export_svg` and
-`get_screenshot` draw text without shaping, so they honour `textAlign` and `lineHeight` but never
-wrap: they draw each line as it is written, aligned inside `width`.
+`get_screenshot` wrap a `textWrap` text at its `width` with the editor's own layout engine, and
+honour `textAlign` and `lineHeight`. A text with `textWrap` off draws each line as it is written.
+
+`measure_text` answers how big a text will be before you draw it. Give `text` and the font you
+will use (`fontFamily`, `fontSize`, `lineHeight`, `textAlign`, each defaulting to a new text
+node's); add `width` to wrap it like a fixed-width node. It returns `width`, `height`, `lineCount`
+and the text of each `lines` entry, so a panel can be sized to its text instead of guessed. It
+needs the same fonts as a screenshot, and says so when they are not available.
 
 ### Effects
 

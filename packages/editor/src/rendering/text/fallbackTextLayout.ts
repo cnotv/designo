@@ -1,4 +1,4 @@
-import { getTextBaselineOffset } from '../../editing/geometry.ts'
+import { getTextBaselineOffset } from '@designo/text'
 import {
   FIT_TOLERANCE,
   fillLines,
@@ -6,14 +6,14 @@ import {
   findGraphemeCuts,
   splitParagraphs,
   type Paragraph
-} from './lineBreaking.ts'
+} from '@designo/text'
 import type {
   BreakChunk,
   FallbackLine,
   FallbackTextInput,
   FallbackTextLayout,
   MeasuredWidths
-} from './types.ts'
+} from '@designo/text'
 
 type MeasureWidth = (text: string) => number
 

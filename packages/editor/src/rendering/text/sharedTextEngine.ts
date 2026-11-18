@@ -1,12 +1,12 @@
 import { createFontsourceResolver } from '@designo/fonts'
 import { fetchFontBytes } from './fetchFontBytes.ts'
 import { addBrowserFontFace } from './fontFamilyList.ts'
-import { createFontLibrary } from './fontLibrary.ts'
-import { createFontStore } from './fontRegistry.ts'
-import { createHarfBuzzShapingFont } from './harfBuzzFont.ts'
-import { memoizeFontFamilyResolver } from './memoizeFontFamilyResolver.ts'
-import { createTextEngine } from './textEngine.ts'
-import type { TextRuntime } from './types.ts'
+import { createFontLibrary } from '@designo/text'
+import { createFontStore } from '@designo/text'
+import { createHarfBuzzShapingFont } from '@designo/text'
+import { memoizeFontFamilyResolver } from '@designo/text'
+import { createTextEngine } from '@designo/text'
+import type { TextRuntime } from '@designo/text'
 
 const runtimeCell: { runtime?: TextRuntime } = {}
 

@@ -1,4 +1,4 @@
-import type { FontBytesLoader } from './types.ts'
+import type { FontBytesLoader } from '@designo/text'
 
 /**
  * Fetches a font file from the font API's file host.

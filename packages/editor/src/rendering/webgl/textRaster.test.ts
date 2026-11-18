@@ -1,6 +1,6 @@
 import { DEFAULT_NODE_PROPERTIES, type DesignNode } from '@designo/core'
 import { describe, expect, it } from 'vitest'
-import type { FallbackTextLayout } from '../text/types.ts'
+import type { FallbackTextLayout } from '@designo/text'
 import {
   bucketRasterScale,
   capRasterScale,

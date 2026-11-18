@@ -1,6 +1,6 @@
 import type { DesignNode } from '@designo/core'
 import { bucketGlyphZoom } from '../text/glyphAtlasKeys.ts'
-import type { AtlasGlyph, PlacedGlyph, TextLayout } from '../text/types.ts'
+import type { AtlasGlyph, PlacedGlyph, TextLayout } from '@designo/text'
 import { parseHexColor } from '../scene.ts'
 import type { TextDrawList, TextDrawListInput, TextDrawStep } from '../types.ts'
 

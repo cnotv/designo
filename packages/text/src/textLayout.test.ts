@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { TextAlign } from '@designo/core'
-import { getTextBaselineOffset } from '../../editing/geometry.ts'
+import { getTextBaselineOffset } from './baseline.ts'
 import { createFixtureFontRegistry } from './fixtures/fontFiles.ts'
 import { layoutText } from './textLayout.ts'
 import { createTextShaper } from './textShaper.ts'

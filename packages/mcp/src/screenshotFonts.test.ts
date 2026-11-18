@@ -7,9 +7,7 @@ import { createScreenshotFontLoader } from './screenshotFonts.ts'
 // The editor's test fonts stand in for the font API's files: Inter for Latin and Cyrillic, which
 // its range below also claims for Arabic, and Noto Sans Arabic, which has the Arabic glyphs.
 const readFixture = async (name: string): Promise<Uint8Array> =>
-  new Uint8Array(
-    await readFile(new URL(`../../editor/src/rendering/text/fixtures/${name}`, import.meta.url))
-  )
+  new Uint8Array(await readFile(new URL(`../../text/src/fixtures/${name}`, import.meta.url)))
 
 const FILES: Record<string, Uint8Array> = {
   'https://fonts.test/inter.ttf': await readFixture('Inter-Regular.subset.ttf'),

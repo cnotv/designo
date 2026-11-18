@@ -1,4 +1,4 @@
-import type { GlyphExtents, GlyphRasterPlan } from './types.ts'
+import type { GlyphExtents, GlyphRasterPlan } from '@designo/text'
 
 // One pixel on each side keeps the anti-aliased edge of a stroke that lands on a pixel boundary.
 const EDGE_MARGIN_PIXELS = 1

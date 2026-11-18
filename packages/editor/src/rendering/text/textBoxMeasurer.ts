@@ -1,6 +1,6 @@
 import { estimateTextBox } from '../../editing/geometry.ts'
 import type { TextBoxMeasurer, TextBoxSize } from '../../editing/types.ts'
-import type { TextEngine, TextLayoutRequest } from './types.ts'
+import type { TextEngine, TextLayoutRequest } from '@designo/text'
 
 const toLayoutRequest = (request: Parameters<TextBoxMeasurer>[0]): TextLayoutRequest => ({
   text: request.text,

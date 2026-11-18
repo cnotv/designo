@@ -1,4 +1,4 @@
-import type { PackResult, Shelf, ShelfPackerState } from './types.ts'
+import type { PackResult, Shelf, ShelfPackerState } from '@designo/text'
 
 /** Shelf heights are rounded up to this, so glyphs a texel taller than the first one still fit. */
 export const SHELF_HEIGHT_STEP = 4

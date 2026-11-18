@@ -1,0 +1,19 @@
+{
+  "name": "@designo/text",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Lays text out with HarfBuzz: line breaking, shaping and measuring, the same in the editor and in Node.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fixtures": "./src/fixtures/fontFiles.ts"
+  },
+  "scripts": {
+    "type-check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@designo/core": "workspace:*",
+    "@designo/fonts": "workspace:*",
+    "harfbuzzjs": "^1.6.4"
+  }
+}

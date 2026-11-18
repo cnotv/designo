@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { TextBoxRequest } from '../../editing/types.ts'
 import { createTextBoxMeasurer } from './textBoxMeasurer.ts'
-import type { TextLayout } from './types.ts'
+import type { TextLayout } from '@designo/text'
 
 const request: TextBoxRequest = {
   text: 'Hello',
