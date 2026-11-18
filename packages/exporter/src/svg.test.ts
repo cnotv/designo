@@ -347,6 +347,69 @@ describe('exportNodeToSvg', () => {
     expect(exportNodeToSvg(document, 'label')).toContain('>abcd</text>')
   })
 
+  describe('text alignment and line height', () => {
+    const buildText = (properties: Record<string, unknown>): string =>
+      exportNodeToSvg(
+        build([
+          {
+            kind: 'create',
+            id: 'label',
+            type: 'text',
+            parentId: 'page',
+            properties: { x: 10, y: 20, width: 100, height: 40, fontSize: 10, ...properties }
+          }
+        ]),
+        'label'
+      )
+
+    it('draws a text node with the defaults exactly as before the properties existed', () => {
+      expect(buildText({ text: 'one', textAlign: 'left', lineHeight: 1.2 })).toBe(
+        buildText({ text: 'one' })
+      )
+      expect(buildText({ text: 'one\ntwo' })).toContain('<tspan x="10" y="32">two</tspan>')
+      expect(buildText({ text: 'one' })).not.toContain('text-anchor')
+    })
+
+    it('centres each line on the middle of the node width', () => {
+      const svg = buildText({ text: 'one\ntwo', textAlign: 'center' })
+      expect(svg).toContain('x="60" y="20" font-family')
+      expect(svg).toContain('text-anchor="middle"')
+      expect(svg).toContain('<tspan x="60" y="20">one</tspan>')
+      expect(svg).toContain('<tspan x="60" y="32">two</tspan>')
+    })
+
+    it('puts each line against the right edge of the node width', () => {
+      const svg = buildText({ text: 'one\ntwo', textAlign: 'right' })
+      expect(svg).toContain('x="110" y="20" font-family')
+      expect(svg).toContain('text-anchor="end"')
+      expect(svg).toContain('<tspan x="110" y="32">two</tspan>')
+    })
+
+    it('spaces lines by the line height times the font size', () => {
+      const svg = buildText({ text: 'one\ntwo\nthree', lineHeight: 2 })
+      // The first line sits 4 lower (half of the extra leading), then each line is 20 further down.
+      expect(svg).toContain('<tspan x="10" y="44">two</tspan>')
+      expect(svg).toContain('<tspan x="10" y="64">three</tspan>')
+    })
+
+    it('keeps a blank line as a gap whatever the line height', () => {
+      const svg = buildText({ text: 'one\n\nthree', lineHeight: 2 })
+      expect(svg).toContain('<tspan x="10" y="24">one</tspan>')
+      expect(svg).toContain('<tspan x="10" y="64">three</tspan>')
+      expect(svg).not.toContain('<tspan x="10" y="44">')
+    })
+
+    it('moves the first line down by half of the extra leading, as the editor does', () => {
+      expect(buildText({ text: 'one', lineHeight: 2 })).toContain('x="10" y="24" font-family')
+      expect(buildText({ text: 'one', lineHeight: 1 })).toContain('x="10" y="19" font-family')
+    })
+
+    it('does not wrap: a fixed-width node is drawn line by line as written', () => {
+      const svg = buildText({ text: 'a long line of words', textWrap: true, width: 20 })
+      expect(svg).toContain('>a long line of words</text>')
+    })
+  })
+
   it('exports a page as the bounds of its content and rejects unknown nodes', () => {
     const document = build([
       {

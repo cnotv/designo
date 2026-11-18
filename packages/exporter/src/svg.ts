@@ -1,8 +1,21 @@
-import { getChildren, getPaintOrder, type DesignDocument, type DesignNode } from '@designo/core'
+import {
+  DEFAULT_NODE_PROPERTIES,
+  getChildren,
+  getPaintOrder,
+  type DesignDocument,
+  type DesignNode,
+  type TextAlign
+} from '@designo/core'
 import type { Bounds } from './types.ts'
 import { boundsOverlap, getPaintReach, intersectBounds, toNodeSpace } from './visibleRegion.ts'
 
-const LINE_HEIGHT_FACTOR = 1.2
+// Where a line is anchored across the node's width. Left sets no attribute, so a left-aligned
+// node is written exactly as it was before alignment existed.
+const TEXT_ANCHORS: Record<TextAlign, { attribute: string | undefined; widthShare: number }> = {
+  left: { attribute: undefined, widthShare: 0 },
+  center: { attribute: 'middle', widthShare: 0.5 },
+  right: { attribute: 'end', widthShare: 1 }
+}
 const DEGREES_TO_RADIANS = Math.PI / 180
 const COORDINATE_DECIMALS = 3
 const TAB = 0x9
@@ -126,29 +139,43 @@ const renderEllipse = (node: DesignNode): string => {
   ])}/>`
 }
 
+const getTextAnchorX = (node: DesignNode): number =>
+  node.x + node.width * TEXT_ANCHORS[node.textAlign].widthShare
+
+// The editor centres a line's glyphs in its line box, so a taller line box moves the first line
+// down by half of the extra. SVG has no line box, so the same move is made to the baseline.
+const getFirstLineOffset = (node: DesignNode): number =>
+  ((node.lineHeight - DEFAULT_NODE_PROPERTIES.lineHeight) * node.fontSize) / 2
+
 // Each line sets its own y instead of a dy from the line before: an empty tspan contributes
 // nothing, so a blank line carried by dy would vanish and the paragraphs would close up.
 const renderTextContent = (node: DesignNode): string => {
   const lines = node.text.split('\n')
   if (lines.length === 1) return escapeXml(node.text)
-  const lineHeight = node.fontSize * LINE_HEIGHT_FACTOR
+  const lineHeight = node.fontSize * node.lineHeight
   return lines
     .flatMap((line, index) =>
       line === ''
         ? []
         : [
-            `<tspan x="${formatNumber(node.x)}" y="${formatNumber(node.y + index * lineHeight)}">${escapeXml(line)}</tspan>`
+            `<tspan x="${formatNumber(getTextAnchorX(node))}" y="${formatNumber(node.y + getFirstLineOffset(node) + index * lineHeight)}">${escapeXml(line)}</tspan>`
           ]
     )
     .join('')
 }
 
+const textAnchorAttributes = (node: DesignNode): string[] => {
+  const { attribute } = TEXT_ANCHORS[node.textAlign]
+  return attribute === undefined ? [] : [`text-anchor="${attribute}"`]
+}
+
 const renderText = (node: DesignNode): string =>
   `<text ${joinAttributes([
-    `x="${formatNumber(node.x)}"`,
-    `y="${formatNumber(node.y)}"`,
+    `x="${formatNumber(getTextAnchorX(node))}"`,
+    `y="${formatNumber(node.y + getFirstLineOffset(node))}"`,
     `font-family="${escapeXml(node.fontFamily)}"`,
     `font-size="${formatNumber(node.fontSize)}"`,
+    ...textAnchorAttributes(node),
     'dominant-baseline="hanging"',
     paintAttributes(node),
     ...presentationAttributes(node)
@@ -203,7 +230,9 @@ const renderNode = (document: DesignDocument, node: DesignNode, parentRegion: Bo
 /**
  * Draws a node and everything inside it as a standalone SVG. Coordinates stay absolute on the
  * page and the viewBox is the node's bounds (for a page, the bounds of its visible content).
- * Text is plain SVG text without shaping, so it will not match the canvas exactly.
+ * Text is plain SVG text without shaping, so it will not match the canvas exactly: lines follow
+ * `textAlign` and `lineHeight`, but never wrap, so a fixed-width text node is drawn line by line
+ * as written.
  * @param document - The document to read.
  * @param nodeId - The page, frame or any node to export.
  * @returns The SVG source.
