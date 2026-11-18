@@ -80,6 +80,12 @@ circle. After drawing, the editor returns to Move.
   height and wrapping of the drawn text. The box of a text layer is the box its text is drawn in:
   a fixed-width layer grows as tall as its lines wrap to as you type, and an auto-width one is as
   wide as its longest line. Files saved before these existed open with the defaults.
+- **Font:** with a text layer selected, the **Font** field in the properties panel opens a search
+  of every Google font family (from the [Fontsource](https://fontsource.org) API, loaded the first
+  time you open it). Type to filter, pick one, and the layer's font family is set to it, with a
+  generic family after it (`Lora, serif`), as an undoable change. The field shows the first family
+  of the layer's font list. If the list cannot be loaded the field says so, and opening it again
+  retries; an agent can still set any font family through the MCP tools.
 - **Text rendering:** text is shaped with HarfBuzz, so ligatures, kerning, Arabic joining,
   Devanagari conjuncts and mixed left-to-right and right-to-left lines come out right, and it
   stays sharp at any zoom. Fonts come from the [Fontsource](https://fontsource.org) API as a text

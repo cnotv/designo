@@ -1,6 +1,10 @@
 import type { DesignDocument } from '@designo/core'
 import type { z } from 'zod'
-import type { fontsourceFamilySchema, operationInputSchema } from './schemas.ts'
+import type {
+  fontsourceFamilyListSchema,
+  fontsourceFamilySchema,
+  operationInputSchema
+} from './schemas.ts'
 
 export interface DocumentSummary {
   id: string
@@ -29,3 +33,6 @@ export interface AppliedBatch {
 
 /** A family as the Fontsource API describes it, once validated. */
 export type FontsourceFamily = z.infer<typeof fontsourceFamilySchema>
+
+/** A family in the Fontsource list: its id, its name and its category, such as `serif`. */
+export type FontsourceFamilySummary = z.infer<typeof fontsourceFamilyListSchema>[number]

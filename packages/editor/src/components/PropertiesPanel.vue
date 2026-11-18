@@ -19,6 +19,7 @@ import {
   textWidthModeOf
 } from '../editing/textProperties.ts'
 import ExportSection from './ExportSection.vue'
+import FontPicker from './FontPicker.vue'
 
 const { editor } = useEditorContext()
 
@@ -161,6 +162,14 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             :model-value="node.text"
             class="min-h-14 text-xs"
             @change="update({ text: inputValue($event) })"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="property-font-family">Font</Label>
+          <FontPicker
+            id="property-font-family"
+            :font-family="node.fontFamily"
+            @pick="update({ fontFamily: $event })"
           />
         </div>
         <div class="flex flex-col gap-1.5">
