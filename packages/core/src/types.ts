@@ -1,6 +1,9 @@
 import type { CURRENT_FORMAT_VERSION } from './defaults.ts'
 export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text'
 
+/** Which edge a text node's lines sit against, inside the node's width. */
+export type TextAlign = 'left' | 'center' | 'right'
+
 export interface DesignNodeProperties {
   name: string
   x: number
@@ -17,6 +20,14 @@ export interface DesignNodeProperties {
   text: string
   fontSize: number
   fontFamily: string
+  textAlign: TextAlign
+  /** The distance between lines of text, as a multiple of the font size. */
+  lineHeight: number
+  /**
+   * True when a text node is a fixed-width box: its lines wrap at its width. False sizes the box
+   * to its text, so the width follows the words and never wraps them.
+   */
+  textWrap: boolean
 }
 
 export interface DesignNode extends DesignNodeProperties {
