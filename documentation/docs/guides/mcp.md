@@ -134,6 +134,33 @@ the same batch can nest inside them. If any operation fails, nothing is saved.
 text is plain SVG text with no shaping and differs slightly from the editor's canvas. It uses the
 fonts installed on the machine running the server.
 
+### Render limits and errors
+
+resvg is native code, and some inputs make it abort the whole process, so every screenshot is drawn
+in a short-lived child process of its own. A render that crashes, hangs or is too big ends that one
+call with a tool error (`isError`) that says what happened, and the server carries on. The limits:
+
+| Limit  | Value                                    | The error says                                                  |
+| ------ | ---------------------------------------- | --------------------------------------------------------------- |
+| Time   | 20 seconds                               | `Rendering timed out after 20 s and was stopped. ...`           |
+| Size   | 64 megapixels (width x height x scale^2) | `Rendering is too large: W x H px is N megapixels and the ...`  |
+| Memory | 1024 MB for the renderer process (Linux) | `Rendering used more than 1024 MB of memory and was stopped...` |
+
+A crash reads `Rendering crashed (SIGABRT). ...` and any other failure, such as an SVG the renderer
+cannot read, `Rendering failed: <reason>`. The fix for a size error is a lower `scale` or a smaller
+`nodeId`: a whole page of a big file can need more than 64 megapixels at scale 1. Drawing costs
+about 9 bytes per pixel and 33 ms per megapixel; a page of 57 megapixels measured 520 MB and
+1.9 s. Starting the child process adds about 100 ms per call (most of it loading the system fonts,
+which the old in-process call did on every render too).
+
+The exported SVG leaves out what cannot show: a child that lies wholly outside its frame (a frame
+clips its children), or outside the exported bounds. A child far from its frame, for example one
+given coordinates relative to the frame when the tools expect absolute ones, is therefore simply
+not drawn, and `get_node` still shows it. Coordinates are absolute on the page.
+
+Text keeps its blank lines in `export_svg` and `get_screenshot`: a line break in `text` moves down
+one line height (1.2 times `fontSize`), and an empty line leaves a gap of one.
+
 Colours are `#rrggbb` or `#rrggbbaa`. Coordinates are absolute on the page, and `rotation` (in
 degrees) turns a node around its centre.
 

@@ -23,7 +23,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/storage`  | built   | Validated, atomic file reads and writes; the operation schema; applying a batch to a file |
 | `@designo/mcp`      | built   | MCP server for agents (stdio)                                                             |
 | `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP         |
-| `@designo/exporter` | built   | Pure SVG export of a node; the MCP server rasterizes it to PNG with resvg                 |
+| `@designo/exporter` | built   | Pure SVG export of a node; the MCP server draws it with resvg in a child process          |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
 | `renderer`          | partial | WebGL2 shapes in the editor (#9); text shaping (#10) and hit testing (#11) next           |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |

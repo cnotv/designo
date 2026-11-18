@@ -17,10 +17,10 @@ const MILLISECONDS_PER_SECOND = 1000
 const MEMORY_POLL_MILLISECONDS = 50
 const MAX_REASON_CHARACTERS = 300
 const DEFAULT_TIMEOUT_MILLISECONDS = 20_000
-const DEFAULT_MAX_MEGAPIXELS = 50
+const DEFAULT_MAX_MEGAPIXELS = 64
 const DEFAULT_MAX_MEMORY_MEGABYTES = 1024
 
-/** What a render may cost. A full page of a big file at scale 1 is roughly 1 second per 25 megapixels. */
+/** What a render may cost: about 9 bytes per pixel and 33 ms per megapixel (57 megapixels measured 520 MB and 1.9 s). */
 export const DEFAULT_RENDER_LIMITS: RenderLimits = {
   timeoutMilliseconds: DEFAULT_TIMEOUT_MILLISECONDS,
   maxPixels: DEFAULT_MAX_MEGAPIXELS * MEGAPIXEL,
