@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DEFAULT_NODE_PROPERTIES,
   applyOperations,
+  getPageNodes,
   createDocument,
   type DesignDocument,
   type DesignOperation
@@ -12,7 +12,7 @@ import {
   createFixtureFontLibrary,
   readFixtureFontBytes
 } from '@designo/text/fixtures'
-import { exportDocumentToPdf, getPageNodes } from './pdf.ts'
+import { exportDocumentToPdf } from './pdf.ts'
 import type { PdfExportOptions } from './types.ts'
 
 const ONE_PIXEL_PNG = Uint8Array.from(
@@ -27,22 +27,6 @@ const build = (document: DesignDocument, operations: DesignOperation[]): DesignD
   if (!result.ok) throw new Error(result.error)
   return result.document
 }
-
-const addSecondPage = (document: DesignDocument): DesignDocument => ({
-  ...document,
-  nodes: {
-    ...document.nodes,
-    second: {
-      ...DEFAULT_NODE_PROPERTIES,
-      id: 'second',
-      type: 'page',
-      name: 'Page 2',
-      parentId: null,
-      order: 1,
-      fill: null
-    }
-  }
-})
 
 const library = createFixtureFontLibrary()
 const engine = createTextEngine({ library })
@@ -74,7 +58,8 @@ const asText = (bytes: Uint8Array): string => new TextDecoder('latin1').decode(b
 const countMatches = (source: string, pattern: RegExp): number => source.match(pattern)?.length ?? 0
 
 const twoPageDocument = (): DesignDocument =>
-  build(addSecondPage(createDocument('file', 'Book', 'page')), [
+  build(createDocument('file', 'Book', 'page'), [
+    { kind: 'createPage', id: 'second' },
     {
       kind: 'create',
       id: 'one',

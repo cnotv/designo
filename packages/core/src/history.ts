@@ -12,7 +12,13 @@ const nodeProperties = (node: DesignNode): DesignNodePatch => {
 }
 
 const recreateSubtree = (document: DesignDocument, node: DesignNode): DesignOperation[] => {
-  if (node.type === 'page' || node.parentId === null) return []
+  if (node.type === 'page') {
+    return [
+      { kind: 'createPage', id: node.id, order: node.order, properties: nodeProperties(node) },
+      ...getChildren(document, node.id).flatMap((child) => recreateSubtree(document, child))
+    ]
+  }
+  if (node.parentId === null) return []
   return [
     {
       kind: 'create',
@@ -36,7 +42,9 @@ export const invertOperation = (
   document: DesignDocument,
   operation: DesignOperation
 ): DesignOperation[] => {
-  if (operation.kind === 'create') return [{ kind: 'delete', id: operation.id }]
+  if (operation.kind === 'create' || operation.kind === 'createPage') {
+    return [{ kind: 'delete', id: operation.id }]
+  }
   const node = document.nodes[operation.id]
   if (!node) return []
   if (operation.kind === 'update') {

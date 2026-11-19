@@ -155,6 +155,37 @@ const applyCreate = (
   return withNodes(document, { ...document.nodes, [operation.id]: node })
 }
 
+/**
+ * The pages of a document in the order they print.
+ * @param document - The document to read.
+ * @returns The page nodes, by their order.
+ */
+export const getPageNodes = (document: DesignDocument): DesignNode[] =>
+  Object.values(document.nodes)
+    .filter((node) => node.type === 'page')
+    .toSorted((first, second) => first.order - second.order)
+
+const applyCreatePage = (
+  document: DesignDocument,
+  operation: Extract<DesignOperation, { kind: 'createPage' }>
+): OperationResult => {
+  if (document.nodes[operation.id]) return failure(`Node ${operation.id} already exists`)
+  const pages = getPageNodes(document)
+  const node: DesignNode = {
+    ...DEFAULT_NODE_PROPERTIES,
+    fill: null,
+    width: 0,
+    height: 0,
+    name: `Page ${pages.length + 1}`,
+    ...operation.properties,
+    id: operation.id,
+    type: 'page',
+    parentId: null,
+    order: operation.order ?? (pages.at(-1)?.order ?? -1) + 1
+  }
+  return withNodes(document, { ...document.nodes, [operation.id]: node })
+}
+
 const applyUpdate = (
   document: DesignDocument,
   operation: Extract<DesignOperation, { kind: 'update' }>
@@ -207,6 +238,7 @@ export const applyOperation = (
   operation: DesignOperation
 ): OperationResult => {
   if (operation.kind === 'create') return applyCreate(document, operation)
+  if (operation.kind === 'createPage') return applyCreatePage(document, operation)
   if (operation.kind === 'update') return applyUpdate(document, operation)
   if (operation.kind === 'delete') return applyDelete(document, operation)
   return applyMove(document, operation)

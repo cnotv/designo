@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit'
 import {
   getChildren,
   getFillGradient,
+  getPageNodes,
   getGradientLine,
   getSubtreeIds,
   hasLayerEffects,
@@ -264,16 +265,6 @@ const drawNode = (context: ExportContext, node: DesignNode, inheritedOpacity: nu
   }
   pdf.restore()
 }
-
-/**
- * The pages of a document in the order they print.
- * @param document - The document to read.
- * @returns The page nodes, by their order.
- */
-export const getPageNodes = (document: DesignDocument): DesignNode[] =>
-  Object.values(document.nodes)
-    .filter((node) => node.type === 'page')
-    .toSorted((first, second) => first.order - second.order)
 
 const rasterizeEffects = async (
   document: DesignDocument,

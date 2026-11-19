@@ -219,7 +219,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'apply_ops',
     {
       description:
-        'Apply a batch of create, update, delete and move operations as one change: if one fails, nothing is saved. Give create operations your own ids to nest nodes inside each other in the same batch. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
+        'Apply a batch of create, createPage, update, delete and move operations as one change: if one fails, nothing is saved. createPage adds a page after the others (or at order), and nodes can then be created inside it by its id; export_pdf prints each page. Give create operations your own ids to nest nodes inside each other in the same batch. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
       inputSchema: {
         fileId: fileIdSchema,
         operations: operationBatchSchema

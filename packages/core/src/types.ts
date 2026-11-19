@@ -99,6 +99,8 @@ export type DesignOperation =
       order?: number
       properties?: DesignNodePatch
     }
+  /** Adds a page after the others, or at `order`; a page has no parent. */
+  | { kind: 'createPage'; id: string; order?: number; properties?: DesignNodePatch }
   | { kind: 'update'; id: string; patch: DesignNodePatch }
   | { kind: 'delete'; id: string }
   | { kind: 'move'; id: string; parentId: string; order?: number }

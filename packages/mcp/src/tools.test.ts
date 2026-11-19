@@ -303,6 +303,37 @@ const createSquareFile = async (): Promise<{ fileId: string; pageId: string }> =
 }
 
 describe('export tools', () => {
+  it('export_pdf writes one PDF page for each page a file has, in order', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Book' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          type: 'rectangle',
+          parentId: pageId,
+          properties: { width: 200, height: 100 }
+        },
+        { kind: 'createPage', id: 'back' },
+        {
+          kind: 'create',
+          type: 'rectangle',
+          parentId: 'back',
+          properties: { width: 300, height: 150 }
+        }
+      ]
+    })
+    const pdf = await exportPdfTool(context, { fileId })
+    const source = Buffer.from(pdf.data, 'base64').toString('latin1')
+    expect(source.match(/\/Type \/Page\b/g)).toHaveLength(2)
+    expect(
+      [...source.matchAll(/\/MediaBox \[0 0 (\d+) (\d+)]/g)].map((match) => match.slice(1))
+    ).toEqual([
+      ['200', '100'],
+      ['300', '150']
+    ])
+  })
+
   it('export_pdf returns a PDF with the fonts its text uses embedded', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Print' })
     await applyOperationsTool(context, {

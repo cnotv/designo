@@ -6,14 +6,20 @@ const withGeneratedIds = (
   operations: readonly OperationInput[],
   generateId: GenerateId
 ): DesignOperation[] =>
-  operations.map((operation) =>
-    operation.kind === 'create'
-      ? { ...operation, id: operation.id ?? generateId(operation.type) }
-      : operation
-  )
+  operations.map((operation) => {
+    if (operation.kind === 'create') {
+      return { ...operation, id: operation.id ?? generateId(operation.type) }
+    }
+    if (operation.kind === 'createPage') {
+      return { ...operation, id: operation.id ?? generateId('page') }
+    }
+    return operation
+  })
 
 const createdIds = (operations: readonly DesignOperation[]): string[] =>
-  operations.flatMap((operation) => (operation.kind === 'create' ? [operation.id] : []))
+  operations.flatMap((operation) =>
+    operation.kind === 'create' || operation.kind === 'createPage' ? [operation.id] : []
+  )
 
 /**
  * Applies a batch of operations to a file on disk as one change: nothing is saved if any fails.
