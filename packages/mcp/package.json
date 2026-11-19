@@ -1,6 +1,7 @@
 {
   "name": "@designo/mcp",
   "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
   "description": "MCP server that lets agents read and edit Designo files.",

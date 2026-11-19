@@ -1,6 +1,7 @@
 {
   "name": "@designo/fonts",
   "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
   "description": "Finds the font files a text needs through the Fontsource API, in the browser and in Node.",
