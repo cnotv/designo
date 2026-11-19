@@ -16,6 +16,7 @@ import {
   rotatePoint
 } from './rotation.ts'
 import { findContainerAtPoint, findNodeAtPoint, getClippingFrames } from './selection.ts'
+import { indexDocument } from './spatialIndex.ts'
 
 const unwrap = (result: OperationResult): DesignDocument => {
   if (!result.ok) throw new Error(result.error)
@@ -184,16 +185,16 @@ describe('frame clipping in hit testing', () => {
   })
 
   it('picks a child inside its frame', () => {
-    expect(findNodeAtPoint(document, { x: 80, y: 20 })?.id).toBe('wide')
+    expect(findNodeAtPoint(document, indexDocument(document), { x: 80, y: 20 })?.id).toBe('wide')
   })
 
   it('does not pick a child outside its clipping frame', () => {
-    expect(findNodeAtPoint(document, { x: 150, y: 20 })).toBeUndefined()
+    expect(findNodeAtPoint(document, indexDocument(document), { x: 150, y: 20 })).toBeUndefined()
   })
 
   it('does not draw into a nested frame outside the frame holding it', () => {
-    expect(findContainerAtPoint(document, { x: 150, y: 70 })).toBe('page')
-    expect(findContainerAtPoint(document, { x: 80, y: 70 })).toBe('inner')
+    expect(findContainerAtPoint(document, indexDocument(document), { x: 150, y: 70 })).toBe('page')
+    expect(findContainerAtPoint(document, indexDocument(document), { x: 80, y: 70 })).toBe('inner')
   })
 
   it('respects the frame rotation', () => {
@@ -202,7 +203,7 @@ describe('frame clipping in hit testing', () => {
         { kind: 'update', id: 'frame', patch: { height: 20, rotation: 90 } }
       ])
     )
-    expect(findNodeAtPoint(turned, { x: 50, y: -30 })?.id).toBe('frame')
-    expect(findNodeAtPoint(turned, { x: 80, y: 20 })).toBeUndefined()
+    expect(findNodeAtPoint(turned, indexDocument(turned), { x: 50, y: -30 })?.id).toBe('frame')
+    expect(findNodeAtPoint(turned, indexDocument(turned), { x: 80, y: 20 })).toBeUndefined()
   })
 })

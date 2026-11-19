@@ -21,7 +21,15 @@ import {
   toggleInSelection
 } from '../editing/selection.ts'
 import { SNAP_THRESHOLD_PX, snapMove, snapResize } from '../editing/snapping.ts'
-import type { Bounds, Interaction, Point, ResizeHandle, SnapResult } from '../editing/types.ts'
+import { indexDocument } from '../editing/spatialIndex.ts'
+import type {
+  Bounds,
+  Interaction,
+  Point,
+  ResizeHandle,
+  SnapResult,
+  SpatialIndex
+} from '../editing/types.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
 import { panBy, screenToWorld, worldToScreen, zoomAt } from '../editing/viewport.ts'
 import type { CanvasInteraction, Editor } from './types.ts'
@@ -151,6 +159,7 @@ const findHandleAt = (editor: Editor, screenPoint: Point): HandleHit | undefined
 const startSelectToolDrag = (
   editor: Editor,
   document: DesignDocument,
+  index: SpatialIndex,
   event: PointerEvent,
   world: Point
 ): Interaction => {
@@ -179,7 +188,7 @@ const startSelectToolDrag = (
       currentWorld: world
     }
   }
-  const hit = findNodeAtPoint(document, world)
+  const hit = findNodeAtPoint(document, index, world)
   if (!hit) {
     const baseSelection = event.shiftKey ? editor.selection.value : []
     editor.select(baseSelection)
@@ -197,6 +206,7 @@ const startSelectToolDrag = (
 const startDrag = (
   editor: Editor,
   document: DesignDocument,
+  index: SpatialIndex,
   event: PointerEvent,
   spaceHeld: boolean
 ): Interaction => {
@@ -206,8 +216,8 @@ const startDrag = (
     return { kind: 'panning', startScreen: screen, startViewport: editor.viewport.value }
   }
   const tool = editor.tool.value
-  if (tool === 'select') return startSelectToolDrag(editor, document, event, world)
-  const parentId = findContainerAtPoint(document, world)
+  if (tool === 'select') return startSelectToolDrag(editor, document, index, event, world)
+  const parentId = findContainerAtPoint(document, index, world)
   const nodeId = createNodeId(tool)
   return { kind: 'drawing', tool, nodeId, parentId, startWorld: world, currentWorld: world }
 }
@@ -226,6 +236,13 @@ const pickCursor = (
   if (hoveredHandle === 'rotate') return ROTATE_CURSOR
   return hoveredHandle ? CURSOR_BY_HANDLE[hoveredHandle] : 'default'
 }
+
+// Built once per committed document, not per pointer event, so a hit test reads the index.
+const useHitIndex = (editor: Editor) =>
+  computed(() => {
+    const document = editor.document.value
+    return document ? indexDocument(document) : undefined
+  })
 
 const usePreview = (
   editor: Editor,
@@ -276,14 +293,17 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     snapDisabled.value ? undefined : SNAP_THRESHOLD_PX / editor.viewport.value.scale
   )
 
+  const hitIndex = useHitIndex(editor)
+
   const worldAt = (event: MouseEvent): Point =>
     screenToWorld(editor.viewport.value, pointerOnCanvas(event))
 
   const updateHover = (event: PointerEvent): void => {
     const document = editor.document.value
     hoveredHandle.value = findHandleAt(editor, pointerOnCanvas(event))?.target
-    const canHover = document && editor.tool.value === 'select'
-    hoveredId.value = canHover ? findNodeAtPoint(document, worldAt(event))?.id : undefined
+    const index = hitIndex.value
+    const canHover = document && index && editor.tool.value === 'select'
+    hoveredId.value = canHover ? findNodeAtPoint(document, index, worldAt(event))?.id : undefined
   }
 
   const onPointerMove = (event: PointerEvent): void => {
@@ -301,9 +321,11 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
       return
     }
     interaction.value = followPointer(state, worldAt(event))
-    if (state.kind === 'marquee' && document) {
+    const index = hitIndex.value
+    if (state.kind === 'marquee' && document && index) {
       const marquee = boundsFromPoints(state.startWorld, worldAt(event))
-      editor.select([...new Set([...state.baseSelection, ...findNodesInBounds(document, marquee)])])
+      const found = findNodesInBounds(document, index, marquee)
+      editor.select([...new Set([...state.baseSelection, ...found])])
     }
   }
 
@@ -323,7 +345,8 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
 
   const onDoubleClick = (event: MouseEvent): void => {
     const document = editor.document.value
-    const hit = document && findNodeAtPoint(document, worldAt(event))
+    const index = hitIndex.value
+    const hit = document && index && findNodeAtPoint(document, index, worldAt(event))
     if (!hit || hit.type !== 'text') return
     editor.select([hit.id])
     editor.startTextEdit(hit.id, false)
@@ -351,11 +374,12 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     onPointerDown: (event: PointerEvent) => {
       const document = editor.document.value
       // A right-click opens the context menu on the current selection instead of starting a drag.
-      if (!document || event.button === SECONDARY_BUTTON) return
+      const index = hitIndex.value
+      if (!document || !index || event.button === SECONDARY_BUTTON) return
       ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
       shiftHeld.value = event.shiftKey
       snapDisabled.value = event.ctrlKey || event.metaKey
-      interaction.value = startDrag(editor, document, event, spaceHeld.value)
+      interaction.value = startDrag(editor, document, index, event, spaceHeld.value)
     },
     onPointerMove,
     onPointerUp,

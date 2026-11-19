@@ -201,6 +201,8 @@ export interface TextOverlayLayout {
 export interface SpatialEntry {
   id: string
   bounds: Bounds
+  /** Position in paint order, so a hit test can pick the topmost of several candidates. */
+  order: number
 }
 
 export interface SpatialTreeNode {
