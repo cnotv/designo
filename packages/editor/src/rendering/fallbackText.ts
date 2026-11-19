@@ -12,11 +12,23 @@ type TextContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 const DEFAULT_ASCENT_RATIO = 0.8
 const DEFAULT_DESCENT_RATIO = 0.2
 
-const fallbackFont = (request: Pick<TextLayoutRequest, 'fontSize' | 'fontFamily'>): string =>
-  `${request.fontSize}px ${createBrowserFontStack(
+type FallbackFace = Pick<
+  TextLayoutRequest,
+  'fontSize' | 'fontFamily' | 'fontWeight' | 'fontStyle' | 'letterSpacing'
+>
+
+const fallbackFont = (request: FallbackFace): string =>
+  `${request.fontStyle} ${request.fontWeight} ${request.fontSize}px ${createBrowserFontStack(
     request.fontFamily,
-    getSharedTextRuntime().library.getRegistry(request.fontFamily)
+    getSharedTextRuntime().library.getRegistry(request)
   )}`
+
+// The browser applies the spacing to what it measures and paints, so the lines break where they
+// are drawn. Where a context lacks it the text is drawn without, as the browser would.
+const setFallbackFace = (context: TextContext, request: FallbackFace): void => {
+  context.font = fallbackFont(request)
+  context.letterSpacing = `${request.letterSpacing * request.fontSize}px`
+}
 
 /**
  * Lays text out with the browser measuring it, for the paths that draw with Canvas 2D.
@@ -28,7 +40,7 @@ export const layoutFallbackRequest = (
   context: TextContext,
   request: TextLayoutRequest
 ): FallbackTextLayout => {
-  context.font = fallbackFont(request)
+  setFallbackFace(context, request)
   // The font's own ascent and descent, not the glyphs', so every line sits where CSS puts it.
   const metrics = context.measureText('x')
   return layoutFallbackText(
@@ -58,7 +70,7 @@ export const paintText = (
   layout: FallbackTextLayout = layoutFallbackRequest(context, toTextLayoutRequest(node))
 ): void => {
   context.fillStyle = node.fill ?? '#000000'
-  context.font = fallbackFont(node)
+  setFallbackFace(context, node)
   context.textBaseline = 'alphabetic'
   // Alignment is the layout's, so the line's x is where it starts whatever the direction.
   context.textAlign = 'left'

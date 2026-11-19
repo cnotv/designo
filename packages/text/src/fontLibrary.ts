@@ -1,5 +1,7 @@
+import { toFaceKey } from '@designo/core'
 import { resolveFontFamilies, type FontFamilyFiles } from '@designo/fonts'
 import { compileFontCatalog, createFontRegistry } from './fontRegistry.ts'
+import type { TextFace } from '@designo/core'
 import type { FontCatalog, FontLibrary, FontLibraryOptions, FontRegistry } from './types.ts'
 
 /**
@@ -16,7 +18,14 @@ export const toFontCatalog = (families: readonly FontFamilyFiles[]): FontCatalog
   if (!first) return undefined
   return compileFontCatalog({
     defaultFontId: first.id,
-    fonts: files.map(({ id, family, url, coverage }) => ({ id, family, url, coverage }))
+    fonts: files.map(({ id, family, url, coverage, fontWeight, fontStyle }) => ({
+      id,
+      family,
+      url,
+      coverage,
+      fontWeight,
+      fontStyle
+    }))
   })
 }
 
@@ -30,25 +39,28 @@ export const createFontLibrary = ({ resolveFamily, store }: FontLibraryOptions):
   const registries = new Map<string, FontRegistry>()
   const loading = new Map<string, Promise<void>>()
 
-  const loadFamilies = (fontFamily: string): Promise<void> => {
-    if (registries.has(fontFamily)) return Promise.resolve()
-    const pending = loading.get(fontFamily)
+  const loadFamilies = (face: TextFace): Promise<void> => {
+    const key = toFaceKey(face)
+    if (registries.has(key)) return Promise.resolve()
+    const pending = loading.get(key)
     if (pending) return pending
-    const lookup = resolveFontFamilies(fontFamily, resolveFamily)
+    const lookup = resolveFontFamilies(face, resolveFamily)
       .then((families) => {
         const catalog = toFontCatalog(families)
-        if (!catalog) throw new Error(`The font API has none of the families in ${fontFamily}`)
-        registries.set(fontFamily, createFontRegistry({ catalog, store }))
+        if (!catalog) {
+          throw new Error(`The font API has none of the families in ${face.fontFamily}`)
+        }
+        registries.set(key, createFontRegistry({ catalog, store }))
       })
       .finally(() => {
-        loading.delete(fontFamily)
+        loading.delete(key)
       })
-    loading.set(fontFamily, lookup)
+    loading.set(key, lookup)
     return lookup
   }
 
   return {
-    getRegistry: (fontFamily) => registries.get(fontFamily),
+    getRegistry: (face) => registries.get(toFaceKey(face)),
     loadFamilies,
     getFont: store.getFont
   }

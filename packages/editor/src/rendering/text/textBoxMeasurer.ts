@@ -5,6 +5,9 @@ import type { TextEngine, TextLayoutRequest } from '@designo/text'
 const toLayoutRequest = (request: Parameters<TextBoxMeasurer>[0]): TextLayoutRequest => ({
   text: request.text,
   fontFamily: request.fontFamily,
+  fontWeight: request.fontWeight,
+  fontStyle: request.fontStyle,
+  letterSpacing: request.letterSpacing,
   fontSize: request.fontSize,
   lineHeight: request.lineHeight,
   alignment: request.textAlign,

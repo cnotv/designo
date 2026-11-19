@@ -2,7 +2,10 @@ import type { BLEND_MODES, CURRENT_FORMAT_VERSION } from './defaults.ts'
 export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text'
 
 /** Which edge a text node's lines sit against, inside the node's width. */
-export type TextAlign = 'left' | 'center' | 'right'
+export type TextAlign = 'left' | 'center' | 'right' | 'justify'
+
+/** Whether a text is upright or slanted. */
+export type FontStyle = 'normal' | 'italic'
 
 /** How a node's pixels combine with what is painted beneath it. */
 export type BlendMode = (typeof BLEND_MODES)[number]
@@ -54,6 +57,11 @@ export interface DesignNodeProperties {
   text: string
   fontSize: number
   fontFamily: string
+  /** A CSS weight from 100 to 900; the family's nearest weight draws it. */
+  fontWeight: number
+  fontStyle: FontStyle
+  /** Extra space after every character, as a multiple of the font size. May be negative. */
+  letterSpacing: number
   textAlign: TextAlign
   /** The distance between lines of text, as a multiple of the font size. */
   lineHeight: number
@@ -101,3 +109,9 @@ export interface DesignNodeTree {
   node: DesignNode
   children: readonly DesignNodeTree[]
 }
+
+/** The weight and style of a font, which with a family name pick one font file. */
+export type FontVariant = Pick<DesignNodeProperties, 'fontWeight' | 'fontStyle'>
+
+/** Everything that picks the font file a text is drawn with. */
+export type TextFace = FontVariant & Pick<DesignNodeProperties, 'fontFamily'>

@@ -1,4 +1,4 @@
-import type { DesignNode, TextAlign } from '@designo/core'
+import type { DesignNode, FontStyle, TextAlign, TextFace } from '@designo/core'
 import type { CodePointRange, ResolveFontFamily } from '@designo/fonts'
 
 export type TextDirection = 'ltr' | 'rtl'
@@ -13,6 +13,10 @@ export interface FontDefinitionData {
   url: string
   /** The code points the file draws, as `U+0600-06FF` ranges or a single `U+00A0`. */
   coverage: readonly string[]
+  /** The weight the file is, which the browser's copy of it is registered with; 400 when unset. */
+  fontWeight?: number
+  /** The style the file is; normal when unset. */
+  fontStyle?: FontStyle
 }
 
 /** The catalog as written in the data file, with ranges still as text. */
@@ -162,6 +166,8 @@ export interface MeasuredWidths {
 export interface TextLayoutInput {
   text: string
   fontSize: number
+  /** Extra space after every character, as a multiple of the font size. */
+  letterSpacing: number
   alignment: TextAlign
   /** The distance between lines, as a multiple of the font size. */
   lineHeight: number
@@ -351,10 +357,7 @@ export interface GlyphRasterPlan {
 export type CoverageDrawer = (plan: GlyphRasterPlan, pathData: string) => Uint8Array
 
 /** What a text layout depends on; two nodes with the same request share one layout. */
-export interface TextLayoutRequest extends TextLayoutInput {
-  /** The node's CSS-like family list, which picks the primary font. */
-  fontFamily: string
-}
+export interface TextLayoutRequest extends TextLayoutInput, TextFace {}
 
 export interface FontLibraryOptions {
   /** Finds a family's files through the font API. */
@@ -365,9 +368,9 @@ export interface FontLibraryOptions {
 /** Every family list's fonts, found through the font API as texts ask for them. */
 export interface FontLibrary {
   /** The fonts a `fontFamily` list draws with; undefined until `loadFamilies` has found them. */
-  getRegistry: (fontFamily: string) => FontRegistry | undefined
+  getRegistry: (face: TextFace) => FontRegistry | undefined
   /** Looks up the list's families and their fallbacks. Rejects when the font API has none of them. */
-  loadFamilies: (fontFamily: string) => Promise<void>
+  loadFamilies: (face: TextFace) => Promise<void>
   getFont: (fontId: string) => ShapingFont | undefined
 }
 

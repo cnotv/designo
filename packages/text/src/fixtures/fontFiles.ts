@@ -53,7 +53,11 @@ export const createFixtureFontRegistry = (
 const FIXTURE_FAMILIES = new Map<string, FontFamilyFiles>(
   FIXTURE_FONT_CATALOG_DATA.fonts.map((font) => [
     font.family.toLowerCase(),
-    { id: font.id, family: font.family, files: [{ ...font, subset: 'fixture' }] }
+    {
+      id: font.id,
+      family: font.family,
+      files: [{ ...font, fontWeight: 400, fontStyle: 'normal', subset: 'fixture' }]
+    }
   ])
 )
 

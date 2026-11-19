@@ -10,6 +10,9 @@ import type { TextLayoutRequest } from './types.ts'
 export const toTextLayoutRequest = (node: DesignNode): TextLayoutRequest => ({
   text: node.text,
   fontFamily: node.fontFamily,
+  fontWeight: node.fontWeight,
+  fontStyle: node.fontStyle,
+  letterSpacing: node.letterSpacing,
   fontSize: node.fontSize,
   lineHeight: node.lineHeight,
   alignment: node.textAlign,

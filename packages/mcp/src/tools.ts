@@ -6,7 +6,8 @@ import {
   getSubtreeIds,
   type DesignDocument,
   type DesignNode,
-  type DesignNodeTree
+  type DesignNodeTree,
+  type TextAlign
 } from '@designo/core'
 import {
   applyOperationsToFile,
@@ -160,7 +161,14 @@ const collectTexts = (document: DesignDocument, nodeId: string): ScreenshotText[
   getSubtreeIds(document, nodeId).flatMap((id) => {
     const node = document.nodes[id]
     return node?.type === 'text' && node.text !== ''
-      ? [{ fontFamily: node.fontFamily, text: node.text }]
+      ? [
+          {
+            fontFamily: node.fontFamily,
+            fontWeight: node.fontWeight,
+            fontStyle: node.fontStyle,
+            text: node.text
+          }
+        ]
       : []
   })
 
@@ -200,15 +208,21 @@ export const measureTextTool = async (
   input: {
     text: string
     fontFamily?: string
+    fontWeight?: number
+    fontStyle?: 'normal' | 'italic'
+    letterSpacing?: number
     fontSize?: number
     lineHeight?: number
-    textAlign?: 'left' | 'center' | 'right'
+    textAlign?: TextAlign
     width?: number
   }
 ): Promise<TextMeasurement> => {
   const layout = await (context.layoutText ?? layoutTextWithFontsourceFonts)({
     text: input.text,
     fontFamily: input.fontFamily ?? DEFAULT_NODE_PROPERTIES.fontFamily,
+    fontWeight: input.fontWeight ?? DEFAULT_NODE_PROPERTIES.fontWeight,
+    fontStyle: input.fontStyle ?? DEFAULT_NODE_PROPERTIES.fontStyle,
+    letterSpacing: input.letterSpacing ?? DEFAULT_NODE_PROPERTIES.letterSpacing,
     fontSize: input.fontSize ?? DEFAULT_NODE_PROPERTIES.fontSize,
     lineHeight: input.lineHeight ?? DEFAULT_NODE_PROPERTIES.lineHeight,
     alignment: input.textAlign ?? DEFAULT_NODE_PROPERTIES.textAlign,

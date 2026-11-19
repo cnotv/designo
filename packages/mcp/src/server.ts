@@ -1,5 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import {
+  FONT_STYLES,
+  MAX_FONT_WEIGHT,
+  MAX_LETTER_SPACING,
+  MIN_FONT_WEIGHT,
+  MIN_LETTER_SPACING,
+  TEXT_ALIGNMENTS
+} from '@designo/core'
 import { z } from 'zod'
 import {
   creatableNodeTypeSchema,
@@ -99,9 +107,12 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
       inputSchema: {
         text: z.string().max(MAX_MEASURED_TEXT_LENGTH),
         fontFamily: z.string().max(MAX_FONT_FAMILY_LENGTH).optional(),
+        fontWeight: z.number().min(MIN_FONT_WEIGHT).max(MAX_FONT_WEIGHT).optional(),
+        fontStyle: z.enum(FONT_STYLES).optional(),
+        letterSpacing: z.number().min(MIN_LETTER_SPACING).max(MAX_LETTER_SPACING).optional(),
         fontSize: z.number().positive().optional(),
         lineHeight: z.number().positive().optional(),
-        textAlign: z.enum(['left', 'center', 'right']).optional(),
+        textAlign: z.enum(TEXT_ALIGNMENTS).optional(),
         width: z.number().positive().optional()
       },
       annotations: READ_ONLY

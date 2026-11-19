@@ -345,7 +345,9 @@ describe('export tools', () => {
       },
       { fileId }
     )
-    expect(asked).toEqual([[{ fontFamily: 'Noto Sans', text: 'Once' }]])
+    expect(asked).toEqual([
+      [{ fontFamily: 'Noto Sans', fontWeight: 400, fontStyle: 'normal', text: 'Once' }]
+    ])
     const withoutFonts = await getScreenshotTool(context, { fileId })
     expect(withFonts.data).not.toBe(withoutFonts.data)
   })
@@ -529,7 +531,10 @@ describe('text properties on the node tools', () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Refused' })
     const client = await connectClient()
     const attempts = [
-      { textAlign: 'justify' },
+      { textAlign: 'distribute' },
+      { fontWeight: 1000 },
+      { fontStyle: 'oblique' },
+      { letterSpacing: 5 },
       { lineHeight: 0 },
       { lineHeight: -1.2 },
       { textWrap: 'yes' }

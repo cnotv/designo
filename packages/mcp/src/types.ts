@@ -1,3 +1,4 @@
+import type { TextFace } from '@designo/core'
 import type { FontLineMetrics } from '@designo/exporter'
 import type { FontFetch } from '@designo/fonts'
 import type { GenerateId } from '@designo/storage'
@@ -14,8 +15,7 @@ export type Rasterize = (
 ) => Promise<RasterizeOutcome>
 
 /** A text on the page being drawn, which needs fonts. */
-export interface ScreenshotText {
-  fontFamily: string
+export interface ScreenshotText extends TextFace {
   text: string
 }
 
@@ -23,10 +23,10 @@ export interface ScreenshotText {
 export interface ScreenshotFonts {
   /** The font files, as paths a renderer can read. */
   files: readonly string[]
-  /** The renamed family of the file that draws a family list. */
-  resolveFontFamily: (fontFamily: string) => string | undefined
+  /** The renamed family of the file that draws a family list at a weight and style. */
+  resolveFontFamily: (face: TextFace) => string | undefined
   /** The metrics of the font a family list draws with, which place its baseline. */
-  getFontMetrics: (fontFamily: string) => FontLineMetrics | undefined
+  getFontMetrics: (face: TextFace) => FontLineMetrics | undefined
 }
 
 /** Finds the fonts the texts need. */

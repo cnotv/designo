@@ -8,11 +8,12 @@ import { toFontsourceId, type FontFamilyFiles, type ResolveFontFamily } from '@d
  */
 export const memoizeFontFamilyResolver = (resolve: ResolveFontFamily): ResolveFontFamily => {
   const answers = new Map<string, Promise<FontFamilyFiles | undefined>>()
-  return (family) => {
-    const key = toFontsourceId(family)
+  return (family, variant) => {
+    // The Fontsource answer describes every weight, but the files chosen from it do not.
+    const key = `${toFontsourceId(family)}:${variant.fontWeight}${variant.fontStyle}`
     const known = answers.get(key)
     if (known) return known
-    const answer = resolve(family)
+    const answer = resolve(family, variant)
     answers.set(key, answer)
     answer.catch(() => answers.delete(key))
     return answer

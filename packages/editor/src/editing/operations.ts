@@ -199,13 +199,31 @@ export const createDeleteOperations = (
     .map((nodeId) => ({ kind: 'delete', id: nodeId }))
 
 // A width typed into a text node is where its lines wrap, so it changes the box's height too.
-const TEXT_BOX_PROPERTIES = ['text', 'fontSize', 'lineHeight', 'textWrap', 'width'] as const
+const TEXT_BOX_PROPERTIES = [
+  'text',
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'fontStyle',
+  'letterSpacing',
+  'lineHeight',
+  'textWrap',
+  'width'
+] as const
 
 const changesTextBox = (patch: DesignNodePatch): boolean =>
   TEXT_BOX_PROPERTIES.some((property) => property in patch)
 
 // The line height changes how tall the lines stand, never how wide they are.
-const WIDTH_PROPERTIES = ['text', 'fontSize', 'textWrap'] as const
+const WIDTH_PROPERTIES = [
+  'text',
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'fontStyle',
+  'letterSpacing',
+  'textWrap'
+] as const
 
 // A fixed-width box keeps the width it was given and only grows taller, as tall as its words
 // wrap to; an auto-width box follows its words in both directions.
@@ -215,13 +233,17 @@ const fitTextBox = (
   isFixedWidth: boolean,
   measureTextBox: TextBoxMeasurer
 ): DesignNodePatch => {
+  const next = { ...node, ...patch }
   const { width, height } = measureTextBox({
-    text: patch.text ?? node.text,
-    fontFamily: patch.fontFamily ?? node.fontFamily,
-    fontSize: patch.fontSize ?? node.fontSize,
-    lineHeight: patch.lineHeight ?? node.lineHeight,
-    textAlign: patch.textAlign ?? node.textAlign,
-    wrapWidth: isFixedWidth ? (patch.width ?? node.width) : undefined
+    text: next.text,
+    fontFamily: next.fontFamily,
+    fontWeight: next.fontWeight,
+    fontStyle: next.fontStyle,
+    letterSpacing: next.letterSpacing,
+    fontSize: next.fontSize,
+    lineHeight: next.lineHeight,
+    textAlign: next.textAlign,
+    wrapWidth: isFixedWidth ? next.width : undefined
   })
   const followsWords = !isFixedWidth && WIDTH_PROPERTIES.some((property) => property in patch)
   return followsWords

@@ -1,10 +1,33 @@
-import { MAX_LINE_HEIGHT, MIN_LINE_HEIGHT, type DesignNode, type TextAlign } from '@designo/core'
+import {
+  MAX_LETTER_SPACING,
+  MAX_LINE_HEIGHT,
+  MIN_LETTER_SPACING,
+  MIN_LINE_HEIGHT,
+  type DesignNode,
+  type TextAlign
+} from '@designo/core'
 import type { TextWidthMode } from './types.ts'
+
+const PERCENT = 100
 
 export const TEXT_ALIGN_OPTIONS: readonly { value: TextAlign; label: string }[] = [
   { value: 'left', label: 'Align text left' },
   { value: 'center', label: 'Align text centre' },
-  { value: 'right', label: 'Align text right' }
+  { value: 'right', label: 'Align text right' },
+  { value: 'justify', label: 'Justify text' }
+]
+
+/** The weights the properties panel offers, named as type designers do. */
+export const FONT_WEIGHT_OPTIONS: readonly { value: number; label: string }[] = [
+  { value: 100, label: 'Thin' },
+  { value: 200, label: 'Extra light' },
+  { value: 300, label: 'Light' },
+  { value: 400, label: 'Regular' },
+  { value: 500, label: 'Medium' },
+  { value: 600, label: 'Semibold' },
+  { value: 700, label: 'Bold' },
+  { value: 800, label: 'Extra bold' },
+  { value: 900, label: 'Black' }
 ]
 
 export const TEXT_WIDTH_MODE_OPTIONS: readonly { value: TextWidthMode; label: string }[] = [
@@ -53,5 +76,26 @@ export const readLineHeightInput = (raw: string): number | undefined => {
   const value = raw.trim() === '' ? Number.NaN : Number(raw)
   return Number.isFinite(value)
     ? Math.min(MAX_LINE_HEIGHT, Math.max(MIN_LINE_HEIGHT, value))
+    : undefined
+}
+
+/**
+ * Reads the value the weight select sends.
+ * @param raw - What the control sent, a weight as text.
+ * @returns The weight, or undefined for anything the panel does not offer.
+ */
+export const readFontWeight = (raw: unknown): number | undefined =>
+  FONT_WEIGHT_OPTIONS.find((option) => String(option.value) === String(raw))?.value
+
+/**
+ * Reads what was typed into the letter spacing field, which shows hundredths of the font size.
+ * @param raw - The field's text, in percent of the font size.
+ * @returns The spacing as a multiple of the font size, held to the range a file allows, or
+ * undefined when nothing usable was typed.
+ */
+export const readLetterSpacingInput = (raw: string): number | undefined => {
+  const percent = raw.trim() === '' ? Number.NaN : Number(raw)
+  return Number.isFinite(percent)
+    ? Math.min(MAX_LETTER_SPACING, Math.max(MIN_LETTER_SPACING, percent / PERCENT))
     : undefined
 }

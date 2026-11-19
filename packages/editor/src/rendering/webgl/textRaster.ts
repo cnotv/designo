@@ -56,6 +56,9 @@ export const textRasterKey = (node: DesignNode, rasterScale: number): string =>
   JSON.stringify([
     node.text,
     node.fontFamily,
+    node.fontWeight,
+    node.fontStyle,
+    node.letterSpacing,
     node.fontSize,
     node.fill,
     node.textAlign,

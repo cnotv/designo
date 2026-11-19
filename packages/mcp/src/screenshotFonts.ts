@@ -1,6 +1,7 @@
 import { mkdir, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { toFaceKey, type TextFace } from '@designo/core'
 import type { FontLineMetrics } from '@designo/exporter'
 import {
   createFontsourceResolver,
@@ -115,12 +116,17 @@ interface ListFonts {
   locals: readonly LocalFontFile[]
 }
 
-const groupTextByFamilyList = (texts: readonly ScreenshotText[]): Map<string, string> =>
-  texts.reduce(
-    (groups, { fontFamily, text }) =>
-      new Map([...groups, [fontFamily, `${groups.get(fontFamily) ?? ''}${text}`]]),
-    new Map<string, string>()
-  )
+interface FaceText {
+  face: TextFace
+  text: string
+}
+
+// Each family list, weight and style is looked up once, for every character it draws.
+const groupTextByFace = (texts: readonly ScreenshotText[]): Map<string, FaceText> =>
+  texts.reduce((groups, { text, ...face }) => {
+    const key = toFaceKey(face)
+    return new Map([...groups, [key, { face, text: `${groups.get(key)?.text ?? ''}${text}` }]])
+  }, new Map<string, FaceText>())
 
 // resvg draws a text with one font and falls back, character by character, to the other fonts it
 // has. Drawing with the file that has most of the characters leaves the fewest to fall back for.
@@ -150,15 +156,13 @@ export const createScreenshotFontLoader = ({
   })
   const loadLocal = createLocalFileLoader(cacheDirectory, fetchBytes, warn)
 
-  const findListFonts = async ([fontFamily, text]: [string, string]): Promise<
+  const findListFonts = async ([key, { face, text }]: [string, FaceText]): Promise<
     [string, ListFonts]
   > => {
-    const families = await resolveFontFamilies(fontFamily, resolveFamily).catch(
-      (error: unknown) => {
-        warn(`Designo: no fonts for ${fontFamily}: ${describeError(error)}`)
-        return []
-      }
-    )
+    const families = await resolveFontFamilies(face, resolveFamily).catch((error: unknown) => {
+      warn(`Designo: no fonts for ${face.fontFamily}: ${describeError(error)}`)
+      return []
+    })
     const primaryFile = families[0]?.files[0]
     const primary = primaryFile ? await loadLocal(primaryFile) : undefined
     const characters = [...new Set(text)].filter(
@@ -171,25 +175,25 @@ export const createScreenshotFontLoader = ({
     )
     const locals = primary ? [primary, ...assignment.locals] : assignment.locals
     return [
-      fontFamily,
+      key,
       { metrics: primary?.metrics, drawing: chooseDrawingFile(assignment) ?? primary, locals }
     ]
   }
 
   return async (texts): Promise<ScreenshotFonts> => {
     await mkdir(cacheDirectory, { recursive: true })
-    const lists = new Map(await Promise.all([...groupTextByFamilyList(texts)].map(findListFonts)))
+    const lists = new Map(await Promise.all([...groupTextByFace(texts)].map(findListFonts)))
     const found = [...lists.values()]
     // A list whose families could not be found borrows the page's first font, so its text still shows.
     const standIn = found.find((fonts) => fonts.drawing)
-    const fontsFor = (fontFamily: string): ListFonts | undefined => {
-      const fonts = lists.get(fontFamily)
+    const fontsFor = (face: TextFace): ListFonts | undefined => {
+      const fonts = lists.get(toFaceKey(face))
       return fonts?.drawing ? fonts : standIn
     }
     return {
       files: [...new Set(found.flatMap((fonts) => fonts.locals.map((local) => local.path)))],
-      resolveFontFamily: (fontFamily) => fontsFor(fontFamily)?.drawing?.family,
-      getFontMetrics: (fontFamily) => fontsFor(fontFamily)?.metrics
+      resolveFontFamily: (face) => fontsFor(face)?.drawing?.family,
+      getFontMetrics: (face) => fontsFor(face)?.metrics
     }
   }
 }

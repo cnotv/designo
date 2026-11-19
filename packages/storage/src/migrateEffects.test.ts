@@ -37,6 +37,6 @@ describe('migrateEffects', () => {
   })
 
   it('opens a version 3 file as a current document', () => {
-    expect(parseStoredDocument(versionThreeFile()).formatVersion).toBe(4)
+    expect(parseStoredDocument(versionThreeFile()).formatVersion).toBe(5)
   })
 })

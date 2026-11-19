@@ -2,6 +2,7 @@ import { toFontsourceId, type CodePointRange } from '@designo/fonts'
 import type { FontDefinition, FontRegistry } from '@designo/text'
 
 const HEX_RADIX = 16
+const DEFAULT_FONT_WEIGHT = 400
 
 /**
  * Names the CSS family a loaded font file is registered under for the browser, which no other
@@ -55,7 +56,9 @@ export const addBrowserFontFace = (definition: FontDefinition, bytes: Uint8Array
   if (typeof document === 'undefined' || typeof FontFace === 'undefined') return
   // A copy, as FontFace takes only bytes backed by a plain ArrayBuffer.
   const face = new FontFace(getLoadedFontCssFamily(definition.family), new Uint8Array(bytes), {
-    unicodeRange: toUnicodeRange(definition)
+    unicodeRange: toUnicodeRange(definition),
+    weight: String(definition.fontWeight ?? DEFAULT_FONT_WEIGHT),
+    style: definition.fontStyle ?? 'normal'
   })
   document.fonts.add(face)
   void face.load()

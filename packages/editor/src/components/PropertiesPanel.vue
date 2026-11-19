@@ -1,16 +1,36 @@
 <script setup lang="ts">
 import type { DesignNodePatch } from '@designo/core'
-import { AlignCenter, AlignLeft, AlignRight, Minus, Plus, Trash2 } from 'lucide-vue-next'
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Italic,
+  Minus,
+  Plus,
+  Trash2
+} from 'lucide-vue-next'
 import { computed, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
 import {
+  FONT_WEIGHT_OPTIONS,
+  readFontWeight,
+  readLetterSpacingInput,
   readLineHeightInput,
   readTextAlign,
   readTextWidthMode,
@@ -43,7 +63,8 @@ const geometryFields: { key: NumberKey; label: string }[] = [
 const ALIGN_ICONS: Record<string, Component> = {
   left: AlignLeft,
   center: AlignCenter,
-  right: AlignRight
+  right: AlignRight,
+  justify: AlignJustify
 }
 
 const node = computed(() => {
@@ -74,6 +95,16 @@ const updateTextAlign = (raw: unknown): void => {
 const updateTextWidthMode = (raw: unknown): void => {
   const mode = readTextWidthMode(raw)
   if (mode) update({ textWrap: mode === 'fixed' })
+}
+
+const updateFontWeight = (raw: unknown): void => {
+  const fontWeight = readFontWeight(raw)
+  if (fontWeight !== undefined) update({ fontWeight })
+}
+
+const updateLetterSpacing = (event: Event): void => {
+  const letterSpacing = readLetterSpacingInput(inputValue(event))
+  if (letterSpacing !== undefined) update({ letterSpacing })
 }
 
 const updateLineHeight = (event: Event): void => {
@@ -173,6 +204,31 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             @pick="update({ fontFamily: $event })"
           />
         </div>
+        <div class="flex gap-2">
+          <Select :model-value="String(node.fontWeight)" @update:model-value="updateFontWeight">
+            <SelectTrigger class="h-7 flex-1 text-xs" aria-label="Font weight">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="option in FONT_WEIGHT_OPTIONS"
+                :key="option.value"
+                :value="String(option.value)"
+              >
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Toggle
+            size="sm"
+            aria-label="Italic"
+            title="Italic"
+            :model-value="node.fontStyle === 'italic'"
+            @update:model-value="update({ fontStyle: $event ? 'italic' : 'normal' })"
+          >
+            <Italic />
+          </Toggle>
+        </div>
         <div class="flex flex-col gap-1.5">
           <Label for="property-font-size">Font size</Label>
           <Input
@@ -195,6 +251,19 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             :model-value="node.lineHeight"
             class="h-7 text-xs tabular-nums"
             @change="updateLineHeight"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="property-letter-spacing">Letter spacing (%)</Label>
+          <Input
+            id="property-letter-spacing"
+            type="number"
+            min="-50"
+            max="200"
+            step="1"
+            :model-value="Math.round(node.letterSpacing * 100)"
+            class="h-7 text-xs tabular-nums"
+            @change="updateLetterSpacing"
           />
         </div>
         <div class="flex flex-wrap gap-2">

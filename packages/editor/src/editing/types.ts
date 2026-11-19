@@ -1,4 +1,4 @@
-import type { DesignNode, DesignOperation, TextAlign } from '@designo/core'
+import type { DesignNode, DesignOperation, FontStyle, TextAlign, TextFace } from '@designo/core'
 
 export interface Point {
   x: number
@@ -159,10 +159,10 @@ export interface TextEditSession {
 export type TextWidthMode = 'auto' | 'fixed'
 
 /** What a text node's box depends on, for a measurer to size it. */
-export interface TextBoxRequest {
+export interface TextBoxRequest extends TextFace {
   text: string
-  fontFamily: string
   fontSize: number
+  letterSpacing: number
   lineHeight: number
   textAlign: TextAlign
   /** The width a fixed-width box wraps at; undefined for an auto-width one. */
@@ -183,6 +183,10 @@ export interface TextOverlayLayout {
   width: number
   height: number
   fontSize: number
+  fontWeight: number
+  fontStyle: FontStyle
+  /** Extra space after each character, in CSS pixels. */
+  letterSpacing: number
   lineHeight: number
   textAlign: TextAlign
   /** True for a fixed-width box, whose lines wrap at the box's width. */

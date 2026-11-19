@@ -1,5 +1,7 @@
+import type { FontVariant } from '@designo/core'
+
 /** One font file: a family's characters in one subset, such as Latin or Cyrillic. */
-export interface FontFile {
+export interface FontFile extends FontVariant {
   /** Unique across families, such as `gelasio:latin`. */
   id: string
   /** The family name inside the file, which a renderer matches by. */
@@ -19,8 +21,11 @@ export interface FontFamilyFiles {
   files: readonly FontFile[]
 }
 
-/** Looks a family up by name; undefined when the font API has no such family. */
-export type ResolveFontFamily = (family: string) => Promise<FontFamilyFiles | undefined>
+/** Looks a family up by name, for one weight and style; undefined when the font API has no such family. */
+export type ResolveFontFamily = (
+  family: string,
+  variant: FontVariant
+) => Promise<FontFamilyFiles | undefined>
 
 /** The part of `fetch` the font API client uses, so tests can answer for the network. */
 export type FontFetch = (url: string) => Promise<Pick<Response, 'ok' | 'status' | 'json'>>
@@ -29,10 +34,6 @@ export interface FontsourceResolverOptions {
   fetch: FontFetch
   /** The API's families endpoint, ending in a slash. */
   apiUrl?: string
-  /** The weight wanted; the nearest one the family has is used. */
-  weight?: number
-  /** The style wanted; the family's first style is used when it lacks it. */
-  style?: string
 }
 
 /** An inclusive range of Unicode code points. */

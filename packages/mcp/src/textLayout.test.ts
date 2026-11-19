@@ -46,6 +46,9 @@ describe('createNodeLayoutText', () => {
     const request = {
       text: 'one two three four',
       fontFamily: 'Inter',
+      fontWeight: 400,
+      fontStyle: 'normal' as const,
+      letterSpacing: 0,
       fontSize: 20,
       lineHeight: 1.2,
       alignment: 'left' as const,

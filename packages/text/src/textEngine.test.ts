@@ -41,6 +41,9 @@ const setup = (options: { shaping?: boolean; failLoad?: boolean; layoutLimit?: n
 const request = (overrides: Partial<TextLayoutRequest> = {}): TextLayoutRequest => ({
   text: 'Hello',
   fontFamily: 'Inter, system-ui, sans-serif',
+  fontWeight: 400,
+  fontStyle: 'normal',
+  letterSpacing: 0,
   fontSize: 20,
   lineHeight: 1.2,
   alignment: 'left',

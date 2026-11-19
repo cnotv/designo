@@ -41,6 +41,7 @@ const layout = (text: string, options: Partial<TextLayoutInput> = {}) =>
       text,
       fontSize: FONT_SIZE,
       alignment: 'left',
+      letterSpacing: 0,
       lineHeight: LINE_HEIGHT_MULTIPLE,
       wrapWidth: undefined,
       ...options
@@ -232,6 +233,56 @@ describe('layoutText alignment', () => {
   })
 })
 
+describe('layoutText letter spacing', () => {
+  it('adds the spacing, a multiple of the font size, after every character', () => {
+    const result = layout('abc', { letterSpacing: 0.1 })
+    expect(result.lines[0]?.glyphs.map((glyph) => glyph.x)).toEqual([0, 12, 24])
+    expect(result.width).toBe(36)
+  })
+
+  it('narrows the text for a negative spacing', () => {
+    expect(layout('abc', { letterSpacing: -0.1 }).width).toBe(24)
+  })
+
+  it('counts the spacing when a fixed-width box decides where to wrap', () => {
+    // Four characters of 10 fit in 45; with 2 extra each, only three of 12 do.
+    expect(layout('aaaa', { wrapWidth: 45 }).lines).toHaveLength(1)
+    expect(layout('aaaa', { wrapWidth: 45, letterSpacing: 0.1 }).lines).toHaveLength(2)
+  })
+})
+
+describe('layoutText justified text', () => {
+  const justified = (text: string, options: Partial<TextLayoutInput> = {}) =>
+    layout(text, { alignment: 'justify', wrapWidth: 70, ...options })
+
+  it('stretches the spaces of a wrapped line until it fills the box', () => {
+    const result = justified('aa bb cc dd')
+    const [first] = result.lines
+    expect(first?.width).toBe(70)
+    // "aa bb" is 50 wide with one space, so that space grows by 20 and "bb" starts at 50.
+    expect(first?.glyphs.map((glyph) => glyph.x)).toEqual([0, 10, 20, 50, 60])
+  })
+
+  it('leaves the last line of a paragraph ragged', () => {
+    const result = justified('aa bb cc dd')
+    expect(result.lines.at(-1)?.width).toBe(50)
+  })
+
+  it('leaves the last line before a hard break ragged too', () => {
+    const result = justified('aa bb\ncc dd')
+    expect(result.lines.map((line) => line.width)).toEqual([50, 50])
+  })
+
+  it('does not stretch an auto-width box, which never wraps', () => {
+    const result = layout('aa bb cc', { alignment: 'justify' })
+    expect(result.lines[0]?.width).toBe(80)
+  })
+
+  it('does not stretch a line with no space to stretch', () => {
+    expect(justified('aaaaaaaaaaaa').lines[0]?.width).toBe(70)
+  })
+})
+
 describe('layoutText with right to left and mixed text', () => {
   it('reads a Hebrew paragraph right to left, so its first character is rightmost', () => {
     const result = layout('אבג')
@@ -277,6 +328,7 @@ describe('layoutText with the bundled fonts', () => {
     text,
     fontSize: 20,
     alignment: 'left',
+    letterSpacing: 0,
     lineHeight: 1.2,
     wrapWidth: undefined
   }

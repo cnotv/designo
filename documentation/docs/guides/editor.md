@@ -72,8 +72,12 @@ circle. After drawing, the editor returns to Move.
 - **Properties:** position, size, rotation, opacity, corner radius, fill, stroke, and text with
   its size. A field applies when you press Enter or leave it; Escape leaves the field.
 - **Text layout:** a text layer's properties also hold its **Line height**, a multiple of the font
-  size (1.2 by default, from 0.5 to 10), three buttons to align its lines left, centre or right
-  inside its width, and **Auto width** or **Fixed width**. An auto-width box follows its words and
+  size (1.2 by default, from 0.5 to 10), a **Letter spacing** in percent of the font size, a
+  weight list (Thin to Black) and an Italic button, four buttons to align its lines left, centre,
+  right or justified inside its width, and **Auto width** or **Fixed width**. Justified text
+  stretches the spaces of every wrapped line except the last of each paragraph, so it needs a
+  fixed width. The weight and style load that file of the family from Fontsource, the nearest one
+  when the family lacks it. An auto-width box follows its words and
   never wraps them; a fixed-width box keeps its width and wraps its lines there. Typing a width
   into a text layer makes it fixed-width, and choosing **Auto width** fits the box to the words
   again. Each change is one undo step, and the in-place text editor follows the alignment, line
