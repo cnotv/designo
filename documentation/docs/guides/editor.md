@@ -161,6 +161,9 @@ The Export section sits at the bottom of the properties panel.
   it does on the canvas. A layer with blur or a shadow becomes an image, because a PDF has no
   blur. There are no layout guides yet, and none would be drawn. Bleed, trim marks and CMYK wait
   for page units and are not part of this export.
+- **A file to try it on:** `pnpm sample:book` writes `book-sample` to the data directory: twelve
+  numbered page frames laid out on one canvas, and an art direction board with no number. Its
+  PDF has twelve pages and no board. It is rewritten each time it runs, so edit a copy.
 - **Shortcut:** Shift Ctrl/Cmd E exports again with the last-used format and scale.
 
 Characters a file name cannot hold (such as `/` or `:`) in a layer name become `-`. Agents get the
