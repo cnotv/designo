@@ -79,4 +79,4 @@ comparison needs a headless GL context and is still to do.
 - **Pen tool and boolean operations:** reuse a proven library (paper.js booleans, lyon or kurbo
   through WebAssembly) rather than writing one.
 - **Two writers:** until phase 5, the editor and the MCP server both write the same files.
-- **Legal:** copy features and workflows, not Figma's branding, icons or `.fig` internals.
+- **Legal:** copy features and workflows, not any other tool's branding, icons or file internals.

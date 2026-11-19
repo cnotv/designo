@@ -147,7 +147,7 @@ export const useEditorShortcuts = (
 ): void => {
   const onKeyDown = (event: KeyboardEvent): void => {
     if (isTypingTarget(event.target)) {
-      // Escape leaves a panel field, as in Figma, so the next shortcut reaches the canvas.
+      // Escape leaves a panel field, so the next shortcut reaches the canvas.
       if (event.key === 'Escape' && event.target instanceof HTMLElement) event.target.blur()
       return
     }

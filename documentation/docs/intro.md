@@ -6,7 +6,7 @@ title: Introduction
 
 # Designo
 
-A personal, self-hosted design tool in the spirit of Figma, with its own MCP server, so you and
+A personal, self-hosted design tool, with its own MCP server, so you and
 your agents can design without usage limits. Your files live on your disk or your own server.
 
 ![The Designo plan: architecture, MCP tools, milestones and risks](/img/plan.svg)

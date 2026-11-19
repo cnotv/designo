@@ -1,6 +1,6 @@
 # Designo
 
-A self-hosted design tool in the spirit of Figma, with its own MCP server, so agents can read
+A self-hosted design tool, with its own MCP server, so agents can read
 and edit designs with no plan limits. A pnpm monorepo of Vue 3 and TypeScript packages.
 
 Architecture: `documentation/docs/architecture.md`.
@@ -62,8 +62,8 @@ an exploratory prototype, which still owes them before the pull request is marke
 - **Use an existing component library; never build a UI kit.** No custom buttons, inputs,
   selects, dialogs, badges or other controls, and no in-house design system, unless the request
   explicitly asks for one or the library in use has no component for the need. "Add a UI kit"
-  means adopt a library: propose one that fits the framework, with its Figma kit when there is a
-  Figma step, and ask which. Style it through its theme tokens. A missing component is composed
+  means adopt a library: propose one that fits the framework, with its official design kit when there is a
+  design step, and ask which. Style it through its theme tokens. A missing component is composed
   from the library's primitives, and the pull request says so.
 
 ### Git
