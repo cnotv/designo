@@ -23,6 +23,7 @@ import {
   getTopmostIds,
   toggleInSelection
 } from './selection.ts'
+import { indexDocument } from './spatialIndex.ts'
 import type { TextBoxMeasurer } from './types.ts'
 import { screenToWorld, worldToScreen, zoomAt } from './viewport.ts'
 
@@ -83,14 +84,16 @@ describe('viewport', () => {
 
 describe('selection', () => {
   it('picks the node drawn on top, a child over its frame', () => {
-    expect(findNodeAtPoint(document, { x: 130, y: 130 })?.id).toBe('box')
-    expect(findNodeAtPoint(document, { x: 250, y: 250 })?.id).toBe('frame')
-    expect(findNodeAtPoint(document, { x: 600, y: 600 })).toBeUndefined()
+    expect(findNodeAtPoint(document, indexDocument(document), { x: 130, y: 130 })?.id).toBe('box')
+    expect(findNodeAtPoint(document, indexDocument(document), { x: 250, y: 250 })?.id).toBe('frame')
+    expect(findNodeAtPoint(document, indexDocument(document), { x: 600, y: 600 })).toBeUndefined()
   })
 
   it('draws into the frame under the pointer, else onto the page', () => {
-    expect(findContainerAtPoint(document, { x: 250, y: 250 })).toBe('frame')
-    expect(findContainerAtPoint(document, { x: 10, y: 10 })).toBe('page')
+    expect(findContainerAtPoint(document, indexDocument(document), { x: 250, y: 250 })).toBe(
+      'frame'
+    )
+    expect(findContainerAtPoint(document, indexDocument(document), { x: 10, y: 10 })).toBe('page')
   })
 
   it('keeps only the outermost of nested ids', () => {
@@ -98,11 +101,12 @@ describe('selection', () => {
   })
 
   it('selects with a marquee without doubling a frame and its contents', () => {
-    expect(findNodesInBounds(document, { x: 0, y: 0, width: 500, height: 500 })).toEqual([
-      'frame',
-      'dot'
-    ])
-    expect(findNodesInBounds(document, { x: 390, y: 90, width: 20, height: 20 })).toEqual(['dot'])
+    expect(
+      findNodesInBounds(document, indexDocument(document), { x: 0, y: 0, width: 500, height: 500 })
+    ).toEqual(['frame', 'dot'])
+    expect(
+      findNodesInBounds(document, indexDocument(document), { x: 390, y: 90, width: 20, height: 20 })
+    ).toEqual(['dot'])
   })
 
   it('toggles an id in and out', () => {

@@ -185,5 +185,7 @@ skipped rather than half-applied.
 
 The canvas draws shapes with WebGL2 and falls back to Canvas 2D where WebGL2 is missing; add
 `?renderer=canvas2d` to the address to force the fallback, which draws text with the browser's own
-text drawing and still honours alignment, line height and wrapping. Hit testing does not use the
-spatial index yet ([issue #11](https://github.com/cnotv/designo/issues/11)).
+text drawing and still honours alignment, line height and wrapping. Clicks, hover and marquee
+selection read the spatial index, so their cost does not grow with the number of layers. A marquee
+selects a node where it is drawn, so a rotated node is caught by its turned shape, not its
+unturned box.

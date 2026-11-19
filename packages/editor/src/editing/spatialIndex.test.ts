@@ -22,6 +22,7 @@ const randomEntries = (count: number, seed: number): SpatialEntry[] => {
   const random = createRandom(seed)
   return Array.from({ length: count }, (_, position) => ({
     id: `node-${position}`,
+    order: position,
     bounds: {
       x: random() * 10_000 - 5000,
       y: random() * 10_000 - 5000,
@@ -44,7 +45,9 @@ describe('spatial index', () => {
   })
 
   it('finds a single entry, edges included', () => {
-    const index = createSpatialIndex([{ id: 'a', bounds: { x: 0, y: 0, width: 10, height: 10 } }])
+    const index = createSpatialIndex([
+      { id: 'a', order: 0, bounds: { x: 0, y: 0, width: 10, height: 10 } }
+    ])
     expect(searchSpatialIndex(index, { x: 10, y: 10, width: 5, height: 5 })).toEqual(['a'])
     expect(searchSpatialIndex(index, { x: 11, y: 0, width: 5, height: 5 })).toEqual([])
   })

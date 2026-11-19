@@ -63,13 +63,21 @@ export const createSpatialIndex = (entries: readonly SpatialEntry[]): SpatialInd
   return { root, depth, size: entries.length }
 }
 
-const searchNode = (node: SpatialTreeNode, area: Bounds): string[] => {
+const searchNode = (node: SpatialTreeNode, area: Bounds): SpatialEntry[] => {
   if (!boundsIntersect(node.bounds, area)) return []
-  const matchingEntries = node.entries
-    .filter((entry) => boundsIntersect(entry.bounds, area))
-    .map((entry) => entry.id)
+  const matchingEntries = node.entries.filter((entry) => boundsIntersect(entry.bounds, area))
   return [...matchingEntries, ...node.children.flatMap((child) => searchNode(child, area))]
 }
+
+/**
+ * Finds the entries whose bounds touch an area, edges included, without visiting the subtrees
+ * that lie wholly outside it.
+ * @param index - The index.
+ * @param area - The area to search, in world units.
+ * @returns The entries found, in no particular order.
+ */
+export const searchSpatialEntries = (index: SpatialIndex, area: Bounds): SpatialEntry[] =>
+  index.root ? searchNode(index.root, area) : []
 
 /**
  * Finds the entries whose bounds touch an area, edges included, without visiting the subtrees
@@ -79,7 +87,7 @@ const searchNode = (node: SpatialTreeNode, area: Bounds): string[] => {
  * @returns The ids of the entries found, in no particular order.
  */
 export const searchSpatialIndex = (index: SpatialIndex, area: Bounds): string[] =>
-  index.root ? searchNode(index.root, area) : []
+  searchSpatialEntries(index, area).map((entry) => entry.id)
 
 /**
  * Measures where a node is drawn: its box turned by its rotation, plus the half of its stroke that
@@ -107,5 +115,5 @@ export const indexDocument = (document: DesignDocument): SpatialIndex =>
   createSpatialIndex(
     getPaintOrder(document)
       .filter((node) => node.type !== 'group' && node.type !== 'page')
-      .map((node) => ({ id: node.id, bounds: getDrawnBounds(node) }))
+      .map((node, order) => ({ id: node.id, bounds: getDrawnBounds(node), order }))
   )

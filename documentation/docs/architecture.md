@@ -27,7 +27,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files    |
 | `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
-| `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11) next     |
+| `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11)          |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
 | `exporter` (rest)   | phase 4 | PDF and Vue/HTML code, in-editor PNG                                                      |
 
@@ -84,6 +84,9 @@ top, always Canvas 2D, carries selection, guides and the marquee and takes the p
   frames each one is clipped by. `batchScene` splits the list into runs of shapes and runs of
   text, so paint order holds across both. Consecutive texts under the same clipping frames are
   one run, which draws together from the atlas.
+- **Hit testing.** Click, hover and marquee ask the same index for the entries near the point or
+  box, then sort those few by their paint order, so the cost follows what is nearby, not the
+  node count. The editor builds the index once per committed document.
 - **WebGL2.** Each run of shapes is one instanced draw: a quad per node, with a signed distance
   function for the rounded box or ellipse, its stroke and edge antialiasing in the fragment
   shader. Colours are premultiplied. A frame clips through the stencil buffer: each frame in a
