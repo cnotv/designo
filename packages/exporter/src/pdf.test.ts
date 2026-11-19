@@ -77,6 +77,62 @@ const twoPageDocument = (): DesignDocument =>
   ])
 
 describe('exportDocumentToPdf', () => {
+  describe('frames marked as pages', () => {
+    const bookDocument = (): DesignDocument =>
+      build(createDocument('file', 'Book', 'page'), [
+        {
+          kind: 'create',
+          id: 'board',
+          type: 'frame',
+          parentId: 'page',
+          properties: { x: 0, y: 0, width: 900, height: 900 }
+        },
+        {
+          kind: 'create',
+          id: 'spread-two',
+          type: 'frame',
+          parentId: 'page',
+          properties: { x: 1000, y: 0, width: 300, height: 150, pdfPage: 2 }
+        },
+        {
+          kind: 'create',
+          id: 'spread-one',
+          type: 'frame',
+          parentId: 'page',
+          properties: { x: 0, y: 1000, width: 200, height: 100, pdfPage: 1 }
+        }
+      ])
+
+    it('writes one PDF page for each marked frame, in order, at the frame size', async () => {
+      const document = bookDocument()
+      const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))
+      expect(countMatches(pdf, /\/Type \/Page\b/g)).toBe(2)
+      expect(
+        [...pdf.matchAll(/\/MediaBox \[0 0 (\d+) (\d+)]/g)].map((match) => match.slice(1))
+      ).toEqual([
+        ['200', '100'],
+        ['300', '150']
+      ])
+    })
+
+    it('ignores the mark on anything that is not a frame', async () => {
+      const document = build(bookDocument(), [
+        { kind: 'update', id: 'spread-one', patch: { pdfPage: null } },
+        { kind: 'update', id: 'spread-two', patch: { pdfPage: null } },
+        {
+          kind: 'create',
+          id: 'box',
+          type: 'rectangle',
+          parentId: 'page',
+          properties: { x: 0, y: 0, width: 50, height: 50, pdfPage: 1 }
+        }
+      ])
+      const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))
+      expect(countMatches(pdf, /\/Type \/Page\b/g)).toBe(1)
+      expect(pdf).toContain('/MediaBox [0 0 1300 1100]')
+    })
+  })
+
   it('writes one PDF page for each page, in order, sized to its content', async () => {
     const document = twoPageDocument()
     const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))

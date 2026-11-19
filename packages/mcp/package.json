@@ -13,6 +13,7 @@
   },
   "scripts": {
     "start": "tsx src/main.ts",
+    "sample:book": "tsx src/samples/writeBookSample.ts",
     "type-check": "tsc -p tsconfig.json"
   },
   "dependencies": {

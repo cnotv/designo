@@ -70,6 +70,11 @@ export interface DesignNodeProperties {
    * to its text, so the width follows the words and never wraps them.
    */
   textWrap: boolean
+  /**
+   * Frames only: a whole number from 1 makes the frame a page of the exported PDF, in that order;
+   * null leaves it out. A document with no such frame exports a page for each design page.
+   */
+  pdfPage: number | null
 }
 
 export interface DesignNode extends DesignNodeProperties {

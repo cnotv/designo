@@ -117,27 +117,30 @@ others, `properties` such as `name`) adds another, and a `create` operation whos
 that page's id puts a node on it. Each page is its own coordinate space and its own page of the PDF.
 
 `export_pdf` takes a `fileId` and returns the whole file as one PDF, in an embedded resource of
-type `application/pdf`: a page for each page in the file, in order, each as large as its visible
-content, one design unit to a point. Text is selectable and set in its embedded fonts, broken into
+type `application/pdf`. Frames with a `pdfPage` (a whole number from 1) are its pages, in that order,
+each as large as its frame and clipped to it; this is how a book laid out as spreads on one canvas
+becomes a PDF of those spreads, and anything on the canvas outside them is left out. A file with
+no such frame gets a page for each page in the file, in order, each as large as its visible
+content. One design unit is a point. Text is selectable and set in its embedded fonts, broken into
 lines where the editor breaks it; a node with blur or a shadow is an image. It fails, naming the
 text, when a text's fonts cannot be found, rather than leaving the text out.
 
 ## Tools
 
-| Tool                | Does                                                                                   |
-| ------------------- | -------------------------------------------------------------------------------------- |
-| `list_files`        | Lists files with their ids and names                                                   |
-| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                     |
-| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)     |
-| `get_node`          | Reads one node with every property                                                     |
-| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)            |
-| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                  |
-| `export_pdf`        | Exports the file as one PDF, a page for each page in order, with embedded fonts        |
-| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line          |
-| `create_node`       | Creates one frame, group, rectangle, ellipse or text node                              |
-| `update_node`       | Changes some properties of one node                                                    |
-| `delete_node`       | Deletes a node and everything inside it                                                |
-| `apply_ops`         | Applies up to 500 create, createPage, update, delete and move operations as one change |
+| Tool                | Does                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `list_files`        | Lists files with their ids and names                                                                       |
+| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                         |
+| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                         |
+| `get_node`          | Reads one node with every property                                                                         |
+| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                      |
+| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts |
+| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                              |
+| `create_node`       | Creates one frame, group, rectangle, ellipse or text node                                                  |
+| `update_node`       | Changes some properties of one node                                                                        |
+| `delete_node`       | Deletes a node and everything inside it                                                                    |
+| `apply_ops`         | Applies up to 500 create, createPage, update, delete and move operations as one change                     |
 
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in
 the same batch can nest inside them. If any operation fails, nothing is saved.

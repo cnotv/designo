@@ -1,4 +1,4 @@
-import { createDocument } from '@designo/core'
+import { CURRENT_FORMAT_VERSION, createDocument } from '@designo/core'
 import { describe, expect, it } from 'vitest'
 import { addEffectsToNode, migrateEffects } from './migrateEffects.ts'
 import { parseStoredDocument } from './migrations.ts'
@@ -37,6 +37,6 @@ describe('migrateEffects', () => {
   })
 
   it('opens a version 3 file as a current document', () => {
-    expect(parseStoredDocument(versionThreeFile()).formatVersion).toBe(5)
+    expect(parseStoredDocument(versionThreeFile()).formatVersion).toBe(CURRENT_FORMAT_VERSION)
   })
 })

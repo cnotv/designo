@@ -104,6 +104,14 @@ export const nodePatchSchema = z
       .boolean()
       .describe(
         'Text only: true makes the node a fixed-width box whose lines wrap at its width; false (the default) sizes the box to its text.'
+      ),
+    pdfPage: z
+      .number()
+      .int()
+      .min(1)
+      .nullable()
+      .describe(
+        'Frames only: a whole number from 1 makes the frame a page of the exported PDF, at its own size, in that order; null (the default) leaves it out. Once any frame has a number, only numbered frames are printed.'
       )
   })
   .partial()

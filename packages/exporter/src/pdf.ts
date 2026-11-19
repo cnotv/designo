@@ -266,13 +266,22 @@ const drawNode = (context: ExportContext, node: DesignNode, inheritedOpacity: nu
   pdf.restore()
 }
 
+// Frames marked as pages are the PDF's pages, in their order; a document with none prints a page
+// for each design page. The mark only counts on a frame.
+const getPdfPages = (document: DesignDocument): DesignNode[] => {
+  const marked = Object.values(document.nodes)
+    .filter((node) => node.type === 'frame' && node.pdfPage !== null)
+    .toSorted((first, second) => (first.pdfPage ?? 0) - (second.pdfPage ?? 0))
+  return marked.length > 0 ? marked : getPageNodes(document)
+}
+
 const rasterizeEffects = async (
   document: DesignDocument,
   options: PdfExportOptions
 ): Promise<Map<string, Uint8Array>> => {
   const { rasterizeNode } = options
   if (!rasterizeNode) return new Map()
-  const nodes = getPageNodes(document)
+  const nodes = getPdfPages(document)
     .flatMap((page) => getSubtreeIds(document, page.id))
     .flatMap((id) => {
       const node = document.nodes[id]
@@ -309,8 +318,9 @@ const collectBytes = (pdf: Pdf): Promise<Uint8Array<ArrayBuffer>> =>
   })
 
 /**
- * Writes a document as one PDF with a page for each of its pages, in order. A page is as large
- * as its visible content, in points, one design unit to a point. Shapes, frames that clip,
+ * Writes a document as one PDF. Its pages are the frames marked with a `pdfPage`, in that order,
+ * each as large as the frame and clipped to it; with no such frame, a page for each design page,
+ * as large as its visible content. A design unit is a point. Shapes, frames that clip,
  * gradients, opacity and blend modes are PDF drawing; text is set in the fonts its layout used,
  * embedded and selectable; a node with blur or a shadow is an image, since a PDF has no blur.
  * Layout guides are not part of a document's nodes, so none is drawn.
@@ -336,7 +346,7 @@ export const exportDocumentToPdf = async (
     rasters: await rasterizeEffects(document, options),
     graphicsStates: new Map()
   }
-  getPageNodes(document).forEach((page) => {
+  getPdfPages(document).forEach((page) => {
     const bounds = getExportBounds(document, page)
     pdf.addPage({
       size: [Math.max(bounds.width, MIN_PAGE_SIZE), Math.max(bounds.height, MIN_PAGE_SIZE)],
