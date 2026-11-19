@@ -187,7 +187,10 @@ degrees) turns a node around its centre.
 | `lineHeight` | a number from 0.5 to 10   | `1.2`   | The distance between lines, as a multiple of `fontSize`                 |
 | `textWrap`   | `true`, `false`           | `false` | `true` makes the node a fixed-width box that wraps its lines at `width` |
 
-With `textWrap` off, `width` is only the box the text sits in, which the editor keeps in step with
+The server sizes every text a call creates or changes, as the editor does: with `textWrap` off the
+box follows the words in width and height, with it on the `width` stays and the height follows the
+wrapped lines. Giving a text a `width` and no `textWrap` makes it a fixed-width text. If the fonts
+are not available the box keeps the size it was given. With `textWrap` off, `width` is only the box the text sits in, which the editor keeps in step with
 the words; lines break where the text has a newline and never anywhere else. Set `textWrap: true`
 and a `width` to have long text wrap instead of adding line breaks by hand. `export_svg` and
 `get_screenshot` wrap a `textWrap` text at its `width` with the editor's own layout engine, and

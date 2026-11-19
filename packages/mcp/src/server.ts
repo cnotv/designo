@@ -140,7 +140,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'create_node',
     {
       description:
-        'Create one node under a page, frame or group. Coordinates are absolute on the page, not relative to the parent frame. Returns the new id, and a warning if the node lies outside its parent frame, where it would not show.',
+        'Create one node under a page, frame or group. Coordinates are absolute on the page, not relative to the parent frame. Text nodes are sized to their words, as the editor does. Returns the new id, and a warning if the node lies outside its parent frame, where it would not show.',
       inputSchema: {
         fileId: fileIdSchema,
         type: creatableNodeTypeSchema,

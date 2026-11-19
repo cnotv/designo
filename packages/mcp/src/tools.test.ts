@@ -189,6 +189,48 @@ describe('MCP tools', () => {
     await expect(measureTextTool(context, { text: '日本' })).rejects.toThrow('fonts')
   })
 
+  it('sizes an auto-width text to its words, and a fixed-width text to its wrapped height', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Fit' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'label',
+          type: 'text',
+          parentId: pageId,
+          properties: { text: 'one two three', fontFamily: 'Inter', fontSize: 20 }
+        },
+        {
+          kind: 'create',
+          id: 'story',
+          type: 'text',
+          parentId: pageId,
+          properties: {
+            text: 'one two three four five',
+            fontFamily: 'Inter',
+            fontSize: 20,
+            width: 80
+          }
+        }
+      ]
+    })
+    const label = await getNodeTool(context, { fileId, nodeId: 'label' })
+    const story = await getNodeTool(context, { fileId, nodeId: 'story' })
+    expect(label.width).not.toBe(100)
+    expect(label.height).toBe(24)
+    expect(story.textWrap).toBe(true)
+    expect(story.width).toBe(80)
+    expect(story.height).toBeGreaterThan(24)
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [{ kind: 'update', id: 'label', patch: { text: 'one' } }]
+    })
+    expect((await getNodeTool(context, { fileId, nodeId: 'label' })).width).toBeLessThan(
+      label.width
+    )
+  })
+
   it('saves nothing when one operation in the batch fails', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Atomic' })
     await expect(

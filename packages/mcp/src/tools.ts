@@ -18,6 +18,7 @@ import {
 } from '@designo/storage'
 import { toTextLayoutRequest } from '@designo/text'
 import { layoutTextWithFontsourceFonts } from './textLayout.ts'
+import { findTextBoxFits, inferFixedWidth } from './fitTextBoxes.ts'
 import { findOutsideParentWarnings } from './outsideParentWarnings.ts'
 import { rasterizeSvgToPng } from './rasterize.ts'
 import { loadScreenshotFonts } from './screenshotFonts.ts'
@@ -89,20 +90,33 @@ export const getNodeTool = async (
  * @param context - Where files live and how ids are made.
  * @param input - The file and the operations, in order.
  * @returns Ids of the nodes the batch created, and a warning for each node left outside its frame.
+ *   Texts the batch touched are sized to their words first, as the editor sizes them.
  */
 export const applyOperationsTool = async (
   context: DesignoToolContext,
   input: { fileId: string; operations: readonly OperationInput[] }
 ): Promise<{ createdNodeIds: string[]; warnings: string[] }> => {
-  const { createdNodeIds, document } = await applyOperationsToFile(
+  const before = await readDocument(context.dataDirectory, input.fileId)
+  const operations = inferFixedWidth(input.operations, before)
+  const applied = await applyOperationsToFile(
     context.dataDirectory,
     input.fileId,
-    input.operations,
+    operations,
     context.generateId
   )
+  const fits = await findTextBoxFits(
+    applied.document,
+    operations,
+    applied.createdNodeIds,
+    context.layoutText ?? layoutTextWithFontsourceFonts
+  )
+  const { document } =
+    fits.length === 0
+      ? applied
+      : await applyOperationsToFile(context.dataDirectory, input.fileId, fits, context.generateId)
   return {
-    createdNodeIds,
-    warnings: findOutsideParentWarnings(document, input.operations, createdNodeIds)
+    createdNodeIds: applied.createdNodeIds,
+    warnings: findOutsideParentWarnings(document, operations, applied.createdNodeIds)
   }
 }
 
