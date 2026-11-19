@@ -166,6 +166,8 @@ The Export section sits at the bottom of the properties panel.
   PDF has twelve pages and no board. It is rewritten each time it runs, so edit a copy.
 - **Shortcut:** Shift Ctrl/Cmd E exports again with the last-used format and scale.
 
+![Selecting the two page frames of the sample file; the PDF page field shows 1 and 2](/img/pdf-pages.gif)
+
 Characters a file name cannot hold (such as `/` or `:`) in a layer name become `-`. Agents get the
 same SVG, and a PNG made in Node, through the MCP `export_svg` and `get_screenshot` tools, and the
 same PDF through `export_pdf`.

@@ -112,8 +112,48 @@ const effectOperations = (): DesignOperation[] => [
   }
 ]
 
+const PAGE_FRAME_SIZE = 380
+const PAGE_FRAME_LEFT = 700
+const PAGE_FRAME_GAP = 40
+
+// Two frames to select and export: each is a page of the PDF, and the palette frame is not.
+const pageFrameOperations = (position: number): DesignOperation[] => {
+  const id = `page-${position + 1}`
+  const left = PAGE_FRAME_LEFT + position * (PAGE_FRAME_SIZE + PAGE_FRAME_GAP)
+  return [
+    {
+      kind: 'create',
+      id,
+      type: 'frame',
+      parentId: 'page',
+      properties: {
+        name: `Page ${position + 1}`,
+        x: left,
+        y: 0,
+        width: PAGE_FRAME_SIZE,
+        height: PAGE_FRAME_SIZE,
+        fill: SWATCH_COLORS[position + 3] ?? '#ffffff',
+        pdfPage: position + 1
+      }
+    },
+    {
+      kind: 'create',
+      id: `${id}-title`,
+      type: 'text',
+      parentId: id,
+      properties: {
+        x: left + SWATCH_LEFT,
+        y: 28,
+        text: `Page ${position + 1}`,
+        fontSize: 24,
+        fill: '#111111'
+      }
+    }
+  ]
+}
+
 /**
- * Builds the sample file the editor shows when no Designo server is behind it, as on the public demo.
+ * Builds the sample file the editor shows when no Designo server is behind it, as on the public demo: a palette, and two frames numbered as the pages of its PDF.
  * @returns The sample document.
  */
 export const createPaletteDocument = (): DesignDocument => {
@@ -133,7 +173,9 @@ export const createPaletteDocument = (): DesignDocument => {
       properties: { x: SWATCH_LEFT, y: 28, text: 'Forest palette', fontSize: 24, fill: '#111111' }
     },
     ...SWATCH_COLORS.flatMap(swatchOperations),
-    ...effectOperations()
+    ...effectOperations(),
+    ...pageFrameOperations(0),
+    ...pageFrameOperations(1)
   ])
   if (!result.ok) throw new Error(result.error)
   return result.document
