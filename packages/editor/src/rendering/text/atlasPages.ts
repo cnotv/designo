@@ -1,5 +1,5 @@
 import { createShelfPacker, packRectangle } from './shelfPacker.ts'
-import type { AtlasPagePool, PagePlacement, ShelfPackerState } from './types.ts'
+import type { AtlasPagePool, PagePlacement, ShelfPackerState } from '@designo/text'
 
 interface AtlasPage {
   packer: ShelfPackerState

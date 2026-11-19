@@ -347,6 +347,33 @@ describe('exportNodeToSvg', () => {
     expect(svg).toContain('<tspan x="0" y="17">two</tspan>')
   })
 
+  it('breaks a fixed-width text where the layout does, and ignores the layout for auto-width text', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'wrapped',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: 'one two', fontSize: 10, width: 30, textWrap: true }
+      },
+      {
+        kind: 'create',
+        id: 'free',
+        type: 'text',
+        parentId: 'page',
+        properties: { y: 50, text: 'one two', fontSize: 10 }
+      }
+    ])
+    const getTextLines = () => [
+      { start: 0, end: 3 },
+      { start: 4, end: 7 }
+    ]
+    const wrapped = exportNodeToSvg(document, 'wrapped', { getTextLines })
+    expect(wrapped).toContain('<tspan x="0" y="0">one</tspan>')
+    expect(wrapped).toContain('<tspan x="0" y="12">two</tspan>')
+    expect(exportNodeToSvg(document, 'free', { getTextLines })).toContain('>one two</text>')
+  })
+
   // An empty tspan contributes nothing, so a line gap carried by its dy is lost: the line after
   // a blank line must say where it is itself.
   it('keeps a blank line by placing the line after it two line heights down', () => {

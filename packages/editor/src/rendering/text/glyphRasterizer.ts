@@ -5,7 +5,7 @@ import type {
   GlyphKey,
   GlyphRasterizer,
   RasterizedGlyph
-} from './types.ts'
+} from '@designo/text'
 
 const NO_GLYPH: RasterizedGlyph = {
   width: 0,

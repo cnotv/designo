@@ -1,3 +1,5 @@
+import type { DesignNode } from '@designo/core'
+
 export interface Bounds {
   x: number
   y: number
@@ -12,7 +14,18 @@ export interface FontLineMetrics {
   descender: number
 }
 
+/** One line of a laid-out text: the slice `[start, end)` of the node's text it holds. */
+export interface TextLineRange {
+  start: number
+  end: number
+}
+
 export interface SvgExportOptions {
+  /**
+   * Where a fixed-width text node breaks its lines, from the layout engine the editor draws with.
+   * Without it, or when it returns undefined, text breaks only at the line breaks it carries.
+   */
+  getTextLines?: (node: DesignNode) => readonly TextLineRange[] | undefined
   /**
    * The family a renderer should draw a family list with, such as a downloaded font renamed so it
    * cannot be confused with another; the list itself, with stand-ins added, when undefined.

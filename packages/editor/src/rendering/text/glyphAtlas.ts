@@ -8,7 +8,7 @@ import type {
   GlyphAtlasOptions,
   GlyphKey,
   RasterizedGlyph
-} from './types.ts'
+} from '@designo/text'
 
 const EMPTY_RECTANGLE: AtlasRectangle = { x: 0, y: 0, width: 0, height: 0 }
 const NO_PAGE = -1

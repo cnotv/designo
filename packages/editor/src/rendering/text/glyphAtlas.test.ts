@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createGlyphAtlas } from './glyphAtlas.ts'
-import type { GlyphKey, GlyphRasterizer, RasterizedGlyph } from './types.ts'
+import type { GlyphKey, GlyphRasterizer, RasterizedGlyph } from '@designo/text'
 
 const key = (glyphId: number, overrides: Partial<GlyphKey> = {}): GlyphKey => ({
   fontId: 'inter',

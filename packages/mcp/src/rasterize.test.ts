@@ -23,7 +23,7 @@ const expectFailure = (outcome: Awaited<ReturnType<typeof rasterizeSvgToPng>>): 
 
 // The editor's test fonts, standing in for the files the font API gives.
 const fixtureFont = (name: string): string =>
-  fileURLToPath(new URL(`../../editor/src/rendering/text/fixtures/${name}`, import.meta.url))
+  fileURLToPath(new URL(`../../text/src/fixtures/${name}`, import.meta.url))
 
 const FONT_FILES = [
   fixtureFont('Inter-Regular.subset.ttf'),

@@ -1,5 +1,5 @@
 import { toFontsourceId, type CodePointRange } from '@designo/fonts'
-import type { FontDefinition, FontRegistry } from './types.ts'
+import type { FontDefinition, FontRegistry } from '@designo/text'
 
 const HEX_RADIX = 16
 

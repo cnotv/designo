@@ -1,4 +1,4 @@
-import type { GlyphAtlas } from '../text/types.ts'
+import type { GlyphAtlas } from '@designo/text'
 
 /** The atlas's pages as GPU textures, kept in step with what the atlas has placed and evicted. */
 export interface AtlasTextures {

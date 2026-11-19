@@ -1,6 +1,6 @@
 import { createGlyphAtlas } from '../text/glyphAtlas.ts'
 import { createGlyphRasterizer } from '../text/glyphRasterizer.ts'
-import type { TextRuntime } from '../text/types.ts'
+import type { TextRuntime } from '@designo/text'
 import type { GlyphDrawStep, GlyphPipeline, SceneItem } from '../types.ts'
 import { createAtlasTextures } from './atlasTextures.ts'
 import {

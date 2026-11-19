@@ -1,6 +1,6 @@
 import type { DesignDocument, DesignNode } from '@designo/core'
 import type { Bounds, SnapGuide, SpatialIndex, Viewport } from '../editing/types.ts'
-import type { GlyphAtlas, TextEngine } from './text/types.ts'
+import type { GlyphAtlas, TextEngine } from '@designo/text'
 
 export interface OverlayState {
   selection: readonly string[]

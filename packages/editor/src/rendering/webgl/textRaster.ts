@@ -1,5 +1,5 @@
 import type { DesignNode } from '@designo/core'
-import type { FallbackTextLayout } from '../text/types.ts'
+import type { FallbackTextLayout } from '@designo/text'
 import type { TextRasterSize } from '../types.ts'
 
 const MIN_RASTER_SCALE = 0.125

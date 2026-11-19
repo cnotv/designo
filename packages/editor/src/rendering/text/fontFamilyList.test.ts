@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { FIXTURE_FONT_CATALOG, createFixtureFontRegistry } from './fixtures/fontFiles.ts'
-import { compileFontCatalog } from './fontRegistry.ts'
+import { FIXTURE_FONT_CATALOG, createFixtureFontRegistry } from '@designo/text/fixtures'
+import { compileFontCatalog } from '@designo/text'
 import { createBrowserFontStack, getLoadedFontCssFamily, toUnicodeRange } from './fontFamilyList.ts'
 
 describe('getLoadedFontCssFamily', () => {

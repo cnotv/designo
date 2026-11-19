@@ -133,9 +133,10 @@ export default [
     rules: { 'functional/immutable-data': 'off' }
   },
 
-  // Canvas 2D drawing is an imperative API: setting fillStyle and friends is how it works.
+  // Canvas 2D drawing is an imperative API: setting fillStyle and friends is how it works, and
+  // the text engine keeps its font and layout caches in maps and sets.
   {
-    files: ['packages/editor/src/rendering/**/*.ts'],
+    files: ['packages/editor/src/rendering/**/*.ts', 'packages/text/src/**/*.ts'],
     rules: { 'functional/immutable-data': 'off' }
   },
 

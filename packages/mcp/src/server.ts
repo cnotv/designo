@@ -15,13 +15,16 @@ import {
   getDocumentTreeTool,
   getNodeTool,
   getScreenshotTool,
-  listFilesTool
+  listFilesTool,
+  measureTextTool
 } from './tools.ts'
 import { MAX_SCREENSHOT_SCALE, MIN_SCREENSHOT_SCALE } from './rasterize.ts'
 import type { DesignoToolContext, ScreenshotImage } from './types.ts'
 
 const SERVER_VERSION = '0.0.0'
 const MAX_TREE_DEPTH = 50
+const MAX_MEASURED_TEXT_LENGTH = 100_000
+const MAX_FONT_FAMILY_LENGTH = 200
 
 const toToolResult = async (work: () => Promise<unknown>): Promise<CallToolResult> => {
   try {
@@ -78,7 +81,7 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
     'get_screenshot',
     {
       description:
-        'Render the page, or one node, to a PNG image so you can see the design. Text is drawn without shaping, so it differs slightly from the editor. scale is pixels per design unit (default 1).',
+        'Render the page, or one node, to a PNG image so you can see the design. Fixed-width text wraps where the editor wraps it; other text is drawn without shaping, so it differs slightly. scale is pixels per design unit (default 1).',
       inputSchema: {
         fileId: fileIdSchema,
         nodeId: nodeIdSchema.optional(),
@@ -89,10 +92,27 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
     (input) => toImageResult(() => getScreenshotTool(context, input))
   )
   server.registerTool(
+    'measure_text',
+    {
+      description:
+        'Measure a text the way the editor lays it out, to size a panel before drawing it. Give the font and size you will use; omitted ones are a new text node defaults. width wraps the text like a fixed-width node; without it the text runs on one line per line break. Returns the width and height of the box, and the text of each line.',
+      inputSchema: {
+        text: z.string().max(MAX_MEASURED_TEXT_LENGTH),
+        fontFamily: z.string().max(MAX_FONT_FAMILY_LENGTH).optional(),
+        fontSize: z.number().positive().optional(),
+        lineHeight: z.number().positive().optional(),
+        textAlign: z.enum(['left', 'center', 'right']).optional(),
+        width: z.number().positive().optional()
+      },
+      annotations: READ_ONLY
+    },
+    (input) => toToolResult(() => measureTextTool(context, input))
+  )
+  server.registerTool(
     'export_svg',
     {
       description:
-        'Export the page, or one node, as standalone SVG text. Coordinates are absolute on the page and the viewBox is the node bounds.',
+        'Export the page, or one node, as standalone SVG text. Fixed-width text is broken into lines where the editor wraps it. Coordinates are absolute on the page and the viewBox is the node bounds.',
       inputSchema: { fileId: fileIdSchema, nodeId: nodeIdSchema.optional() },
       annotations: READ_ONLY
     },
@@ -120,7 +140,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'create_node',
     {
       description:
-        'Create one node under a page, frame or group. Coordinates are absolute on the page. Returns the new id.',
+        'Create one node under a page, frame or group. Coordinates are absolute on the page, not relative to the parent frame. Text nodes are sized to their words, as the editor does. Returns the new id, and a warning if the node lies outside its parent frame, where it would not show.',
       inputSchema: {
         fileId: fileIdSchema,
         type: creatableNodeTypeSchema,
@@ -163,7 +183,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'apply_ops',
     {
       description:
-        'Apply a batch of create, update, delete and move operations as one change: if one fails, nothing is saved. Give create operations your own ids to nest nodes inside each other in the same batch. Prefer this over single-node tools when building a layout.',
+        'Apply a batch of create, update, delete and move operations as one change: if one fails, nothing is saved. Give create operations your own ids to nest nodes inside each other in the same batch. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
       inputSchema: {
         fileId: fileIdSchema,
         operations: operationBatchSchema

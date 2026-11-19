@@ -1,7 +1,7 @@
 import type { DesignNode } from '@designo/core'
 import { prepareCanvas } from '../prepareCanvas.ts'
 import { SHAPE_INSTANCE_FLOATS, batchScene } from '../scene.ts'
-import type { TextRuntime } from '../text/types.ts'
+import type { TextRuntime } from '@designo/text'
 import type { Scene, SceneItem, SceneRenderer, TextDrawView, ViewUniformTarget } from '../types.ts'
 import { linkProgram, readUniforms } from './glPrograms.ts'
 import { SHAPE_FRAGMENT_SHADER, SHAPE_VERTEX_SHADER } from './shaders.ts'

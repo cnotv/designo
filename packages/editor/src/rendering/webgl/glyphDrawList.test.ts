@@ -1,7 +1,7 @@
 import type { DesignNode } from '@designo/core'
 import { describe, expect, it, vi } from 'vitest'
 import { createGlyphAtlas } from '../text/glyphAtlas.ts'
-import type { AtlasGlyph, GlyphKey, TextLayout } from '../text/types.ts'
+import type { AtlasGlyph, GlyphKey, TextLayout } from '@designo/text'
 import type { SceneItem, TextDrawList } from '../types.ts'
 import { GLYPH_BYTES, buildTextDrawList } from './glyphDrawList.ts'
 

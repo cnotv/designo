@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createShelfPacker, packRectangle, SHELF_HEIGHT_STEP } from './shelfPacker.ts'
-import type { AtlasRectangle, ShelfPackerState } from './types.ts'
+import type { AtlasRectangle, ShelfPackerState } from '@designo/text'
 
 const packAll = (state: ShelfPackerState, sizes: readonly (readonly [number, number])[]) =>
   sizes.reduce<{ state: ShelfPackerState; rectangles: (AtlasRectangle | undefined)[] }>(

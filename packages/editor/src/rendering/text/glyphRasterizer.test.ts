@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createGlyphRasterizer } from './glyphRasterizer.ts'
-import type { FontRegistry, GlyphExtents, GlyphRasterPlan, ShapingFont } from './types.ts'
+import type { FontRegistry, GlyphExtents, GlyphRasterPlan, ShapingFont } from '@designo/text'
 
 const boxExtents: GlyphExtents = { xBearing: 100, yBearing: 700, width: 500, height: -700 }
 

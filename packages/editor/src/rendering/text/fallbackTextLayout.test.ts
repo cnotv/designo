@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { layoutFallbackText } from './fallbackTextLayout.ts'
-import type { FallbackTextInput } from './types.ts'
+import type { FallbackTextInput } from '@designo/text'
 
 // Every character is 10 wide, as in the layout tests, so lines can be counted by eye.
 const measureWidth = (text: string): number => text.length * 10
