@@ -334,6 +334,44 @@ describe('export tools', () => {
     ])
   })
 
+  it('export_pdf makes a page of each frame given a pdfPage, in that order', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Spreads' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'board',
+          type: 'frame',
+          parentId: pageId,
+          properties: { x: 0, y: 0, width: 900, height: 900 }
+        },
+        {
+          kind: 'create',
+          id: 'second',
+          type: 'frame',
+          parentId: pageId,
+          properties: { x: 1000, y: 0, width: 300, height: 150, pdfPage: 2 }
+        },
+        {
+          kind: 'create',
+          id: 'first',
+          type: 'frame',
+          parentId: pageId,
+          properties: { x: 0, y: 1000, width: 200, height: 100, pdfPage: 1 }
+        }
+      ]
+    })
+    const pdf = await exportPdfTool(context, { fileId })
+    const source = Buffer.from(pdf.data, 'base64').toString('latin1')
+    expect(
+      [...source.matchAll(/\/MediaBox \[0 0 (\d+) (\d+)]/g)].map((match) => match.slice(1))
+    ).toEqual([
+      ['200', '100'],
+      ['300', '150']
+    ])
+  })
+
   it('export_pdf returns a PDF with the fonts its text uses embedded', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Print' })
     await applyOperationsTool(context, {

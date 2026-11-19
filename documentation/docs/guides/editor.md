@@ -152,9 +152,11 @@ The Export section sits at the bottom of the properties panel.
 - **PNG:** pick 1x, 2x or 3x; the file is `<layer name>@<scale>x.png`. The browser draws the SVG
   onto a canvas, so nothing is uploaded. A very large layer is shrunk to fit the browser's canvas
   limit of 8192 pixels on the long side.
-- **PDF:** the whole document as one file named `<document name>.pdf`, a page for each page in
-  it, whatever is selected. A page is as large as its visible content, one design unit to a
-  point. Shapes, clipping frames, gradients, opacity and blend modes are vector; text is set in
+- **PDF:** the whole document as one file named `<document name>.pdf`, whatever is selected. Give
+  a frame a number in the **PDF page** field of the properties panel and it becomes a page of the
+  PDF, at the frame's own size, in that order; frames without a number, and anything else on the
+  canvas, are left out. With no numbered frame, each page in the document is a PDF page, as large
+  as its visible content. One design unit is a point. Shapes, clipping frames, gradients, opacity and blend modes are vector; text is set in
   the fonts the editor lays it out with, embedded and selectable, with every line breaking where
   it does on the canvas. A layer with blur or a shadow becomes an image, because a PDF has no
   blur. There are no layout guides yet, and none would be drawn. Bleed, trim marks and CMYK wait

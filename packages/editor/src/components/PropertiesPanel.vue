@@ -27,6 +27,7 @@ import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
+import { readPdfPageInput } from '../editing/pdfPage.ts'
 import {
   FONT_WEIGHT_OPTIONS,
   readFontWeight,
@@ -112,6 +113,11 @@ const updateLineHeight = (event: Event): void => {
   if (lineHeight !== undefined) update({ lineHeight })
 }
 
+const updatePdfPage = (event: Event): void => {
+  const pdfPage = readPdfPageInput(inputValue(event))
+  if (pdfPage !== undefined) update({ pdfPage })
+}
+
 const updateOpacity = (event: Event): void => {
   const percent = Number(inputValue(event))
   if (Number.isFinite(percent)) update({ opacity: Math.min(1, Math.max(0, percent / PERCENT)) })
@@ -181,6 +187,18 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             :model-value="node.cornerRadius"
             class="h-7 text-xs tabular-nums"
             @change="updateNumber('cornerRadius', $event, 0)"
+          />
+        </div>
+        <div v-if="node.type === 'frame'" class="flex flex-col gap-1.5">
+          <Label for="property-pdf-page">PDF page</Label>
+          <Input
+            id="property-pdf-page"
+            type="number"
+            min="1"
+            placeholder="None"
+            :model-value="node.pdfPage ?? ''"
+            class="h-7 text-xs tabular-nums"
+            @change="updatePdfPage"
           />
         </div>
       </div>

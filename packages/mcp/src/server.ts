@@ -155,7 +155,7 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
     'export_pdf',
     {
       description:
-        'Export the file as one PDF with a page for each page, in order, each as large as its content in points (one design unit to a point). Shapes, clipping frames, gradients, opacity and blend modes are vector; text is selectable and set in its embedded fonts, broken into lines where the editor breaks it; a node with blur or a shadow is an image. Layout guides are never drawn. Returns the PDF as an embedded resource.',
+        'Export the file as one PDF. Frames given a pdfPage (a whole number from 1) are its pages, in that order, each as large as the frame and clipped to it; set it on each spread or page of a book laid out on one canvas, and everything outside those frames is left out. With no such frame, it has a page for each page, in order, each as large as its content. One design unit is a point. Shapes, clipping frames, gradients, opacity and blend modes are vector; text is selectable and set in its embedded fonts, broken into lines where the editor breaks it; a node with blur or a shadow is an image. Layout guides are never drawn. Returns the PDF as an embedded resource.',
       inputSchema: { fileId: fileIdSchema },
       annotations: READ_ONLY
     },
@@ -219,7 +219,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'apply_ops',
     {
       description:
-        'Apply a batch of create, createPage, update, delete and move operations as one change: if one fails, nothing is saved. createPage adds a page after the others (or at order), and nodes can then be created inside it by its id; export_pdf prints each page. Give create operations your own ids to nest nodes inside each other in the same batch. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
+        'Apply a batch of create, createPage, update, delete and move operations as one change: if one fails, nothing is saved. createPage adds a page after the others (or at order), and nodes can then be created inside it by its id; export_pdf prints each page, or the frames given a pdfPage. Give create operations your own ids to nest nodes inside each other in the same batch. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
       inputSchema: {
         fileId: fileIdSchema,
         operations: operationBatchSchema

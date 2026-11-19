@@ -39,7 +39,7 @@ Yjs arrives. Coordinates are absolute on the page.
 
 A document can hold several pages. The root is the first; a `createPage` operation adds more, each
 a `page` node with no parent and an `order` among the pages, and the nodes on it hang from it like
-any other. `getPageNodes` lists them in order, and the PDF exporter prints one PDF page for each.
+any other. `getPageNodes` lists them in order, and the PDF exporter prints one PDF page for each, unless frames carry a `pdfPage`, in which case those frames are its pages.
 The editor does not show more than the first page yet.
 
 `applyOperations` applies a batch atomically: if any operation fails, the document is returned

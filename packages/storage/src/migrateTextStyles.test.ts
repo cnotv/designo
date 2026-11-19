@@ -1,4 +1,4 @@
-import { createDocument } from '@designo/core'
+import { CURRENT_FORMAT_VERSION, createDocument } from '@designo/core'
 import { describe, expect, it } from 'vitest'
 import { addTextStylesToNode, migrateTextStyles } from './migrateTextStyles.ts'
 import { parseStoredDocument } from './migrations.ts'
@@ -37,6 +37,6 @@ describe('migrateTextStyles', () => {
   })
 
   it('opens a version 4 file as a current document', () => {
-    expect(parseStoredDocument(versionFourFile()).formatVersion).toBe(5)
+    expect(parseStoredDocument(versionFourFile()).formatVersion).toBe(CURRENT_FORMAT_VERSION)
   })
 })
