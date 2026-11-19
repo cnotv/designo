@@ -112,6 +112,8 @@ export interface FontStore {
   loadFont: (definition: FontDefinition) => Promise<void>
   /** The font once it has loaded; undefined while it is still being fetched. */
   getFont: (fontId: string) => ShapingFont | undefined
+  /** The file a loaded font was read from, which a PDF embeds; undefined until it has loaded. */
+  getFontBytes: (fontId: string) => Uint8Array | undefined
 }
 
 export interface FontRegistryOptions {
@@ -372,6 +374,8 @@ export interface FontLibrary {
   /** Looks up the list's families and their fallbacks. Rejects when the font API has none of them. */
   loadFamilies: (face: TextFace) => Promise<void>
   getFont: (fontId: string) => ShapingFont | undefined
+  /** The file a loaded font was read from, which a PDF embeds; undefined until it has loaded. */
+  getFontBytes: (fontId: string) => Uint8Array | undefined
 }
 
 export interface TextEngineOptions {

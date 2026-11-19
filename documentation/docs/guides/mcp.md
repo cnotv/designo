@@ -24,7 +24,7 @@ Then pick how you want to use it. Both ways read and write the same plain `.desi
 
 Just the MCP server: no editor, no browser and no port. Your agent's client starts it as a
 process, as in the sections below, and the agent builds a design by calling the tools. It can
-check its own work without a browser: `get_screenshot` returns a PNG and `export_svg` the SVG.
+check its own work without a browser: `get_screenshot` returns a PNG, `export_svg` the SVG and `export_pdf` a PDF.
 
 To try the server by hand, `pnpm mcp` waits for MCP messages on stdin. Keep the designs in a
 folder of your own with `DESIGNO_DATA_DIR`, as an absolute path:
@@ -112,21 +112,32 @@ This is OAuth 2.1 with PKCE, so any MCP client that supports remote servers with
 only Claude Code. Without `DESIGNO_AUTH=google` there is no `/mcp`: use the stdio server instead,
 which also still works with sign-in on (set `DESIGNO_ACCOUNT`, as above).
 
+A file starts with one page. A `createPage` operation (`id` optional, `order` to place it between
+others, `properties` such as `name`) adds another, and a `create` operation whose `parentId` is
+that page's id puts a node on it. Each page is its own coordinate space and its own page of the PDF.
+
+`export_pdf` takes a `fileId` and returns the whole file as one PDF, in an embedded resource of
+type `application/pdf`: a page for each page in the file, in order, each as large as its visible
+content, one design unit to a point. Text is selectable and set in its embedded fonts, broken into
+lines where the editor breaks it; a node with blur or a shadow is an image. It fails, naming the
+text, when a text's fonts cannot be found, rather than leaving the text out.
+
 ## Tools
 
-| Tool                | Does                                                                               |
-| ------------------- | ---------------------------------------------------------------------------------- |
-| `list_files`        | Lists files with their ids and names                                               |
-| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                 |
-| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3) |
-| `get_node`          | Reads one node with every property                                                 |
-| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)        |
-| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                              |
-| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line      |
-| `create_node`       | Creates one frame, group, rectangle, ellipse or text node                          |
-| `update_node`       | Changes some properties of one node                                                |
-| `delete_node`       | Deletes a node and everything inside it                                            |
-| `apply_ops`         | Applies up to 500 create, update, delete and move operations as one change         |
+| Tool                | Does                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| `list_files`        | Lists files with their ids and names                                                   |
+| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                     |
+| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)     |
+| `get_node`          | Reads one node with every property                                                     |
+| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)            |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                  |
+| `export_pdf`        | Exports the file as one PDF, a page for each page in order, with embedded fonts        |
+| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line          |
+| `create_node`       | Creates one frame, group, rectangle, ellipse or text node                              |
+| `update_node`       | Changes some properties of one node                                                    |
+| `delete_node`       | Deletes a node and everything inside it                                                |
+| `apply_ops`         | Applies up to 500 create, createPage, update, delete and move operations as one change |
 
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in
 the same batch can nest inside them. If any operation fails, nothing is saved.

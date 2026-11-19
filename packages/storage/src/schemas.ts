@@ -139,6 +139,12 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
     order: z.number().optional(),
     properties: nodePatchSchema.optional()
   }),
+  z.object({
+    kind: z.literal('createPage'),
+    id: nodeIdSchema.optional(),
+    order: z.number().optional(),
+    properties: nodePatchSchema.optional()
+  }),
   z.object({ kind: z.literal('update'), id: nodeIdSchema, patch: nodePatchSchema }),
   z.object({ kind: z.literal('delete'), id: nodeIdSchema }),
   z.object({

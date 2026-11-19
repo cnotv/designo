@@ -37,7 +37,8 @@ export const clampExportScale = (scale: number): number =>
     : MIN_EXPORT_SCALE
 
 /**
- * Names the downloaded file: the layer name, plus `@2x` and the like for a PNG.
+ * Names the downloaded file: the layer name (the document's, for a PDF), plus `@2x` and the like
+ * for a PNG.
  * @param name - The layer name.
  * @param format - The export format.
  * @param scale - The PNG pixel density.
@@ -45,7 +46,8 @@ export const clampExportScale = (scale: number): number =>
  */
 export const buildExportFileName = (name: string, format: ExportFormat, scale: number): string => {
   const baseName = sanitizeFileName(name)
-  return format === 'svg' ? `${baseName}.svg` : `${baseName}@${clampExportScale(scale)}x.png`
+  if (format === 'png') return `${baseName}@${clampExportScale(scale)}x.png`
+  return `${baseName}.${format}`
 }
 
 /**

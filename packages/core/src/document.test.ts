@@ -5,6 +5,7 @@ import {
   createDocument,
   getChildren,
   getNodeTree,
+  getPageNodes,
   getPaintOrder
 } from './document.ts'
 import type { DesignDocument, OperationResult } from './types.ts'
@@ -40,6 +41,30 @@ describe('createDocument', () => {
   it('starts with one page as the root', () => {
     expect(emptyDocument.rootId).toBe('page-1')
     expect(emptyDocument.nodes['page-1']?.type).toBe('page')
+  })
+})
+
+describe('pages', () => {
+  it('adds pages after the first, in order, each with no parent', () => {
+    const document = unwrap(
+      applyOperations(emptyDocument, [
+        { kind: 'createPage', id: 'page-3' },
+        { kind: 'createPage', id: 'page-2', order: 0.5 }
+      ])
+    )
+    expect(getPageNodes(document).map((page) => page.id)).toEqual(['page-1', 'page-2', 'page-3'])
+    expect(document.nodes['page-3']).toMatchObject({ type: 'page', parentId: null, name: 'Page 2' })
+  })
+
+  it('holds nodes on a page other than the first, and refuses a repeated id', () => {
+    const document = unwrap(
+      applyOperations(emptyDocument, [
+        { kind: 'createPage', id: 'page-2' },
+        { kind: 'create', id: 'box', type: 'rectangle', parentId: 'page-2' }
+      ])
+    )
+    expect(getChildren(document, 'page-2').map((node) => node.id)).toEqual(['box'])
+    expect(applyOperation(document, { kind: 'createPage', id: 'page-2' }).ok).toBe(false)
   })
 })
 

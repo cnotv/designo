@@ -152,10 +152,18 @@ The Export section sits at the bottom of the properties panel.
 - **PNG:** pick 1x, 2x or 3x; the file is `<layer name>@<scale>x.png`. The browser draws the SVG
   onto a canvas, so nothing is uploaded. A very large layer is shrunk to fit the browser's canvas
   limit of 8192 pixels on the long side.
+- **PDF:** the whole document as one file named `<document name>.pdf`, a page for each page in
+  it, whatever is selected. A page is as large as its visible content, one design unit to a
+  point. Shapes, clipping frames, gradients, opacity and blend modes are vector; text is set in
+  the fonts the editor lays it out with, embedded and selectable, with every line breaking where
+  it does on the canvas. A layer with blur or a shadow becomes an image, because a PDF has no
+  blur. There are no layout guides yet, and none would be drawn. Bleed, trim marks and CMYK wait
+  for page units and are not part of this export.
 - **Shortcut:** Shift Ctrl/Cmd E exports again with the last-used format and scale.
 
 Characters a file name cannot hold (such as `/` or `:`) in a layer name become `-`. Agents get the
-same SVG, and a PNG made in Node, through the MCP `export_svg` and `get_screenshot` tools.
+same SVG, and a PNG made in Node, through the MCP `export_svg` and `get_screenshot` tools, and the
+same PDF through `export_pdf`.
 
 ## Shortcuts
 

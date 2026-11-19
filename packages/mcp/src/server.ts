@@ -19,6 +19,7 @@ import {
 import {
   applyOperationsTool,
   createFileTool,
+  exportPdfTool,
   exportSvgTool,
   getDocumentTreeTool,
   getNodeTool,
@@ -27,7 +28,7 @@ import {
   measureTextTool
 } from './tools.ts'
 import { MAX_SCREENSHOT_SCALE, MIN_SCREENSHOT_SCALE } from './rasterize.ts'
-import type { DesignoToolContext, ScreenshotImage } from './types.ts'
+import type { DesignoToolContext, PdfFile, ScreenshotImage } from './types.ts'
 
 const SERVER_VERSION = '0.0.0'
 const MAX_TREE_DEPTH = 50
@@ -48,6 +49,20 @@ const toImageResult = async (work: () => Promise<ScreenshotImage>): Promise<Call
   try {
     const { data, mimeType } = await work()
     return { content: [{ type: 'image', data, mimeType }] }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { isError: true, content: [{ type: 'text', text: message }] }
+  }
+}
+
+const toPdfResult = async (work: () => Promise<PdfFile>): Promise<CallToolResult> => {
+  try {
+    const { data, mimeType } = await work()
+    return {
+      content: [
+        { type: 'resource', resource: { uri: 'designo://export.pdf', mimeType, blob: data } }
+      ]
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return { isError: true, content: [{ type: 'text', text: message }] }
@@ -136,6 +151,16 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
       }
     }
   )
+  server.registerTool(
+    'export_pdf',
+    {
+      description:
+        'Export the file as one PDF with a page for each page, in order, each as large as its content in points (one design unit to a point). Shapes, clipping frames, gradients, opacity and blend modes are vector; text is selectable and set in its embedded fonts, broken into lines where the editor breaks it; a node with blur or a shadow is an image. Layout guides are never drawn. Returns the PDF as an embedded resource.',
+      inputSchema: { fileId: fileIdSchema },
+      annotations: READ_ONLY
+    },
+    (input) => toPdfResult(() => exportPdfTool(context, input))
+  )
 }
 
 const registerWriteTools = (server: McpServer, context: DesignoToolContext): void => {
@@ -194,7 +219,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'apply_ops',
     {
       description:
-        'Apply a batch of create, update, delete and move operations as one change: if one fails, nothing is saved. Give create operations your own ids to nest nodes inside each other in the same batch. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
+        'Apply a batch of create, createPage, update, delete and move operations as one change: if one fails, nothing is saved. createPage adds a page after the others (or at order), and nodes can then be created inside it by its id; export_pdf prints each page. Give create operations your own ids to nest nodes inside each other in the same batch. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
       inputSchema: {
         fileId: fileIdSchema,
         operations: operationBatchSchema

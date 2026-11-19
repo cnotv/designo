@@ -23,19 +23,24 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/storage`  | built   | Validated, atomic file reads and writes; the operation schema; applying a batch to a file |
 | `@designo/mcp`      | built   | MCP server for agents (stdio)                                                             |
 | `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP         |
-| `@designo/exporter` | built   | Pure SVG export of a node; the MCP server draws it with resvg in a child process          |
+| `@designo/exporter` | built   | Pure SVG export of a node, and a PDF of a document (pdfkit, `@designo/exporter/pdf`)      |
 | `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files    |
 | `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
 | `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11)          |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
-| `exporter` (rest)   | phase 4 | PDF and Vue/HTML code, in-editor PNG                                                      |
+| `exporter` (rest)   | phase 4 | Vue/HTML code, PDF bleed, trim and CMYK                                                   |
 
 ## Document model
 
 A document is a flat map of nodes keyed by id. Each node has a `parentId` and an `order`
 among its siblings, so a move is a two-field change and concurrent edits merge cleanly once
 Yjs arrives. Coordinates are absolute on the page.
+
+A document can hold several pages. The root is the first; a `createPage` operation adds more, each
+a `page` node with no parent and an `order` among the pages, and the nodes on it hang from it like
+any other. `getPageNodes` lists them in order, and the PDF exporter prints one PDF page for each.
+The editor does not show more than the first page yet.
 
 `applyOperations` applies a batch atomically: if any operation fails, the document is returned
 unchanged. The MCP `apply_ops` tool relies on this, so an agent's half-finished layout never

@@ -34,6 +34,21 @@ describe('invertOperations', () => {
     expectUndoRestores([{ kind: 'create', id: 'new', type: 'ellipse', parentId: 'page' }])
   })
 
+  it('undoes adding a page, and deleting one with what is on it', () => {
+    expectUndoRestores([{ kind: 'createPage', id: 'cover' }])
+    const withPage = unwrap(
+      applyOperations(startingDocument, [
+        { kind: 'createPage', id: 'cover', properties: { name: 'Cover' } },
+        { kind: 'create', id: 'title', type: 'text', parentId: 'cover' }
+      ])
+    )
+    const deleted = unwrap(applyOperations(withPage, [{ kind: 'delete', id: 'cover' }]))
+    const restored = unwrap(
+      applyOperations(deleted, invertOperations(withPage, [{ kind: 'delete', id: 'cover' }]))
+    )
+    expect(restored).toEqual(withPage)
+  })
+
   it('undoes an update, restoring only what changed', () => {
     expectUndoRestores([{ kind: 'update', id: 'box', patch: { x: 99, fill: null } }])
   })
