@@ -1,4 +1,4 @@
-import type { DesignNode } from '@designo/core'
+import type { DesignNode, TextFace } from '@designo/core'
 
 export interface Bounds {
   x: number
@@ -27,14 +27,15 @@ export interface SvgExportOptions {
    */
   getTextLines?: (node: DesignNode) => readonly TextLineRange[] | undefined
   /**
-   * The family a renderer should draw a family list with, such as a downloaded font renamed so it
+   * The family a renderer should draw a family list, weight and style with, such as a downloaded
+   * font renamed so it
    * cannot be confused with another; the list itself, with stand-ins added, when undefined.
    */
-  resolveFontFamily?: (fontFamily: string) => string | undefined
+  resolveFontFamily?: (face: TextFace) => string | undefined
   /**
    * The metrics of the font a family list draws with. Given them, each line sits on its
    * alphabetic baseline where the editor puts it; without them, lines hang from the top of the box,
    * which is close but depends on how a renderer reads the font's hanging baseline.
    */
-  getFontMetrics?: (fontFamily: string) => FontLineMetrics | undefined
+  getFontMetrics?: (face: TextFace) => FontLineMetrics | undefined
 }

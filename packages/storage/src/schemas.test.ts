@@ -3,14 +3,30 @@ import { nodePatchSchema, operationBatchSchema } from './schemas.ts'
 
 describe('text properties in a patch', () => {
   it('accepts each alignment, a line height and the wrap switch', () => {
-    ;['left', 'center', 'right'].forEach((textAlign) => {
+    ;['left', 'center', 'right', 'justify'].forEach((textAlign) => {
       expect(nodePatchSchema.safeParse({ textAlign }).success).toBe(true)
     })
     expect(nodePatchSchema.safeParse({ lineHeight: 1.6, textWrap: true }).success).toBe(true)
   })
 
-  it('rejects an alignment it does not know, as CSS "justify" would be', () => {
-    expect(nodePatchSchema.safeParse({ textAlign: 'justify' }).success).toBe(false)
+  it('rejects an alignment it does not know', () => {
+    expect(nodePatchSchema.safeParse({ textAlign: 'distribute' }).success).toBe(false)
+  })
+
+  it('accepts a weight, a style and a letter spacing, within their ranges', () => {
+    expect(
+      nodePatchSchema.safeParse({ fontWeight: 700, fontStyle: 'italic', letterSpacing: -0.05 })
+        .success
+    ).toBe(true)
+  })
+
+  it.each([
+    { fontWeight: 50 },
+    { fontWeight: 1000 },
+    { fontStyle: 'oblique' },
+    { letterSpacing: 3 }
+  ])('rejects %j', (patch) => {
+    expect(nodePatchSchema.safeParse(patch).success).toBe(false)
   })
 
   it.each([0, -1, 0.1, 11, Number.NaN])('rejects a line height of %s', (lineHeight) => {

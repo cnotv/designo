@@ -8,6 +8,8 @@ const family = (id: string, subsets: Record<string, string[]>): FontFamilyFiles 
   files: Object.entries(subsets).map(([subset, coverage]) => ({
     id: `${id}:${subset}`,
     family: id,
+    fontWeight: 400,
+    fontStyle: 'normal',
     subset,
     url: `https://fonts.test/${id}-${subset}.ttf`,
     coverage
@@ -23,8 +25,9 @@ describe('resolveFontFamilies', () => {
       ['gelasio', GELASIO],
       ['inter', INTER]
     ])
-    const found = await resolveFontFamilies('Georgia, serif', (name) =>
-      Promise.resolve(known.get(name.toLowerCase()))
+    const found = await resolveFontFamilies(
+      { fontFamily: 'Georgia, serif', fontWeight: 400, fontStyle: 'normal' },
+      (name) => Promise.resolve(known.get(name.toLowerCase()))
     )
     expect(found.map((item) => item.id)).toEqual(['gelasio', 'inter'])
   })

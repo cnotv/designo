@@ -27,7 +27,7 @@ const fontFamily = computed(() =>
   node.value
     ? createBrowserFontStack(
         node.value.fontFamily,
-        getSharedTextRuntime().library.getRegistry(node.value.fontFamily)
+        getSharedTextRuntime().library.getRegistry(node.value)
       )
     : undefined
 )
@@ -71,6 +71,9 @@ const onKeyDown = (event: KeyboardEvent): void => {
       width: `${layout.width}px`,
       height: `${layout.height}px`,
       fontSize: `${layout.fontSize}px`,
+      fontWeight: layout.fontWeight,
+      fontStyle: layout.fontStyle,
+      letterSpacing: `${layout.letterSpacing}px`,
       lineHeight: `${layout.lineHeight}px`,
       textAlign: layout.textAlign,
       fontFamily,

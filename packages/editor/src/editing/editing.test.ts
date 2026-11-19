@@ -337,6 +337,9 @@ describe('estimateTextBox', () => {
       estimateTextBox({
         text: 'ab\nabcd',
         fontFamily: 'Inter',
+        fontWeight: 400,
+        fontStyle: 'normal',
+        letterSpacing: 0,
         fontSize: 10,
         lineHeight: 1.25,
         textAlign: 'left',
@@ -350,6 +353,9 @@ describe('estimateTextBox', () => {
     const size = estimateTextBox({
       text: 'abcdefghijkl',
       fontFamily: 'Inter',
+      fontWeight: 400,
+      fontStyle: 'normal',
+      letterSpacing: 0,
       fontSize: 10,
       lineHeight: 1.2,
       textAlign: 'left',

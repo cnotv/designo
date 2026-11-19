@@ -433,6 +433,43 @@ describe('exportNodeToSvg', () => {
         'label'
       )
 
+    it('writes weight, style and letter spacing only when they are not the defaults', () => {
+      const plain = buildText({ text: 'one' })
+      expect(plain).not.toMatch(/font-weight|font-style|letter-spacing/)
+      const styled = buildText({
+        text: 'one',
+        fontWeight: 700,
+        fontStyle: 'italic',
+        letterSpacing: 0.1
+      })
+      expect(styled).toContain('font-weight="700"')
+      expect(styled).toContain('font-style="italic"')
+      expect(styled).toContain('letter-spacing="1"')
+    })
+
+    it('hands the node to the font lookup, so a bold text gets the bold file', () => {
+      const asked: unknown[] = []
+      exportNodeToSvg(
+        build([
+          {
+            kind: 'create',
+            id: 'label',
+            type: 'text',
+            parentId: 'page',
+            properties: { text: 'one', fontWeight: 700 }
+          }
+        ]),
+        'label',
+        {
+          resolveFontFamily: (face) => {
+            asked.push(face.fontWeight)
+            return undefined
+          }
+        }
+      )
+      expect(asked).toEqual([700])
+    })
+
     it('draws a text node with the defaults exactly as before the properties existed', () => {
       expect(buildText({ text: 'one', textAlign: 'left', lineHeight: 1.2 })).toBe(
         buildText({ text: 'one' })

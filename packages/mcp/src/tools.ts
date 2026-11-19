@@ -160,7 +160,14 @@ const collectTexts = (document: DesignDocument, nodeId: string): ScreenshotText[
   getSubtreeIds(document, nodeId).flatMap((id) => {
     const node = document.nodes[id]
     return node?.type === 'text' && node.text !== ''
-      ? [{ fontFamily: node.fontFamily, text: node.text }]
+      ? [
+          {
+            fontFamily: node.fontFamily,
+            fontWeight: node.fontWeight,
+            fontStyle: node.fontStyle,
+            text: node.text
+          }
+        ]
       : []
   })
 

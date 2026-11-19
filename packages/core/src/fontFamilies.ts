@@ -1,3 +1,14 @@
+import type { TextFace } from './types.ts'
+
+/**
+ * Names a text's font face: its family list, weight and style. Two texts with the same key load
+ * the same font files.
+ * @param face - The node's `fontFamily`, `fontWeight` and `fontStyle`.
+ * @returns A string that differs whenever any of the three does.
+ */
+export const toFaceKey = (face: TextFace): string =>
+  JSON.stringify([face.fontFamily, face.fontWeight, face.fontStyle])
+
 /** The family text falls back to when its own list names nothing the font API has. */
 export const DEFAULT_FONT_FAMILY = 'Inter'
 

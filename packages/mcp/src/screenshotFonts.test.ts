@@ -1,3 +1,4 @@
+import type { TextFace } from '@designo/core'
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -65,10 +66,14 @@ const setup = () => {
   return { load, fetchJson, fetchBytes, warn }
 }
 
+const REGULAR = { fontWeight: 400, fontStyle: 'normal' } as const
+
+const regular = (fontFamily: string): TextFace => ({ fontFamily, ...REGULAR })
+
 describe('createScreenshotFontLoader', () => {
   it('downloads the file that really has a glyph, not the first whose range names it', async () => {
     const { load, fetchBytes } = setup()
-    const fonts = await load([{ fontFamily: 'Inter', text: 'Hi مرحبا' }])
+    const fonts = await load([{ fontFamily: 'Inter', ...REGULAR, text: 'Hi مرحبا' }])
     expect(fetchBytes.mock.calls.map(([url]) => url)).toEqual([
       'https://fonts.test/inter.ttf',
       'https://fonts.test/arabic.ttf'
@@ -79,15 +84,15 @@ describe('createScreenshotFontLoader', () => {
   it('draws a text with the renamed file that has most of its characters, on the first family baseline', async () => {
     const { load } = setup()
     const fonts = await load([
-      { fontFamily: 'Inter', text: 'Hi there' },
-      { fontFamily: 'Noto Sans Arabic', text: 'مرحبا بالعالم' }
+      { fontFamily: 'Inter', ...REGULAR, text: 'Hi there' },
+      { fontFamily: 'Noto Sans Arabic', ...REGULAR, text: 'مرحبا بالعالم' }
     ])
-    const inter = fonts.resolveFontFamily('Inter')
-    const arabic = fonts.resolveFontFamily('Noto Sans Arabic')
+    const inter = fonts.resolveFontFamily(regular('Inter'))
+    const arabic = fonts.resolveFontFamily(regular('Noto Sans Arabic'))
     expect(inter).toMatch(/^designo-[\da-f]{16}$/)
     expect(arabic).toMatch(/^designo-[\da-f]{16}$/)
     expect(arabic).not.toBe(inter)
-    expect(fonts.getFontMetrics('Inter')).toEqual({
+    expect(fonts.getFontMetrics(regular('Inter'))).toEqual({
       unitsPerEm: 2048,
       ascender: 1984,
       descender: -494
@@ -96,7 +101,7 @@ describe('createScreenshotFontLoader', () => {
 
   it('reads the API answers and the files from the cache the second time', async () => {
     const { load, fetchJson, fetchBytes } = setup()
-    const texts = [{ fontFamily: 'Inter', text: 'Once' }]
+    const texts = [{ fontFamily: 'Inter', ...REGULAR, text: 'Once' }]
     const first = await load(texts)
     const askedBefore = fetchJson.mock.calls.length
     const second = await load(texts)
@@ -117,11 +122,11 @@ describe('createScreenshotFontLoader', () => {
       warn
     })
     const fonts = await load([
-      { fontFamily: 'Inter', text: 'Hi' },
-      { fontFamily: 'Lora', text: 'Once' }
+      { fontFamily: 'Inter', ...REGULAR, text: 'Hi' },
+      { fontFamily: 'Lora', ...REGULAR, text: 'Once' }
     ])
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('offline'))
-    expect(fonts.resolveFontFamily('Lora')).toBe(fonts.resolveFontFamily('Inter'))
+    expect(fonts.resolveFontFamily(regular('Lora'))).toBe(fonts.resolveFontFamily(regular('Inter')))
   })
 
   it('has no files and plain runs when nothing could be found at all', async () => {
@@ -131,9 +136,9 @@ describe('createScreenshotFontLoader', () => {
       cacheDirectory,
       warn: vi.fn()
     })
-    const fonts = await load([{ fontFamily: 'Lora', text: 'Once' }])
+    const fonts = await load([{ fontFamily: 'Lora', ...REGULAR, text: 'Once' }])
     expect(fonts.files).toEqual([])
-    expect(fonts.resolveFontFamily('Lora')).toBeUndefined()
-    expect(fonts.getFontMetrics('Lora')).toBeUndefined()
+    expect(fonts.resolveFontFamily(regular('Lora'))).toBeUndefined()
+    expect(fonts.getFontMetrics(regular('Lora'))).toBeUndefined()
   })
 })

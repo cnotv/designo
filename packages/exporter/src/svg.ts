@@ -20,7 +20,10 @@ import { boundsOverlap, getPaintReach, intersectBounds, toNodeSpace } from './vi
 const TEXT_ANCHORS: Record<TextAlign, { attribute: string | undefined; widthShare: number }> = {
   left: { attribute: undefined, widthShare: 0 },
   center: { attribute: 'middle', widthShare: 0.5 },
-  right: { attribute: 'end', widthShare: 1 }
+  right: { attribute: 'end', widthShare: 1 },
+  // ponytail: SVG cannot justify, and this exporter does not wrap, so every line is a paragraph's
+  // last and stays left. Justify here once the exporter knows where lines wrap.
+  justify: { attribute: undefined, widthShare: 0 }
 }
 const DEGREES_TO_RADIANS = Math.PI / 180
 const COORDINATE_DECIMALS = 3
@@ -225,7 +228,7 @@ const lineOffsets = (
   node: DesignNode,
   options: SvgExportOptions
 ): { firstLine: number; hanging: boolean } => {
-  const metrics = options.getFontMetrics?.(node.fontFamily)
+  const metrics = options.getFontMetrics?.(node)
   if (!metrics) return { firstLine: getFirstLineOffset(node), hanging: true }
   const lineHeight = node.fontSize * node.lineHeight
   const ascent = (metrics.ascender / metrics.unitsPerEm) * node.fontSize
@@ -259,6 +262,18 @@ const renderTextContent = (node: DesignNode, options: SvgExportOptions): string 
     .join('')
 }
 
+// Written only when they differ from the defaults, so a plain text is written as it always was.
+// The weight and style are also what picks the face when a renderer has the family's own files.
+const textStyleAttributes = (node: DesignNode): string[] => [
+  ...(node.fontWeight === DEFAULT_NODE_PROPERTIES.fontWeight
+    ? []
+    : [`font-weight="${formatNumber(node.fontWeight)}"`]),
+  ...(node.fontStyle === 'normal' ? [] : [`font-style="${node.fontStyle}"`]),
+  ...(node.letterSpacing === 0
+    ? []
+    : [`letter-spacing="${formatNumber(node.letterSpacing * node.fontSize)}"`])
+]
+
 const textAnchorAttributes = (node: DesignNode): string[] => {
   const { attribute } = TEXT_ANCHORS[node.textAlign]
   return attribute === undefined ? [] : [`text-anchor="${attribute}"`]
@@ -269,8 +284,9 @@ const renderText = (node: DesignNode, options: SvgExportOptions): string => {
   return `<text ${joinAttributes([
     `x="${formatNumber(getTextAnchorX(node))}"`,
     `y="${formatNumber(node.y + firstLine)}"`,
-    `font-family="${escapeXml(options.resolveFontFamily?.(node.fontFamily) ?? withFontSubstitutes(node.fontFamily))}"`,
+    `font-family="${escapeXml(options.resolveFontFamily?.(node) ?? withFontSubstitutes(node.fontFamily))}"`,
     `font-size="${formatNumber(node.fontSize)}"`,
+    ...textStyleAttributes(node),
     ...textAnchorAttributes(node),
     ...(hanging ? ['dominant-baseline="hanging"'] : []),
     paintAttributes(node),

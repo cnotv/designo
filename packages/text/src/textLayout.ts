@@ -45,6 +45,8 @@ interface ParagraphLine {
   /** Pieces in reading order, without the spaces that hang at the line's end. */
   pieces: readonly ShapedPiece[]
   width: number
+  /** True for the last line of its paragraph, which justified text leaves ragged. */
+  endsParagraph: boolean
 }
 
 interface ParagraphContext {
@@ -53,6 +55,8 @@ interface ParagraphContext {
   direction: TextDirection
   shaper: TextShaper
   fontSize: number
+  /** Extra space after every glyph, in world units. */
+  letterSpacing: number
   wrapWidth: number | undefined
 }
 
@@ -66,9 +70,12 @@ const directionOfLevel = (level: number): TextDirection => (level % 2 === 1 ? 'r
 const worldUnitsPerFontUnit = (run: ShapedRun, fontSize: number): number =>
   fontSize / run.unitsPerEm
 
-const measureRuns = (runs: readonly ShapedRun[], fontSize: number): number =>
+const measureRuns = (runs: readonly ShapedRun[], fontSize: number, letterSpacing: number): number =>
   sumBy(runs, (run) =>
-    sumBy(run.glyphs, (glyph) => glyph.xAdvance * worldUnitsPerFontUnit(run, fontSize))
+    sumBy(
+      run.glyphs,
+      (glyph) => glyph.xAdvance * worldUnitsPerFontUnit(run, fontSize) + letterSpacing
+    )
   )
 
 const splitByLevel = (
@@ -91,7 +98,7 @@ const shapeRange = (context: ParagraphContext, start: number, end: number): Shap
       context.paragraph.text.slice(stretch.start, stretch.end),
       directionOfLevel(stretch.level)
     )
-    return { ...stretch, runs, width: measureRuns(runs, context.fontSize) }
+    return { ...stretch, runs, width: measureRuns(runs, context.fontSize, context.letterSpacing) }
   })
 
 const measureChunk = (context: ParagraphContext, chunk: BreakChunk): MeasuredChunk => {
@@ -149,7 +156,8 @@ const toParagraphLine = (
     start: paragraph.start + (chunks[0]?.start ?? 0),
     end: paragraph.start + (last?.contentEnd ?? 0),
     pieces,
-    width: sumBy(pieces, (piece) => piece.width)
+    width: sumBy(pieces, (piece) => piece.width),
+    endsParagraph: false
   }
 }
 
@@ -157,6 +165,7 @@ const breakParagraphIntoLines = (
   paragraph: Paragraph,
   shaper: TextShaper,
   fontSize: number,
+  letterSpacing: number,
   wrapWidth: number | undefined
 ): ParagraphLine[] => {
   const { levels, baseDirection } = resolveBidiLevels(paragraph.text)
@@ -166,11 +175,38 @@ const breakParagraphIntoLines = (
     direction: baseDirection,
     shaper,
     fontSize,
+    letterSpacing,
     wrapWidth
   }
   const chunks = measureChunks(context, findBreakChunks(paragraph.text))
   const lines = chunks.length === 0 ? [[]] : fillLines(chunks, wrapWidth)
-  return lines.map((lineChunks) => toParagraphLine(context, lineChunks))
+  return lines.map((lineChunks, index) => ({
+    ...toParagraphLine(context, lineChunks),
+    endsParagraph: index === lines.length - 1
+  }))
+}
+
+/** The space added to the advances of a line's glyphs, beyond what the font says. */
+interface GlyphSpacing {
+  perGlyph: number
+  /** Extra after each space, which stretches a justified line to the box's width. */
+  perSpace: number
+  isSpace: (cluster: number) => boolean
+}
+
+const SPACE = ' '
+
+// Only the lines that wrap are stretched: a paragraph's last line, and an auto-width box, keep the
+// font's own spacing, as CSS leaves them.
+const justifyExtraPerSpace = (
+  line: ParagraphLine,
+  text: string,
+  boxWidth: number,
+  isJustified: boolean
+): number => {
+  if (!isJustified || line.endsParagraph) return 0
+  const spaceCount = [...text.slice(line.start, line.end)].filter((c) => c === SPACE).length
+  return spaceCount === 0 ? 0 : Math.max(0, boxWidth - line.width) / spaceCount
 }
 
 const alignmentOffset = (alignment: TextAlign, boxWidth: number, lineWidth: number): number => {
@@ -178,12 +214,17 @@ const alignmentOffset = (alignment: TextAlign, boxWidth: number, lineWidth: numb
   return alignment === 'right' ? boxWidth - lineWidth : 0
 }
 
+interface RunPlacement {
+  originX: number
+  baselineY: number
+  clusterBase: number
+  fontSize: number
+  spacing: GlyphSpacing
+}
+
 const placeRunGlyphs = (
   run: ShapedRun,
-  originX: number,
-  baselineY: number,
-  clusterBase: number,
-  fontSize: number
+  { originX, baselineY, clusterBase, fontSize, spacing }: RunPlacement
 ): { glyphs: PlacedGlyph[]; endX: number } => {
   const scale = worldUnitsPerFontUnit(run, fontSize)
   const glyphs: PlacedGlyph[] = []
@@ -197,7 +238,8 @@ const placeRunGlyphs = (
       cluster: clusterBase + glyph.cluster,
       scale
     })
-    return penX + glyph.xAdvance * scale
+    const justifyExtra = spacing.isSpace(clusterBase + glyph.cluster) ? spacing.perSpace : 0
+    return penX + glyph.xAdvance * scale + spacing.perGlyph + justifyExtra
   }, originX)
   return { glyphs, endX }
 }
@@ -206,7 +248,8 @@ const placeLineGlyphs = (
   line: ParagraphLine,
   originX: number,
   baselineY: number,
-  fontSize: number
+  fontSize: number,
+  spacing: GlyphSpacing
 ): PlacedGlyph[] => {
   const visualPieces = getVisualOrder(line.pieces.map((piece) => piece.level)).flatMap(
     (index) => line.pieces[index] ?? []
@@ -217,7 +260,13 @@ const placeLineGlyphs = (
     )
     .reduce<{ glyphs: PlacedGlyph[]; penX: number }>(
       ({ glyphs, penX }, { run, clusterBase }) => {
-        const result = placeRunGlyphs(run, penX, baselineY, clusterBase, fontSize)
+        const result = placeRunGlyphs(run, {
+          originX: penX,
+          baselineY,
+          clusterBase,
+          fontSize,
+          spacing
+        })
         return { glyphs: [...glyphs, ...result.glyphs], penX: result.endX }
       },
       { glyphs: [], penX: originX }
@@ -241,18 +290,25 @@ const placeLineGlyphs = (
  */
 export const layoutText = (input: TextLayoutInput, shaper: TextShaper): TextLayout => {
   const { text, fontSize, alignment, lineHeight: lineHeightMultiple, wrapWidth } = input
+  const letterSpacing = input.letterSpacing * fontSize
   const metrics = shaper.getPrimaryMetrics()
   const ascent = (metrics.ascender / metrics.unitsPerEm) * fontSize
   const descent = (-metrics.descender / metrics.unitsPerEm) * fontSize
   const lineHeight = fontSize * lineHeightMultiple
 
   const paragraphLines = splitParagraphs(text).flatMap((paragraph) =>
-    breakParagraphIntoLines(paragraph, shaper, fontSize, wrapWidth)
+    breakParagraphIntoLines(paragraph, shaper, fontSize, letterSpacing, wrapWidth)
   )
   const boxWidth = wrapWidth ?? Math.max(0, ...paragraphLines.map((line) => line.width))
 
   const lines = paragraphLines.map((line, lineIndex): LaidOutLine => {
     const x = alignmentOffset(alignment, boxWidth, line.width)
+    const perSpace = justifyExtraPerSpace(
+      line,
+      text,
+      boxWidth,
+      alignment === 'justify' && wrapWidth !== undefined
+    )
     const baselineY = getTextBaselineOffset(
       lineIndex,
       fontSize,
@@ -261,9 +317,13 @@ export const layoutText = (input: TextLayoutInput, shaper: TextShaper): TextLayo
       descent
     )
     return {
-      glyphs: placeLineGlyphs(line, x, baselineY, fontSize),
+      glyphs: placeLineGlyphs(line, x, baselineY, fontSize, {
+        perGlyph: letterSpacing,
+        perSpace,
+        isSpace: (cluster) => text[cluster] === SPACE
+      }),
       x,
-      width: line.width,
+      width: perSpace > 0 ? boxWidth : line.width,
       top: lineIndex * lineHeight,
       baselineY,
       start: line.start,

@@ -1,8 +1,14 @@
 import {
   BLEND_MODES,
   CURRENT_FORMAT_VERSION,
+  FONT_STYLES,
+  MAX_FONT_WEIGHT,
+  MAX_LETTER_SPACING,
   MAX_LINE_HEIGHT,
-  MIN_LINE_HEIGHT
+  MIN_FONT_WEIGHT,
+  MIN_LETTER_SPACING,
+  MIN_LINE_HEIGHT,
+  TEXT_ALIGNMENTS
 } from '@designo/core'
 import { z } from 'zod'
 
@@ -71,9 +77,24 @@ export const nodePatchSchema = z
     text: z.string().max(MAX_TEXT_LENGTH),
     fontSize: z.number().positive(),
     fontFamily: z.string().max(200),
+    fontWeight: z
+      .number()
+      .min(MIN_FONT_WEIGHT)
+      .max(MAX_FONT_WEIGHT)
+      .describe('Text only: a CSS weight from 100 to 900; 400 is regular, 700 bold. Default 400.'),
+    fontStyle: z.enum(FONT_STYLES).describe('Text only: normal or italic. Default normal.'),
+    letterSpacing: z
+      .number()
+      .min(MIN_LETTER_SPACING)
+      .max(MAX_LETTER_SPACING)
+      .describe(
+        'Text only: extra space after each character as a multiple of fontSize. Default 0.'
+      ),
     textAlign: z
-      .enum(['left', 'center', 'right'])
-      .describe('Text only: which edge lines sit against inside the width. Default left.'),
+      .enum(TEXT_ALIGNMENTS)
+      .describe(
+        'Text only: which edge lines sit against inside the width, or justify to fill it (needs textWrap). Default left.'
+      ),
     lineHeight: z
       .number()
       .min(MIN_LINE_HEIGHT)

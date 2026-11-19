@@ -179,13 +179,16 @@ degrees) turns a node around its centre.
 ### Text properties
 
 `create_node`, `update_node` and `apply_ops` take these on a text node, besides `text`,
-`fontSize` and `fontFamily`. Each is optional; `get_node` always returns all three.
+`fontSize` and `fontFamily`. Each is optional; `get_node` always returns all of them.
 
-| Property     | Values                    | Default | Does                                                                    |
-| ------------ | ------------------------- | ------- | ----------------------------------------------------------------------- |
-| `textAlign`  | `left`, `center`, `right` | `left`  | Puts every line against that edge of the node's `width`                 |
-| `lineHeight` | a number from 0.5 to 10   | `1.2`   | The distance between lines, as a multiple of `fontSize`                 |
-| `textWrap`   | `true`, `false`           | `false` | `true` makes the node a fixed-width box that wraps its lines at `width` |
+| Property        | Values                               | Default  | Does                                                                                           |
+| --------------- | ------------------------------------ | -------- | ---------------------------------------------------------------------------------------------- |
+| `fontWeight`    | a number from 100 to 900             | `400`    | Picks the family's nearest weight; 700 is bold                                                 |
+| `fontStyle`     | `normal`, `italic`                   | `normal` | Picks the italic file when the family has one, else the upright one                            |
+| `letterSpacing` | a number from -0.5 to 2              | `0`      | Extra space after every character, as a multiple of `fontSize`                                 |
+| `textAlign`     | `left`, `center`, `right`, `justify` | `left`   | Puts every line against that edge of the node's `width`; `justify` fills it (needs `textWrap`) |
+| `lineHeight`    | a number from 0.5 to 10              | `1.2`    | The distance between lines, as a multiple of `fontSize`                                        |
+| `textWrap`      | `true`, `false`                      | `false`  | `true` makes the node a fixed-width box that wraps its lines at `width`                        |
 
 The server sizes every text a call creates or changes, as the editor does: with `textWrap` off the
 box follows the words in width and height, with it on the `width` stays and the height follows the

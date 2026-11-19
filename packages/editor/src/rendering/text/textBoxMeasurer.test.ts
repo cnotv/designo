@@ -6,6 +6,9 @@ import type { TextLayout } from '@designo/text'
 const request: TextBoxRequest = {
   text: 'Hello',
   fontFamily: 'Inter',
+  fontWeight: 400,
+  fontStyle: 'normal',
+  letterSpacing: 0,
   fontSize: 16,
   lineHeight: 1.2,
   textAlign: 'center',
@@ -22,6 +25,9 @@ describe('createTextBoxMeasurer', () => {
     expect(getLayout).toHaveBeenCalledWith({
       text: 'Hello',
       fontFamily: 'Inter',
+      fontWeight: 400,
+      fontStyle: 'normal',
+      letterSpacing: 0,
       fontSize: 16,
       lineHeight: 1.2,
       alignment: 'center',

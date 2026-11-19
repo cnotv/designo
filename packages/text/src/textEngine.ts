@@ -21,6 +21,9 @@ const layoutKey = (request: TextLayoutRequest): string =>
   JSON.stringify([
     request.text,
     request.fontFamily,
+    request.fontWeight,
+    request.fontStyle,
+    request.letterSpacing,
     request.fontSize,
     request.lineHeight,
     request.alignment,
@@ -77,8 +80,8 @@ export const createTextEngine = ({
   const notify = (): void => listeners.forEach((listener) => listener())
 
   const loadFonts = async (request: TextLayoutRequest): Promise<boolean> => {
-    await library.loadFamilies(request.fontFamily)
-    const registry = library.getRegistry(request.fontFamily)
+    await library.loadFamilies(request)
+    const registry = library.getRegistry(request)
     // A character none of the fonts draws stays with the browser, which may have a font for it.
     if (!registry || hasUncoveredCharacter(registry, request.text)) return false
     await registry.loadFontsForText(request.text)
@@ -111,7 +114,7 @@ export const createTextEngine = ({
   }
 
   const computeLayout = (request: TextLayoutRequest, key: string): TextLayout | undefined => {
-    const registry = library.getRegistry(request.fontFamily)
+    const registry = library.getRegistry(request)
     if (!registry || hasUncoveredCharacter(registry, request.text)) return undefined
     if (!neededFontIds(registry, request.text).every((fontId) => registry.getFont(fontId))) {
       return undefined

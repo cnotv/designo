@@ -1,3 +1,4 @@
+import type { FontVariant } from '@designo/core'
 import { fontsourceFamilySchema } from '@designo/storage/schemas'
 import type { FontsourceFamily } from '@designo/storage'
 import type {
@@ -11,8 +12,6 @@ import type {
 export const FONTSOURCE_API_URL = 'https://api.fontsource.org/v1/fonts/'
 
 const HTTP_NOT_FOUND = 404
-const DEFAULT_WEIGHT = 400
-const DEFAULT_STYLE = 'normal'
 const LATIN_SUBSET = 'latin'
 const RANGE_SEPARATOR = ','
 
@@ -43,6 +42,7 @@ const latinFirst = (subsets: readonly string[]): string[] =>
 
 const toFontFile = (
   data: FontsourceFamily,
+  variant: FontVariant,
   subset: string,
   url: string | undefined
 ): FontFile[] => {
@@ -51,8 +51,10 @@ const toFontFile = (
     ? []
     : [
         {
-          id: `${data.id}:${subset}`,
+          // The weight and style are in the id, because one family's files differ by them.
+          id: `${data.id}:${variant.fontWeight}${variant.fontStyle}:${subset}`,
           family: data.family,
+          ...variant,
           subset,
           url,
           coverage: range.split(RANGE_SEPARATOR).map((part) => part.trim())
@@ -63,20 +65,25 @@ const toFontFile = (
 /**
  * Lists a family's files for one weight and style.
  * @param data - The family as the API describes it.
- * @param weight - The weight wanted; the nearest one is used.
- * @param style - The style wanted; the first one is used when the family lacks it.
+ * @param variant - The weight wanted, of which the nearest is used, and the style, of which the
+ *   family's first is used when it lacks the one asked for.
  * @returns The family with one file per subset, the Latin one first.
  */
 export const toFontFamilyFiles = (
   data: FontsourceFamily,
-  weight: number,
-  style: string
+  variant: FontVariant
 ): FontFamilyFiles => {
-  const weightKey = pickWeight(Object.keys(data.variants), weight)
+  const weightKey = pickWeight(Object.keys(data.variants), variant.fontWeight)
   const styles = weightKey === undefined ? {} : (data.variants[weightKey] ?? {})
-  const subsetFiles = styles[style] ?? Object.values(styles)[0] ?? {}
+  const styleKey = variant.fontStyle in styles ? variant.fontStyle : Object.keys(styles)[0]
+  const subsetFiles = styleKey === undefined ? {} : (styles[styleKey] ?? {})
+  // The file's own weight and style, which can differ from the ones asked for.
+  const found: FontVariant = {
+    fontWeight: Number(weightKey ?? variant.fontWeight),
+    fontStyle: styleKey === 'italic' ? 'italic' : 'normal'
+  }
   const files = latinFirst(Object.keys(subsetFiles)).flatMap((subset) =>
-    toFontFile(data, subset, subsetFiles[subset]?.url.ttf)
+    toFontFile(data, found, subset, subsetFiles[subset]?.url.ttf)
   )
   return { id: data.id, family: data.family, files }
 }
@@ -84,22 +91,20 @@ export const toFontFamilyFiles = (
 /**
  * Builds the lookup that finds a family's font files through the Fontsource API, which has every
  * Google font and more. Files are TrueType, which HarfBuzz and the screenshot renderer both read.
- * @param options - How to fetch, and the weight and style wanted.
+ * @param options - How to fetch.
  * @returns A lookup that answers undefined for a family the API does not have.
  */
 export const createFontsourceResolver = ({
   fetch,
-  apiUrl = FONTSOURCE_API_URL,
-  weight = DEFAULT_WEIGHT,
-  style = DEFAULT_STYLE
+  apiUrl = FONTSOURCE_API_URL
 }: FontsourceResolverOptions): ResolveFontFamily => {
-  return async (family) => {
+  return async (family, variant) => {
     const id = toFontsourceId(family)
     if (id === '') return undefined
     const response = await fetch(`${apiUrl}${encodeURIComponent(id)}`)
     if (response.status === HTTP_NOT_FOUND) return undefined
     if (!response.ok) throw new Error(`The font API answered ${response.status} for ${family}`)
     const data = fontsourceFamilySchema.parse(await response.json())
-    return toFontFamilyFiles(data, weight, style)
+    return toFontFamilyFiles(data, variant)
   }
 }

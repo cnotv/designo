@@ -1,4 +1,4 @@
-import { listFontCandidates } from '@designo/core'
+import { listFontCandidates, type TextFace } from '@designo/core'
 import type { FontFamilyFiles } from '@designo/fonts'
 import { describe, expect, it, vi } from 'vitest'
 import { createFixtureFontLibrary, createFixtureFontStore } from './fixtures/fontFiles.ts'
@@ -6,12 +6,20 @@ import { createFontLibrary, toFontCatalog } from './fontLibrary.ts'
 import { createFontStore } from './fontRegistry.ts'
 import type { ShapingFont } from './types.ts'
 
+const regular = (fontFamily: string): TextFace => ({
+  fontFamily,
+  fontWeight: 400,
+  fontStyle: 'normal'
+})
+
 const family = (id: string, subsets: Record<string, string[]>): FontFamilyFiles => ({
   id,
   family: id,
   files: Object.entries(subsets).map(([subset, coverage]) => ({
     id: `${id}:${subset}`,
     family: id,
+    fontWeight: 400,
+    fontStyle: 'normal',
     subset,
     url: `${id}-${subset}.ttf`,
     coverage
@@ -41,24 +49,24 @@ describe('toFontCatalog', () => {
 describe('createFontLibrary', () => {
   it('has no registry for a list until its families are found, then one with them first', async () => {
     const library = createFixtureFontLibrary()
-    expect(library.getRegistry('Noto Sans Hebrew, sans-serif')).toBeUndefined()
-    await library.loadFamilies('Noto Sans Hebrew, sans-serif')
-    expect(library.getRegistry('Noto Sans Hebrew, sans-serif')?.catalog.fonts[0]?.id).toBe(
+    expect(library.getRegistry(regular('Noto Sans Hebrew, sans-serif'))).toBeUndefined()
+    await library.loadFamilies(regular('Noto Sans Hebrew, sans-serif'))
+    expect(library.getRegistry(regular('Noto Sans Hebrew, sans-serif'))?.catalog.fonts[0]?.id).toBe(
       'noto-sans-hebrew'
     )
   })
 
   it('falls back to the default family for a list the font API has none of', async () => {
     const library = createFixtureFontLibrary()
-    await library.loadFamilies('Papyrus, cursive')
-    expect(library.getRegistry('Papyrus, cursive')?.catalog.defaultFontId).toBe('inter')
+    await library.loadFamilies(regular('Papyrus, cursive'))
+    expect(library.getRegistry(regular('Papyrus, cursive'))?.catalog.defaultFontId).toBe('inter')
   })
 
   it('looks a list up once while it loads, and rejects when no family at all is found', async () => {
     const resolveFamily = vi.fn(async () => undefined)
     const library = createFontLibrary({ resolveFamily, store: createFixtureFontStore() })
-    const first = library.loadFamilies('Lora')
-    const second = library.loadFamilies('Lora')
+    const first = library.loadFamilies(regular('Lora'))
+    const second = library.loadFamilies(regular('Lora'))
     await expect(first).rejects.toThrow('The font API has none of the families in Lora')
     await expect(second).rejects.toThrow()
     expect(resolveFamily).toHaveBeenCalledTimes(listFontCandidates('Lora').length)
@@ -75,10 +83,10 @@ describe('createFontLibrary', () => {
     const library = createFixtureFontLibrary(
       createFontStore({ loadBytes, createShapingFont: async () => font })
     )
-    await library.loadFamilies('Inter')
-    await library.loadFamilies('Inter, sans-serif')
-    await library.getRegistry('Inter')?.loadFont('inter')
-    await library.getRegistry('Inter, sans-serif')?.loadFont('inter')
+    await library.loadFamilies(regular('Inter'))
+    await library.loadFamilies(regular('Inter, sans-serif'))
+    await library.getRegistry(regular('Inter'))?.loadFont('inter')
+    await library.getRegistry(regular('Inter, sans-serif'))?.loadFont('inter')
     expect(loadBytes).toHaveBeenCalledTimes(1)
     expect(library.getFont('inter')).toBe(font)
   })
