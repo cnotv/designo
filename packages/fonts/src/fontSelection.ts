@@ -12,8 +12,14 @@ export const resolveFontFamilies = async (
   face: TextFace,
   resolve: ResolveFontFamily
 ): Promise<FontFamilyFiles[]> => {
-  const found = await Promise.all(
+  // Waits for every lookup before reporting a failure: Promise.all would return at the first
+  // rejection and leave the others writing to the font cache after the caller thinks it is done.
+  const settled = await Promise.allSettled(
     listFontCandidates(face.fontFamily).map((family) => resolve(family, face))
   )
-  return found.filter((family) => family !== undefined)
+  const failure = settled.find((result) => result.status === 'rejected')
+  if (failure) throw failure.reason
+  return settled.flatMap((result) =>
+    result.status === 'fulfilled' && result.value !== undefined ? [result.value] : []
+  )
 }
