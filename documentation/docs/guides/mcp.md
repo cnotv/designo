@@ -24,7 +24,7 @@ Then pick how you want to use it. Both ways read and write the same plain `.desi
 
 Just the MCP server: no editor, no browser and no port. Your agent's client starts it as a
 process, as in the sections below, and the agent builds a design by calling the tools. It can
-check its own work without a browser: `get_screenshot` returns a PNG and `export_svg` the SVG.
+check its own work without a browser: `get_screenshot` returns a PNG, `export_svg` the SVG and `export_pdf` a PDF.
 
 To try the server by hand, `pnpm mcp` waits for MCP messages on stdin. Keep the designs in a
 folder of your own with `DESIGNO_DATA_DIR`, as an absolute path:
@@ -112,6 +112,12 @@ This is OAuth 2.1 with PKCE, so any MCP client that supports remote servers with
 only Claude Code. Without `DESIGNO_AUTH=google` there is no `/mcp`: use the stdio server instead,
 which also still works with sign-in on (set `DESIGNO_ACCOUNT`, as above).
 
+`export_pdf` takes a `fileId` and returns the whole file as one PDF, in an embedded resource of
+type `application/pdf`: a page for each page in the file, in order, each as large as its visible
+content, one design unit to a point. Text is selectable and set in its embedded fonts, broken into
+lines where the editor breaks it; a node with blur or a shadow is an image. It fails, naming the
+text, when a text's fonts cannot be found, rather than leaving the text out.
+
 ## Tools
 
 | Tool                | Does                                                                               |
@@ -122,6 +128,7 @@ which also still works with sign-in on (set `DESIGNO_ACCOUNT`, as above).
 | `get_node`          | Reads one node with every property                                                 |
 | `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)        |
 | `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                              |
+| `export_pdf`        | Exports the file as one PDF, a page for each page in order, with embedded fonts    |
 | `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line      |
 | `create_node`       | Creates one frame, group, rectangle, ellipse or text node                          |
 | `update_node`       | Changes some properties of one node                                                |

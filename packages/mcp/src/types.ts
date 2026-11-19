@@ -77,11 +77,20 @@ export interface DesignoToolContext {
   loadScreenshotFonts?: LoadScreenshotFonts
   /** Wraps and measures text; the default shapes with fonts from the Fontsource API. Tests replace it. */
   layoutText?: LayoutText
+  /** The bytes of a font file by id, which `export_pdf` embeds; the default has the files the layout loaded. */
+  getFontBytes?: (fontId: string) => Uint8Array | undefined
 }
 
 export interface ScreenshotImage {
   mimeType: 'image/png'
   /** Base64-encoded PNG bytes. */
+  data: string
+}
+
+/** What `export_pdf` answers. */
+export interface PdfFile {
+  mimeType: 'application/pdf'
+  /** Base64-encoded PDF bytes. */
   data: string
 }
 

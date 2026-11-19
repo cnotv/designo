@@ -1,4 +1,5 @@
 import type { DesignNode, TextFace } from '@designo/core'
+import type { TextLayout } from '@designo/text'
 
 export interface Bounds {
   x: number
@@ -38,4 +39,22 @@ export interface SvgExportOptions {
    * which is close but depends on how a renderer reads the font's hanging baseline.
    */
   getFontMetrics?: (face: TextFace) => FontLineMetrics | undefined
+}
+
+/** A node drawn to a PNG, covering the box `getExportBounds` gives for it. */
+export type RasterizedNode = Uint8Array
+
+export interface PdfExportOptions {
+  /**
+   * How a text node's glyphs are placed, from the layout engine the editor draws with. A text
+   * without a layout fails the export, as it has no font to be set in.
+   */
+  getTextLayout: (node: DesignNode) => TextLayout | undefined
+  /** The bytes of a font file by the id its layout names, embedded in the PDF. */
+  getFontBytes: (fontId: string) => Uint8Array | undefined
+  /**
+   * Draws one node, with its blur and shadow, to a PNG at the density it should print at. A PDF
+   * has no blur, so these nodes are images; without it they are drawn sharp.
+   */
+  rasterizeNode?: (nodeId: string) => Promise<RasterizedNode | undefined>
 }

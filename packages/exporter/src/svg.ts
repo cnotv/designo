@@ -99,7 +99,14 @@ const unionBounds = (boxes: readonly Bounds[]): Bounds => {
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
 
-const getExportBounds = (document: DesignDocument, node: DesignNode): Bounds => {
+/**
+ * The box an export of a node covers: a page's visible content, any other node as rotated, with
+ * what its blur and shadow reach.
+ * @param document - The document to read.
+ * @param node - The node to measure.
+ * @returns The box, in the page's coordinates.
+ */
+export const getExportBounds = (document: DesignDocument, node: DesignNode): Bounds => {
   if (node.type !== 'page') return getRotatedBounds(node)
   const descendants = getPaintOrder(document, node.id)
   return descendants.length === 0
@@ -129,8 +136,13 @@ const renderGradientDefinition = (node: DesignNode, gradient: Gradient): string 
   return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${formatNumber(node.x + line.startX)}" y1="${formatNumber(node.y + line.startY)}" x2="${formatNumber(node.x + line.endX)}" y2="${formatNumber(node.y + line.endY)}">${renderStops(gradient)}</linearGradient>`
 }
 
-// Blur, shadow and blend mode apply to the two shapes the renderers can draw them for on their own.
-const hasFilter = (node: DesignNode): boolean =>
+/**
+ * Whether a node is drawn through a filter: it takes blur and shadow, and has one. A PDF cannot
+ * draw these, so its writer draws such a node as an image.
+ * @param node - The node to check.
+ * @returns True for a rectangle or ellipse with a blur or a shadow.
+ */
+export const hasFilter = (node: DesignNode): boolean =>
   hasLayerEffects(node) && (node.blur > 0 || node.shadow !== null)
 
 // The region reaches past the box by what the effects can paint, or the filter would cut a soft

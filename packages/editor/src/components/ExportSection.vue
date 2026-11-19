@@ -20,7 +20,8 @@ const { settings, isExporting, error } = exporter
 
 const FORMATS: { value: ExportFormat; label: string }[] = [
   { value: 'svg', label: 'SVG' },
-  { value: 'png', label: 'PNG' }
+  { value: 'png', label: 'PNG' },
+  { value: 'pdf', label: 'PDF' }
 ]
 
 const targetCount = computed(() =>
@@ -29,6 +30,7 @@ const targetCount = computed(() =>
     : 0
 )
 const targetLabel = computed(() => {
+  if (settings.value.format === 'pdf') return 'Exports every page as one PDF.'
   if (editor.selection.value.length === 0) return 'Exports the whole page.'
   return targetCount.value === 1
     ? 'Exports the selected layer.'
@@ -36,7 +38,8 @@ const targetLabel = computed(() => {
 })
 
 const setFormat = (value: AcceptableValue): void => {
-  if (value === 'svg' || value === 'png') settings.value = { ...settings.value, format: value }
+  if (value === 'svg' || value === 'png' || value === 'pdf')
+    settings.value = { ...settings.value, format: value }
 }
 const setScale = (value: AcceptableValue): void => {
   settings.value = { ...settings.value, scale: clampExportScale(Number(value)) }
@@ -64,7 +67,7 @@ const setScale = (value: AcceptableValue): void => {
         <Label for="export-scale">Scale</Label>
         <Select
           :model-value="String(settings.scale)"
-          :disabled="settings.format === 'svg'"
+          :disabled="settings.format !== 'png'"
           @update:model-value="setScale"
         >
           <SelectTrigger id="export-scale" size="sm" class="w-full text-xs">

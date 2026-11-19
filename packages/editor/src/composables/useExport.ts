@@ -1,7 +1,9 @@
 import { exportNodeToSvg } from '@designo/exporter'
+import { loadTextLayout, toTextLayoutRequest } from '@designo/text'
 import { ref } from 'vue'
 import { buildExportFileName, getExportTargetIds, getRasterSize } from '../editing/export.ts'
 import type { ExportSettings } from '../editing/types.ts'
+import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 import type { Editor, ExportController } from './types.ts'
 
 const DEFAULT_SETTINGS: ExportSettings = { format: 'svg', scale: 2 }
@@ -55,8 +57,39 @@ const renderExport = (svg: string, settings: ExportSettings): Promise<Blob> =>
     ? Promise.resolve(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
     : rasterizeSvg(svg, settings.scale)
 
+// A blurred node is an image in the PDF, drawn at the density a print needs.
+const PDF_RASTER_SCALE = 3
+
+const exportPdf = async (
+  exportedDocument: NonNullable<Editor['document']['value']>
+): Promise<Blob> => {
+  const runtime = getSharedTextRuntime()
+  const layouts = new Map(
+    await Promise.all(
+      Object.values(exportedDocument.nodes)
+        .filter((node) => node.type === 'text' && node.visible && node.text !== '')
+        .map(
+          async (node) =>
+            [node.id, await loadTextLayout(runtime, toTextLayoutRequest(node))] as const
+        )
+    )
+  )
+  // Loaded on demand: the PDF writer is most of what a PDF costs and nothing else needs it.
+  const { exportDocumentToPdf } = await import('@designo/exporter/pdf')
+  const bytes = await exportDocumentToPdf(exportedDocument, {
+    getTextLayout: (node) => layouts.get(node.id),
+    getFontBytes: runtime.library.getFontBytes,
+    rasterizeNode: async (nodeId) => {
+      const png = await rasterizeSvg(exportNodeToSvg(exportedDocument, nodeId), PDF_RASTER_SCALE)
+      return new Uint8Array(await png.arrayBuffer())
+    }
+  })
+  return new Blob([bytes], { type: 'application/pdf' })
+}
+
 /**
- * Exports the selected layers, or the page when none is selected, as downloads.
+ * Exports the selected layers, or the page when none is selected, as downloads; a PDF is always
+ * the whole document, a page for each of its pages.
  * @param editor - The editor state.
  * @returns The export settings, progress and the action that runs the export.
  */
@@ -82,6 +115,13 @@ export const useExport = (editor: Editor): ExportController => {
     isExporting.value = true
     error.value = undefined
     try {
+      if (settings.value.format === 'pdf') {
+        downloadBlob(
+          await exportPdf(currentDocument),
+          buildExportFileName(currentDocument.name, 'pdf', settings.value.scale)
+        )
+        return
+      }
       // One after another, because browsers drop downloads started in the same instant.
       await getExportTargetIds(currentDocument, editor.selection.value).reduce(
         (previous, nodeId) => previous.then(() => exportNode(currentDocument, nodeId)),

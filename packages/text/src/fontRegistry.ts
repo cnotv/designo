@@ -116,6 +116,7 @@ export const createFontStore = ({
   onFontLoaded
 }: FontStoreOptions): FontStore => {
   const loadedFonts = new Map<string, ShapingFont>()
+  const loadedBytes = new Map<string, Uint8Array>()
   const loadingFonts = new Map<string, Promise<void>>()
 
   const loadFont = (definition: FontDefinition): Promise<void> => {
@@ -125,6 +126,7 @@ export const createFontStore = ({
     const loading = loadBytes(definition.url)
       .then(async (bytes) => {
         loadedFonts.set(definition.id, await createShapingFont(bytes))
+        loadedBytes.set(definition.id, bytes)
         onFontLoaded?.(definition, bytes)
       })
       .finally(() => {
@@ -135,7 +137,11 @@ export const createFontStore = ({
     return loading
   }
 
-  return { loadFont, getFont: (fontId) => loadedFonts.get(fontId) }
+  return {
+    loadFont,
+    getFont: (fontId) => loadedFonts.get(fontId),
+    getFontBytes: (fontId) => loadedBytes.get(fontId)
+  }
 }
 
 /**

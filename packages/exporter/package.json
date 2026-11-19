@@ -5,12 +5,18 @@
   "type": "module",
   "description": "Exports Designo documents to other formats. Pure: no DOM, no I/O.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./pdf": "./src/pdf.ts"
   },
   "scripts": {
     "type-check": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@designo/core": "workspace:*"
+    "@designo/core": "workspace:*",
+    "@designo/text": "workspace:*",
+    "pdfkit": "^0.20.2"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.17.7"
   }
 }

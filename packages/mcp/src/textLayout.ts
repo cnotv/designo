@@ -35,6 +35,11 @@ const createCachingBytesLoader =
     return bytes
   }
 
+/** The layout, and the bytes of every font file it has loaded, which a PDF embeds. */
+export type NodeLayoutText = LayoutText & {
+  getFontBytes: (fontId: string) => Uint8Array | undefined
+}
+
 /**
  * Makes the text layout the MCP server wraps and measures text with. It is the editor's engine,
  * fed fonts from the Fontsource API through a disk cache, so a line breaks where the canvas
@@ -47,7 +52,7 @@ export const createNodeLayoutText = ({
   fetchJson = fetchWithTimeout,
   fetchBytes = fetchFontBytes,
   cacheDirectory = DEFAULT_FONT_CACHE_DIRECTORY
-}: TextLayoutFetchers = {}): LayoutText => {
+}: TextLayoutFetchers = {}): NodeLayoutText => {
   const cachingFetch = createCachingFetch(fetchJson, cacheDirectory)
   const library = createFontLibrary({
     resolveFamily: memoizeFontFamilyResolver(
@@ -65,8 +70,10 @@ export const createNodeLayoutText = ({
     })
   })
   const runtime = { library, engine: createTextEngine({ library }) }
-  return (request) => loadTextLayout(runtime, request)
+  return Object.assign((request: Parameters<LayoutText>[0]) => loadTextLayout(runtime, request), {
+    getFontBytes: library.getFontBytes
+  })
 }
 
 /** The layout `get_screenshot`, `export_svg` and `measure_text` use unless a host replaces it. */
-export const layoutTextWithFontsourceFonts: LayoutText = createNodeLayoutText()
+export const layoutTextWithFontsourceFonts: NodeLayoutText = createNodeLayoutText()

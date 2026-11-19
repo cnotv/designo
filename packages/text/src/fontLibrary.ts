@@ -62,6 +62,7 @@ export const createFontLibrary = ({ resolveFamily, store }: FontLibraryOptions):
   return {
     getRegistry: (face) => registries.get(toFaceKey(face)),
     loadFamilies,
-    getFont: store.getFont
+    getFont: store.getFont,
+    getFontBytes: store.getFontBytes
   }
 }

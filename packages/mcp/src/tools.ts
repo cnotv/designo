@@ -1,4 +1,5 @@
 import { exportNodeToSvg, type TextLineRange } from '@designo/exporter'
+import { exportDocumentToPdf } from '@designo/exporter/pdf'
 import {
   DEFAULT_NODE_PROPERTIES,
   createDocument,
@@ -25,6 +26,7 @@ import { rasterizeSvgToPng } from './rasterize.ts'
 import { loadScreenshotFonts } from './screenshotFonts.ts'
 import type {
   DesignoToolContext,
+  PdfFile,
   ScreenshotImage,
   ScreenshotText,
   TextMeasurement
@@ -155,6 +157,44 @@ export const exportSvgTool = async (
   return exportNodeToSvg(document, nodeId, {
     getTextLines: await findTextLines(context, document, nodeId)
   })
+}
+
+// A blurred node is an image in the PDF, so it is drawn at the density a print needs.
+const PDF_RASTER_SCALE = 3
+
+/**
+ * Writes the file as a PDF, a page for each page in it, in order. Text is set in the fonts the
+ * editor lays it out with, embedded in the file; guides are never drawn.
+ * @param context - Where files live and how text is laid out.
+ * @param input - The file.
+ * @returns The PDF as base64 with its MIME type.
+ */
+export const exportPdfTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string }
+): Promise<PdfFile> => {
+  const document = await readDocument(context.dataDirectory, input.fileId)
+  const layoutText = context.layoutText ?? layoutTextWithFontsourceFonts
+  const layouts = new Map(
+    await Promise.all(
+      Object.values(document.nodes)
+        .filter((node) => node.type === 'text' && node.visible && node.text !== '')
+        .map(async (node) => [node.id, await layoutText(toTextLayoutRequest(node))] as const)
+    )
+  )
+  const bytes = await exportDocumentToPdf(document, {
+    getTextLayout: (node) => layouts.get(node.id),
+    getFontBytes: context.getFontBytes ?? layoutTextWithFontsourceFonts.getFontBytes,
+    rasterizeNode: async (nodeId) => {
+      const outcome = await (context.rasterize ?? rasterizeSvgToPng)(
+        exportNodeToSvg(document, nodeId),
+        PDF_RASTER_SCALE,
+        []
+      )
+      return outcome.ok ? outcome.png : undefined
+    }
+  })
+  return { mimeType: 'application/pdf', data: Buffer.from(bytes).toString('base64') }
 }
 
 const collectTexts = (document: DesignDocument, nodeId: string): ScreenshotText[] =>

@@ -140,6 +140,13 @@ export default [
     rules: { 'functional/immutable-data': 'off' }
   },
 
+  // pdfkit is an imperative writer: blend modes are a graphics state the writer adds to the page's
+  // own registry, and the states it has made are remembered in a map.
+  {
+    files: ['packages/exporter/src/pdf.ts'],
+    rules: { 'functional/immutable-data': 'off' }
+  },
+
   {
     files: ['**/*.test.ts'],
     rules: {

@@ -7,12 +7,17 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDocument } from '@designo/core'
 import { readDocument } from '@designo/storage'
-import { createFixtureFontLibrary } from '@designo/text/fixtures'
+import {
+  FIXTURE_FONT_CATALOG,
+  createFixtureFontLibrary,
+  readFixtureFontBytes
+} from '@designo/text/fixtures'
 import { createTextEngine, loadTextLayout } from '@designo/text'
 import { createDesignoServer } from './server.ts'
 import {
   applyOperationsTool,
   createFileTool,
+  exportPdfTool,
   exportSvgTool,
   getDocumentTreeTool,
   getNodeTool,
@@ -46,6 +51,14 @@ const fixtureRuntime = {
   library: fixtureLibrary,
   engine: createTextEngine({ library: fixtureLibrary })
 }
+
+const fixtureFontBytes = new Map(
+  await Promise.all(
+    FIXTURE_FONT_CATALOG.fonts.map(
+      async (font) => [font.id, await readFixtureFontBytes(font.url)] as const
+    )
+  )
+)
 
 let context: DesignoToolContext
 
@@ -290,6 +303,30 @@ const createSquareFile = async (): Promise<{ fileId: string; pageId: string }> =
 }
 
 describe('export tools', () => {
+  it('export_pdf returns a PDF with the fonts its text uses embedded', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Print' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'title',
+          type: 'text',
+          parentId: pageId,
+          properties: { text: 'Once', fontFamily: 'Inter', fontSize: 24, fill: '#000000' }
+        }
+      ]
+    })
+    const pdf = await exportPdfTool(
+      { ...context, getFontBytes: (fontId) => fixtureFontBytes.get(fontId) },
+      { fileId }
+    )
+    const source = Buffer.from(pdf.data, 'base64').toString('latin1')
+    expect(pdf.mimeType).toBe('application/pdf')
+    expect(source.startsWith('%PDF')).toBe(true)
+    expect(source).toContain('/FontFile2')
+  })
+
   it('export_svg returns the svg of a node', async () => {
     const { fileId } = await createSquareFile()
     const svg = await exportSvgTool(context, { fileId, nodeId: 'square' })
