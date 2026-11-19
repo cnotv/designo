@@ -13,8 +13,8 @@ export const loadTextLayout = async (
   request: TextLayoutRequest
 ): Promise<TextLayout | undefined> => {
   try {
-    await library.loadFamilies(request.fontFamily)
-    await library.getRegistry(request.fontFamily)?.loadFontsForText(request.text)
+    await library.loadFamilies(request)
+    await library.getRegistry(request)?.loadFontsForText(request.text)
   } catch {
     return undefined
   }

@@ -198,10 +198,12 @@ the words; lines break where the text has a newline and never anywhere else. Set
 and a `width` to have long text wrap instead of adding line breaks by hand. `export_svg` and
 `get_screenshot` wrap a `textWrap` text at its `width` with the editor's own layout engine, and
 honour `textAlign` and `lineHeight`. A text with `textWrap` off draws each line as it is written.
+They draw `justify` as left aligned, because SVG has no way to stretch a line's spaces; the editor
+justifies it. `justify` stretches the spaces of every wrapped line except the last of each paragraph.
 
 `measure_text` answers how big a text will be before you draw it. Give `text` and the font you
-will use (`fontFamily`, `fontSize`, `lineHeight`, `textAlign`, each defaulting to a new text
-node's); add `width` to wrap it like a fixed-width node. It returns `width`, `height`, `lineCount`
+will use (`fontFamily`, `fontWeight`, `fontStyle`, `letterSpacing`, `fontSize`, `lineHeight`,
+`textAlign`, each defaulting to a new text node's); add `width` to wrap it like a fixed-width node. It returns `width`, `height`, `lineCount`
 and the text of each `lines` entry, so a panel can be sized to its text instead of guessed. It
 needs the same fonts as a screenshot, and says so when they are not available.
 

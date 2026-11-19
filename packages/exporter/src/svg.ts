@@ -21,8 +21,8 @@ const TEXT_ANCHORS: Record<TextAlign, { attribute: string | undefined; widthShar
   left: { attribute: undefined, widthShare: 0 },
   center: { attribute: 'middle', widthShare: 0.5 },
   right: { attribute: 'end', widthShare: 1 },
-  // ponytail: SVG cannot justify, and this exporter does not wrap, so every line is a paragraph's
-  // last and stays left. Justify here once the exporter knows where lines wrap.
+  // ponytail: SVG has no justification and resvg ignores textLength, so a justified text is drawn
+  // left aligned. Measure each line and set word-spacing if screenshots must justify.
   justify: { attribute: undefined, widthShare: 0 }
 }
 const DEGREES_TO_RADIANS = Math.PI / 180
