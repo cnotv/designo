@@ -3,7 +3,7 @@ import type { LayerRow } from './types.ts'
 
 /**
  * Lists the layers as the layers panel shows them: nested under their parents, with the layer
- * drawn on top first in each level, as in Figma.
+ * drawn on top first in each level.
  * @param document - The document.
  * @param parentId - Where to start; the root page by default.
  * @param depth - How deep the start is.

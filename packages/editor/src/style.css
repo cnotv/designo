@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn-vue's neutral theme, with Figma's blue as the accent that marks selection. */
+/* shadcn-vue's neutral theme, with blue as the accent that marks selection. */
 :root {
   --radius: 0.5rem;
   --background: oklch(1 0 0);
