@@ -1,6 +1,7 @@
 {
   "name": "@designo/editor",
   "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
   "description": "The Designo editor: a Vue 3 app that draws Designo files on a canvas.",

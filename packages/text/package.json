@@ -1,6 +1,7 @@
 {
   "name": "@designo/text",
   "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
   "description": "Lays text out with HarfBuzz: line breaking, shaping and measuring, the same in the editor and in Node.",

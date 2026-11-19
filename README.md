@@ -56,3 +56,12 @@ pnpm lint:check && pnpm format:check && pnpm type-check && pnpm test:unit && pnp
 ```
 
 Agent rules and project facts: [AGENTS.md](AGENTS.md).
+
+## License
+
+Designo is free software under the [GNU Affero General Public License v3.0 or later](LICENSE).
+You may use, change and share it, but a version you share, or run for other people as a service,
+must stay under the same license with its source available to them. The license covers the code,
+not what you make with it: your designs and the files you export are yours.
+
+Contributions are accepted under the same license, see [CONTRIBUTING.md](CONTRIBUTING.md).
