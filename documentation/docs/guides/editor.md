@@ -138,6 +138,22 @@ The editor, `get_screenshot` and `export_svg` draw these the same way. The Canva
 approximates them: it blurs the shadow along with the shape, and browsers without canvas filters do
 not blur.
 
+## Auto-layout
+
+Select a frame and choose **Row** or **Column** under Auto layout in the properties panel. The
+frame then places its children itself, so their X and Y no longer stick.
+
+- **Gap** is the space between children and **Padding** the space between the frame's edge and its
+  children, on all sides.
+- The two selects align the children along the direction (Start, Centre, End, Space between) and
+  across it (Start, Centre, End).
+- **Width** and **Height** sizing, shown for a frame and for any child of a layout frame: Fixed keeps
+  the size, Hug contents sizes a layout frame to its children, and Fill container shares the free
+  space of a layout parent along its direction, or stretches across it.
+
+It is one change like any other, so undo takes it back in one step. Text keeps the size it has, and
+hidden layers are skipped. Components and reordering by drag are not part of it yet.
+
 ## Export
 
 ![The Export section of the properties panel](/img/export.png)

@@ -27,6 +27,16 @@ import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
+import {
+  LAYOUT_ALIGN_OPTIONS,
+  LAYOUT_CROSS_ALIGN_OPTIONS,
+  LAYOUT_MODE_OPTIONS,
+  readLayoutAlign,
+  readLayoutCrossAlign,
+  readLayoutMode,
+  readLayoutSizing,
+  sizingOptionsFor
+} from '../editing/autoLayout.ts'
 import { readPdfPageInput } from '../editing/pdfPage.ts'
 import {
   FONT_WEIGHT_OPTIONS,
@@ -51,7 +61,16 @@ const DEFAULT_STROKE = '#000000'
 const DEFAULT_FILL = '#d9d9d9'
 
 type NumberKey =
-  'x' | 'y' | 'width' | 'height' | 'rotation' | 'cornerRadius' | 'strokeWidth' | 'fontSize'
+  | 'x'
+  | 'y'
+  | 'width'
+  | 'height'
+  | 'rotation'
+  | 'cornerRadius'
+  | 'strokeWidth'
+  | 'fontSize'
+  | 'layoutGap'
+  | 'layoutPadding'
 
 const geometryFields: { key: NumberKey; label: string }[] = [
   { key: 'x', label: 'X' },
@@ -74,6 +93,48 @@ const node = computed(() => {
     ? editor.document.value?.nodes[nodeId]
     : undefined
 })
+
+const parentNode = computed(() =>
+  node.value?.parentId ? editor.document.value?.nodes[node.value.parentId] : undefined
+)
+
+const sizingFields = computed(() =>
+  node.value
+    ? (
+        [
+          { key: 'widthSizing', label: 'Width', current: node.value.widthSizing },
+          { key: 'heightSizing', label: 'Height', current: node.value.heightSizing }
+        ] as const
+      ).map((field) => ({
+        ...field,
+        options: sizingOptionsFor(
+          node.value as NonNullable<typeof node.value>,
+          parentNode.value,
+          field.current
+        )
+      }))
+    : []
+)
+
+const updateSizing = (key: 'widthSizing' | 'heightSizing', raw: unknown): void => {
+  const sizing = readLayoutSizing(raw)
+  if (sizing) update({ [key]: sizing })
+}
+
+const updateLayoutMode = (raw: unknown): void => {
+  const layoutMode = readLayoutMode(raw)
+  if (layoutMode) update({ layoutMode })
+}
+
+const updateLayoutAlign = (raw: unknown): void => {
+  const layoutAlign = readLayoutAlign(raw)
+  if (layoutAlign) update({ layoutAlign })
+}
+
+const updateLayoutCrossAlign = (raw: unknown): void => {
+  const layoutCrossAlign = readLayoutCrossAlign(raw)
+  if (layoutCrossAlign) update({ layoutCrossAlign })
+}
 
 const update = (patch: DesignNodePatch): void => {
   if (node.value) editor.updateNode(node.value.id, patch)
@@ -202,6 +263,102 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
           />
         </div>
       </div>
+
+      <template v-if="node.type === 'frame'">
+        <Separator />
+        <div class="flex flex-col gap-1.5">
+          <Label>Auto layout</Label>
+          <ToggleGroup
+            type="single"
+            size="sm"
+            aria-label="Layout direction"
+            :model-value="node.layoutMode"
+            @update:model-value="updateLayoutMode"
+          >
+            <ToggleGroupItem
+              v-for="option in LAYOUT_MODE_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+              :aria-label="option.label"
+              class="px-2 text-xs"
+            >
+              {{ option.label }}
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+        <div v-if="node.layoutMode !== 'none'" class="grid grid-cols-2 gap-2">
+          <div class="flex flex-col gap-1.5">
+            <Label for="property-layout-gap">Gap</Label>
+            <Input
+              id="property-layout-gap"
+              type="number"
+              min="0"
+              :model-value="node.layoutGap"
+              class="h-7 text-xs tabular-nums"
+              @change="updateNumber('layoutGap', $event, 0)"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label for="property-layout-padding">Padding</Label>
+            <Input
+              id="property-layout-padding"
+              type="number"
+              min="0"
+              :model-value="node.layoutPadding"
+              class="h-7 text-xs tabular-nums"
+              @change="updateNumber('layoutPadding', $event, 0)"
+            />
+          </div>
+          <Select :model-value="node.layoutAlign" @update:model-value="updateLayoutAlign">
+            <SelectTrigger class="h-7 text-xs" aria-label="Align along the layout">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="option in LAYOUT_ALIGN_OPTIONS"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Select :model-value="node.layoutCrossAlign" @update:model-value="updateLayoutCrossAlign">
+            <SelectTrigger class="h-7 text-xs" aria-label="Align across the layout">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="option in LAYOUT_CROSS_ALIGN_OPTIONS"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </template>
+
+      <template v-if="node.type === 'frame' || (parentNode && parentNode.layoutMode !== 'none')">
+        <div class="grid grid-cols-2 gap-2">
+          <Select
+            v-for="field in sizingFields"
+            :key="field.key"
+            :model-value="field.current"
+            @update:model-value="updateSizing(field.key, $event)"
+          >
+            <SelectTrigger class="h-7 text-xs" :aria-label="`${field.label} sizing`">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="option in field.options" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </template>
 
       <template v-if="node.type === 'text'">
         <Separator />

@@ -682,3 +682,77 @@ describe('text properties on the node tools', () => {
     )
   })
 })
+
+describe('auto-layout on the node tools', () => {
+  it('lays children out when a batch creates them, and again when one changes', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Layout' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'row',
+          type: 'frame',
+          parentId: pageId,
+          properties: { x: 10, y: 10, layoutMode: 'horizontal', layoutGap: 8, widthSizing: 'hug' }
+        },
+        {
+          kind: 'create',
+          id: 'a',
+          type: 'rectangle',
+          parentId: 'row',
+          properties: { width: 40, height: 20 }
+        },
+        {
+          kind: 'create',
+          id: 'b',
+          type: 'rectangle',
+          parentId: 'row',
+          properties: { width: 30, height: 20 }
+        }
+      ]
+    })
+    expect(await getNodeTool(context, { fileId, nodeId: 'b' })).toMatchObject({ x: 58, y: 10 })
+    expect(await getNodeTool(context, { fileId, nodeId: 'row' })).toMatchObject({ width: 78 })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [{ kind: 'update', id: 'a', patch: { width: 60 } }]
+    })
+    expect(await getNodeTool(context, { fileId, nodeId: 'b' })).toMatchObject({ x: 78 })
+  })
+
+  it('refuses auto-layout on a rectangle and nothing is saved', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Refuse' })
+    await expect(
+      applyOperationsTool(context, {
+        fileId,
+        operations: [
+          {
+            kind: 'create',
+            id: 'r',
+            type: 'rectangle',
+            parentId: pageId,
+            properties: { layoutMode: 'vertical' }
+          }
+        ]
+      })
+    ).rejects.toThrow(/only a frame/)
+  })
+
+  it('opens a version 6 file with auto-layout off', async () => {
+    const document = createDocument('old-six', 'Old', 'old-page')
+    const versionSixPage = Object.fromEntries(
+      Object.entries(document.nodes['old-page'] ?? {}).filter(
+        ([key]) => !/^layout|Sizing$/.test(key)
+      )
+    )
+    await writeFile(
+      path.join(context.dataDirectory, 'old-six.designo.json'),
+      JSON.stringify({ ...document, formatVersion: 6, nodes: { 'old-page': versionSixPage } })
+    )
+    expect(await getNodeTool(context, { fileId: 'old-six', nodeId: 'old-page' })).toMatchObject({
+      layoutMode: 'none',
+      widthSizing: 'fixed'
+    })
+  })
+})

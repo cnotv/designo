@@ -3,6 +3,7 @@ import {
   CURRENT_FORMAT_VERSION,
   DEFAULT_NODE_PROPERTIES
 } from './defaults.ts'
+import { layoutDocument } from './layout.ts'
 import type {
   DesignDocument,
   DesignNode,
@@ -136,6 +137,19 @@ const checkParent = (document: DesignDocument, parentId: string): string | undef
   return undefined
 }
 
+const checkLayout = (node: DesignNode): string | undefined => {
+  if (node.layoutMode !== 'none' && node.type !== 'frame')
+    return `Node ${node.id} is a ${node.type}; only a frame can have auto-layout`
+  if (node.layoutGap < 0 || node.layoutPadding < 0)
+    return `Node ${node.id} needs a gap and padding of 0 or more`
+  return undefined
+}
+
+const withValidNode = (document: DesignDocument, node: DesignNode): OperationResult =>
+  checkLayout(node)
+    ? failure(checkLayout(node) ?? '')
+    : withNodes(document, { ...document.nodes, [node.id]: node })
+
 const applyCreate = (
   document: DesignDocument,
   operation: Extract<DesignOperation, { kind: 'create' }>
@@ -152,7 +166,7 @@ const applyCreate = (
     parentId: operation.parentId,
     order: operation.order ?? nextSiblingOrder(document, operation.parentId)
   }
-  return withNodes(document, { ...document.nodes, [operation.id]: node })
+  return withValidNode(document, node)
 }
 
 /**
@@ -192,7 +206,7 @@ const applyUpdate = (
 ): OperationResult => {
   const node = document.nodes[operation.id]
   if (!node) return failure(`Node ${operation.id} does not exist`)
-  return withNodes(document, { ...document.nodes, [operation.id]: { ...node, ...operation.patch } })
+  return withValidNode(document, { ...node, ...operation.patch })
 }
 
 const applyDelete = (
@@ -227,6 +241,17 @@ const applyMove = (
   return withNodes(document, { ...document.nodes, [operation.id]: movedNode })
 }
 
+const applyWithoutLayout = (
+  document: DesignDocument,
+  operation: DesignOperation
+): OperationResult => {
+  if (operation.kind === 'create') return applyCreate(document, operation)
+  if (operation.kind === 'createPage') return applyCreatePage(document, operation)
+  if (operation.kind === 'update') return applyUpdate(document, operation)
+  if (operation.kind === 'delete') return applyDelete(document, operation)
+  return applyMove(document, operation)
+}
+
 /**
  * Applies one operation without changing the input document.
  * @param document - The document before the operation.
@@ -237,11 +262,9 @@ export const applyOperation = (
   document: DesignDocument,
   operation: DesignOperation
 ): OperationResult => {
-  if (operation.kind === 'create') return applyCreate(document, operation)
-  if (operation.kind === 'createPage') return applyCreatePage(document, operation)
-  if (operation.kind === 'update') return applyUpdate(document, operation)
-  if (operation.kind === 'delete') return applyDelete(document, operation)
-  return applyMove(document, operation)
+  const result = applyWithoutLayout(document, operation)
+  // Layout is part of every operation, so undo, validation and sync need no second path.
+  return result.ok ? { ok: true, document: layoutDocument(result.document) } : result
 }
 
 /**

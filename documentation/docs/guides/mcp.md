@@ -244,6 +244,26 @@ drawn to a layer first. A shadow is cast by the sharp shape, and `blur` softens 
 Several translucent, blurred, gradient shapes with `blendMode: "multiply"` give watercolour washes
 with far fewer nodes than stacked ellipses.
 
+### Auto-layout
+
+`create_node`, `update_node` and `apply_ops` take these. A frame with a `layoutMode` places its
+children itself, so set sizes and spacing instead of coordinates; every operation lays out again,
+and `get_node` returns the resulting `x`, `y`, `width` and `height`.
+
+| Property           | Values                                      | Default | Does                                                                              |
+| ------------------ | ------------------------------------------- | ------- | --------------------------------------------------------------------------------- |
+| `layoutMode`       | `none`, `horizontal`, `vertical`            | `none`  | Frames only: a row or a column; overwrites the children's position                |
+| `layoutGap`        | a number, 0 or more                         | `0`     | The space between children                                                        |
+| `layoutPadding`    | a number, 0 or more                         | `0`     | The space between the frame's edge and its children, on all sides                 |
+| `layoutAlign`      | `start`, `center`, `end`, `space-between`   | `start` | Where children sit along the direction                                            |
+| `layoutCrossAlign` | `start`, `center`, `end`                    | `start` | Where children sit across the direction                                           |
+| `widthSizing`      | `fixed`, `hug`, `fill` (and `heightSizing`) | `fixed` | `hug` sizes a layout frame to its children; `fill` shares a layout parent's space |
+
+A child with `fill` along the direction shares the space the fixed children leave; `fill` across it
+stretches to the frame's inner size. A node that fills takes no part in what a hugging parent
+measures on that axis. Hidden children are skipped, text keeps the size it has, and rotation is
+ignored. Only a frame can have a `layoutMode`.
+
 ## Try it
 
 Ask the agent: "Create a Designo file called Palette and lay out five colour swatches in a
