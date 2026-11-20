@@ -245,6 +245,26 @@ describe('MCP tools', () => {
     )
   })
 
+  it('warns when a text cannot be fitted because its fonts are not available', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Unfit' })
+    const result = await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'jp',
+          type: 'text',
+          parentId: pageId,
+          properties: { text: '日本', fontFamily: 'Inter', width: 80, height: 10 }
+        }
+      ]
+    })
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toContain('jp')
+    expect(result.warnings[0]).toContain('not fitted')
+    expect((await getNodeTool(context, { fileId, nodeId: 'jp' })).height).toBe(10)
+  })
+
   it('saves nothing when one operation in the batch fails', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Atomic' })
     await expect(

@@ -61,35 +61,48 @@ const touchedTextIds = (
     ])
   ].filter((id) => document.nodes[id]?.type === 'text')
 
-const fitNode = async (node: DesignNode, layoutText: LayoutText): Promise<OperationInput[]> => {
-  if (node.text === '') return []
+type TextBoxFit = { updates: OperationInput[]; unfitted: DesignNode[] }
+
+const fitNode = async (node: DesignNode, layoutText: LayoutText): Promise<TextBoxFit> => {
+  if (node.text === '') return { updates: [], unfitted: [] }
   const layout = await layoutText(toTextLayoutRequest(node))
-  if (!layout) return []
+  if (!layout) return { updates: [], unfitted: [node] }
   const height = Math.ceil(layout.height)
   const patch = node.textWrap ? { height } : { width: Math.ceil(layout.width), height }
-  return patch.height === node.height && ('width' in patch ? patch.width === node.width : true)
-    ? []
-    : [{ kind: 'update', id: node.id, patch }]
+  const fits =
+    patch.height === node.height && ('width' in patch ? patch.width === node.width : true)
+  return { updates: fits ? [] : [{ kind: 'update', id: node.id, patch }], unfitted: [] }
 }
 
 /**
  * Sizes the texts a batch created or changed to what they draw: an auto-width text follows its
  * words in both directions, a fixed-width one keeps its width and is as tall as its lines wrap
- * to. A text whose fonts are not available keeps the box it was given.
+ * to. A text whose fonts are not available keeps the box it was given, and is reported so the
+ * caller knows it may clip.
  * @param document - The document after the batch.
  * @param operations - The batch that was applied.
  * @param createdNodeIds - The ids the batch created.
  * @param layoutText - Lays a text out.
- * @returns The updates that fit each text, none for a text that already fits.
+ * @returns The updates that fit each text, none for a text that already fits, and a warning for
+ *   each text that could not be fitted.
  */
 export const findTextBoxFits = async (
   document: DesignDocument,
   operations: readonly OperationInput[],
   createdNodeIds: readonly string[],
   layoutText: LayoutText
-): Promise<OperationInput[]> => {
+): Promise<{ updates: OperationInput[]; warnings: string[] }> => {
   const nodes = touchedTextIds(document, operations, createdNodeIds).flatMap((id) =>
     document.nodes[id] ? [document.nodes[id]] : []
   )
-  return (await Promise.all(nodes.map((node) => fitNode(node, layoutText)))).flat()
+  const fits = await Promise.all(nodes.map((node) => fitNode(node, layoutText)))
+  return {
+    updates: fits.flatMap((fit) => fit.updates),
+    warnings: fits.flatMap((fit) =>
+      fit.unfitted.map(
+        (node) =>
+          `Text ${node.id} was not fitted: the fonts for its family, or for a character in it, are not available, so it keeps its ${node.width} x ${node.height} box and may clip.`
+      )
+    )
+  }
 }
