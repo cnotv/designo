@@ -51,6 +51,9 @@ export const invertOperation = (
     return [{ kind: 'update', id: node.id, patch: pickPreviousValues(node, operation.patch) }]
   }
   if (operation.kind === 'delete') return recreateSubtree(document, node)
+  if (operation.kind === 'reorderPage') {
+    return [{ kind: 'reorderPage', id: node.id, order: node.order }]
+  }
   if (node.parentId === null) return []
   return [{ kind: 'move', id: node.id, parentId: node.parentId, order: node.order }]
 }

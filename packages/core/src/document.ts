@@ -214,12 +214,22 @@ const applyDelete = (
   operation: Extract<DesignOperation, { kind: 'delete' }>
 ): OperationResult => {
   if (!document.nodes[operation.id]) return failure(`Node ${operation.id} does not exist`)
-  if (operation.id === document.rootId) return failure('The root page cannot be deleted')
+  const remainingPages = getPageNodes(document).filter((page) => page.id !== operation.id)
+  if (operation.id === document.rootId && remainingPages.length === 0) {
+    return failure('The only page cannot be deleted')
+  }
   const removedIds = new Set(getSubtreeIds(document, operation.id))
   const remainingNodes = Object.fromEntries(
     Object.entries(document.nodes).filter(([nodeId]) => !removedIds.has(nodeId))
   )
-  return withNodes(document, remainingNodes)
+  const result = withNodes(document, remainingNodes)
+  // The root stays a page that exists: the first one left.
+  return result.ok && operation.id === document.rootId
+    ? {
+        ok: true,
+        document: { ...result.document, rootId: remainingPages[0]?.id ?? document.rootId }
+      }
+    : result
 }
 
 const applyMove = (
@@ -241,6 +251,18 @@ const applyMove = (
   return withNodes(document, { ...document.nodes, [operation.id]: movedNode })
 }
 
+const applyReorderPage = (
+  document: DesignDocument,
+  operation: Extract<DesignOperation, { kind: 'reorderPage' }>
+): OperationResult => {
+  const node = document.nodes[operation.id]
+  if (node?.type !== 'page') return failure(`Node ${operation.id} is not a page`)
+  return withNodes(document, {
+    ...document.nodes,
+    [operation.id]: { ...node, order: operation.order }
+  })
+}
+
 const applyWithoutLayout = (
   document: DesignDocument,
   operation: DesignOperation
@@ -249,6 +271,7 @@ const applyWithoutLayout = (
   if (operation.kind === 'createPage') return applyCreatePage(document, operation)
   if (operation.kind === 'update') return applyUpdate(document, operation)
   if (operation.kind === 'delete') return applyDelete(document, operation)
+  if (operation.kind === 'reorderPage') return applyReorderPage(document, operation)
   return applyMove(document, operation)
 }
 

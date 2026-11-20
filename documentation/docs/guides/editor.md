@@ -154,6 +154,23 @@ frame then places its children itself, so their X and Y no longer stick.
 It is one change like any other, so undo takes it back in one step. Text keeps the size it has, and
 hidden layers are skipped. Components and reordering by drag are not part of it yet.
 
+## Pages
+
+A file can hold several pages, and the **Pages** list above the layers shows them in print order. The
+canvas, the layers, selection and export all work on the page you pick; the others stay as they were.
+
+- **Switch:** click a page. The view fits the new page and the selection clears.
+- **Add:** the **Add page** button puts a new page after the others and shows it.
+- **Rename:** double-click a page, or choose **Rename** from its menu; Enter keeps the name and
+  Escape drops it.
+- **Reorder:** **Move earlier** and **Move later** in the page's menu.
+- **Delete:** **Delete** in the menu removes the page with everything on it. A file keeps at least
+  one page, so the last cannot be deleted.
+
+Each of these is one undoable step, and agents see the same operations (`createPage`,
+`reorderPage` and `delete`). A page is not a printed page: frames set up as pages for print live
+on a design page, as the next section describes.
+
 ## Pages, units and guides
 
 Select a frame and the properties panel gains a **Page** section that makes it a printed page.

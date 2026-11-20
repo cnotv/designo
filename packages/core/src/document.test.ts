@@ -8,6 +8,7 @@ import {
   getPageNodes,
   getPaintOrder
 } from './document.ts'
+import { invertOperations } from './history.ts'
 import type { DesignDocument, OperationResult } from './types.ts'
 
 const unwrap = (result: OperationResult): DesignDocument => {
@@ -54,6 +55,27 @@ describe('pages', () => {
     )
     expect(getPageNodes(document).map((page) => page.id)).toEqual(['page-1', 'page-2', 'page-3'])
     expect(document.nodes['page-3']).toMatchObject({ type: 'page', parentId: null, name: 'Page 2' })
+  })
+
+  it('reorders pages, refuses anything but a page, and undoes', () => {
+    const three = unwrap(
+      applyOperations(emptyDocument, [
+        { kind: 'createPage', id: 'page-2' },
+        { kind: 'createPage', id: 'page-3' }
+      ])
+    )
+    const moved = unwrap(applyOperation(three, { kind: 'reorderPage', id: 'page-3', order: -1 }))
+    expect(getPageNodes(moved).map((page) => page.id)).toEqual(['page-3', 'page-1', 'page-2'])
+    const undone = unwrap(
+      applyOperations(
+        moved,
+        invertOperations(three, [{ kind: 'reorderPage', id: 'page-3', order: -1 }])
+      )
+    )
+    expect(getPageNodes(undone).map((page) => page.id)).toEqual(['page-1', 'page-2', 'page-3'])
+    expect(
+      applyOperation(documentWithFrame, { kind: 'reorderPage', id: 'frame-1', order: 0 }).ok
+    ).toBe(false)
   })
 
   it('holds nodes on a page other than the first, and refuses a repeated id', () => {
@@ -127,8 +149,15 @@ describe('applyOperation', () => {
     expect(Object.keys(updated.nodes)).toEqual(['page-1'])
   })
 
-  it('refuses to delete the root page', () => {
+  it('refuses to delete the only page', () => {
     expect(applyOperation(documentWithFrame, { kind: 'delete', id: 'page-1' }).ok).toBe(false)
+  })
+
+  it('deletes the root page when another remains, which becomes the root', () => {
+    const twoPages = unwrap(applyOperation(documentWithFrame, { kind: 'createPage', id: 'page-2' }))
+    const updated = unwrap(applyOperation(twoPages, { kind: 'delete', id: 'page-1' }))
+    expect(updated.rootId).toBe('page-2')
+    expect(Object.keys(updated.nodes)).toEqual(['page-2'])
   })
 
   it('refuses to move a node inside itself', () => {

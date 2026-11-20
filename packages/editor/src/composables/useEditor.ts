@@ -1,6 +1,7 @@
 import {
   applyOperations,
   getChildren,
+  getPageNodes,
   getPaintOrder,
   invertOperations,
   type DesignDocument,
@@ -16,6 +17,15 @@ import {
   createPasteOperations
 } from '../editing/clipboard.ts'
 import { createGroupOperations, createUngroupOperations } from '../editing/grouping.ts'
+import {
+  createAddPageOperations,
+  createDeletePageOperations,
+  createMovePageOperations,
+  createRenamePageOperations,
+  getPageToShowAfterDelete,
+  resolveActivePageId,
+  showPage
+} from '../editing/pages.ts'
 import { createLayerOrderOperations } from '../editing/stacking.ts'
 import {
   createDeleteOperations,
@@ -41,7 +51,7 @@ import { useTextEditing } from './useTextEditing.ts'
 
 const FIT_MARGIN = 64
 
-const useViewport = (document: Ref<DesignDocument | undefined>) => {
+const useViewport = (document: Readonly<Ref<DesignDocument | undefined>>) => {
   const viewport = ref<Viewport>({ offsetX: 0, offsetY: 0, scale: 1 })
   const canvasSize = ref({ width: 0, height: 0 })
   const fittedFileId = ref<string>()
@@ -139,7 +149,7 @@ type SelectionActions = Pick<
 
 // What the editor does to the selected layers, each a batch committed as one undo step.
 const useSelectionActions = (
-  document: Ref<DesignDocument | undefined>,
+  document: Readonly<Ref<DesignDocument | undefined>>,
   selection: Ref<string[]>,
   commit: Editor['commit']
 ): SelectionActions => {
@@ -214,11 +224,20 @@ const useSelectionActions = (
  * @returns The editor.
  */
 export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer): Editor => {
-  const document = files.activeDocument
+  const wholeDocument = files.activeDocument
+  const chosenPageId = ref<string>()
+  const activePageId = computed(() =>
+    wholeDocument.value ? resolveActivePageId(wholeDocument.value, chosenPageId.value) : ''
+  )
+  // The rest of the editor reads the shown page as the document's root; edits go to the whole.
+  const document = computed(() =>
+    wholeDocument.value ? showPage(wholeDocument.value, activePageId.value) : undefined
+  )
+  const pages = computed(() => (wholeDocument.value ? getPageNodes(wholeDocument.value) : []))
   const selection = ref<string[]>([])
   const tool = ref<Tool>('select')
   const { viewport, canvasSize, zoomToFit, zoomTo } = useViewport(document)
-  const { history, commit, undo, redo } = useHistory(document, files)
+  const { history, commit, undo, redo } = useHistory(wholeDocument, files)
   const { editingText, startTextEdit, commitTextEdit } = useTextEditing(
     document,
     commit,
@@ -231,7 +250,19 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
     if (document.value) action(document.value)
   }
 
+  const showPageById = (pageId: string): void => {
+    if (pageId === activePageId.value) return
+    chosenPageId.value = pageId
+    selection.value = []
+    zoomToFit()
+  }
+
+  const withWholeDocument = (action: (current: DesignDocument) => void): void => {
+    if (wholeDocument.value) action(wholeDocument.value)
+  }
+
   watch(files.selectedFileId, () => {
+    chosenPageId.value = undefined
     selection.value = []
     history.value = EMPTY_HISTORY
   })
@@ -244,6 +275,8 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
 
   return {
     document,
+    pages,
+    activePageId,
     selection,
     tool,
     viewport,
@@ -273,6 +306,22 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
       withDocument((current) =>
         commit(createPropertyOperations(current, nodeId, patch, measureTextBox))
       ),
+    showPage: showPageById,
+    addPage: () => {
+      const pageId = createNodeId('page')
+      if (commit(createAddPageOperations(pageId))) showPageById(pageId)
+    },
+    renamePage: (pageId: string, name: string) =>
+      withWholeDocument((current) => commit(createRenamePageOperations(current, pageId, name))),
+    movePage: (pageId: string, direction: -1 | 1) =>
+      withWholeDocument((current) => commit(createMovePageOperations(current, pageId, direction))),
+    deletePage: (pageId: string) =>
+      withWholeDocument((current) => {
+        const next = getPageToShowAfterDelete(current, pageId)
+        if (commit(createDeletePageOperations(current, pageId)) && pageId === activePageId.value) {
+          showPageById(next)
+        }
+      }),
     ...selectionActions,
     selectAll: () =>
       withDocument((current) => {

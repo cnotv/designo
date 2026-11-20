@@ -7,6 +7,7 @@ import { cn } from '@/lib/utilities'
 import DesignCanvas from './DesignCanvas.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import LayersPanel from './LayersPanel.vue'
+import PagesPanel from './PagesPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import TextEditOverlay from './TextEditOverlay.vue'
 import { provideEditorContext } from '../composables/editorContext.ts'
@@ -77,6 +78,8 @@ const { documentSummaries, selectedFileId, isDemo, selectFile } = files
             <span class="truncate">{{ summary.name }}</span>
           </Button>
         </nav>
+        <Separator />
+        <PagesPanel />
         <Separator />
         <LayersPanel />
       </aside>
