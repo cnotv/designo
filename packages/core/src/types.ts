@@ -35,6 +35,22 @@ export interface Shadow {
   color: string
 }
 
+/** Whether a frame lays its children out in a row, in a column, or leaves them where they are. */
+export type LayoutMode = 'none' | 'horizontal' | 'vertical'
+
+/** Where a layout frame's children sit along its main axis, when they do not fill it. */
+export type LayoutAlign = 'start' | 'center' | 'end' | 'space-between'
+
+/** Where a layout frame's children sit across its main axis. */
+export type LayoutCrossAlign = 'start' | 'center' | 'end'
+
+/**
+ * How a node's size on one axis is decided. `fixed` keeps the size it has. `hug` sizes a layout
+ * frame to its children. `fill` shares a layout parent's free space along its main axis, and
+ * stretches across it.
+ */
+export type LayoutSizing = 'fixed' | 'hug' | 'fill'
+
 export interface DesignNodeProperties {
   name: string
   x: number
@@ -75,6 +91,16 @@ export interface DesignNodeProperties {
    * null leaves it out. A document with no such frame exports a page for each design page.
    */
   pdfPage: number | null
+  /** Frames only: lays the children out, overwriting their position and any `fill` size. */
+  layoutMode: LayoutMode
+  /** The space between children of a layout frame. */
+  layoutGap: number
+  /** The space between a layout frame's edge and its children, on all four sides. */
+  layoutPadding: number
+  layoutAlign: LayoutAlign
+  layoutCrossAlign: LayoutCrossAlign
+  widthSizing: LayoutSizing
+  heightSizing: LayoutSizing
 }
 
 export interface DesignNode extends DesignNodeProperties {

@@ -187,6 +187,21 @@ Tree queries in `@designo/core` group a document's children once and cache the g
 document, which is safe because documents are never mutated. Before that, every traversal
 scanned all nodes per node, and a flat page of 5,000 layers took over five seconds to list.
 
+## Auto-layout
+
+`layoutDocument` in `@designo/core` is a pure function from a document to a document. Frames carry
+`layoutMode` (`none`, `horizontal`, `vertical`), `layoutGap`, `layoutPadding`, `layoutAlign` and
+`layoutCrossAlign`; every node carries `widthSizing` and `heightSizing` (`fixed`, `hug`, `fill`).
+`applyOperation` runs the layout after every operation that succeeds, so the editor, the MCP tools
+and undo take the same path and the laid out positions are stored in the file like any others;
+a reader needs no engine. A pass has two walks: hugging frames size themselves from the inside
+out, then each frame places its children and sizes those that fill, from the outside in. Positions
+are absolute, as everywhere. A node that fills takes no part in what a hugging parent measures.
+Hidden children are skipped, text keeps its size (the core has no font metrics) and rotation is
+ignored. The pass costs O(nodes) per operation and is skipped when no frame uses layout; scope it
+to the changed subtrees if a drag in a very large document lags. Dragging a child of a layout frame
+snaps it back to its slot; reordering by drag is not built yet.
+
 ## Serving
 
 - **Development:** `pnpm dev` runs Vite, whose `designoFilesPlugin` answers `/api/files`.

@@ -2,6 +2,10 @@ import {
   BLEND_MODES,
   CURRENT_FORMAT_VERSION,
   FONT_STYLES,
+  LAYOUT_ALIGNMENTS,
+  LAYOUT_CROSS_ALIGNMENTS,
+  LAYOUT_MODES,
+  LAYOUT_SIZINGS,
   MAX_FONT_WEIGHT,
   MAX_LETTER_SPACING,
   MAX_LINE_HEIGHT,
@@ -112,7 +116,35 @@ export const nodePatchSchema = z
       .nullable()
       .describe(
         'Frames only: a whole number from 1 makes the frame a page of the exported PDF, at its own size, in that order; null (the default) leaves it out. Once any frame has a number, only numbered frames are printed.'
-      )
+      ),
+    layoutMode: z
+      .enum(LAYOUT_MODES)
+      .describe(
+        'Frames only: horizontal lays the children out in a row, vertical in a column, overwriting their x and y (and the size of any that fill). none (the default) leaves them where they are.'
+      ),
+    layoutGap: z.number().min(0).describe('Auto-layout frames: the space between children.'),
+    layoutPadding: z
+      .number()
+      .min(0)
+      .describe(
+        'Auto-layout frames: the space between the frame edge and its children, all sides.'
+      ),
+    layoutAlign: z
+      .enum(LAYOUT_ALIGNMENTS)
+      .describe(
+        'Auto-layout frames: where children sit along the layout direction. Default start.'
+      ),
+    layoutCrossAlign: z
+      .enum(LAYOUT_CROSS_ALIGNMENTS)
+      .describe(
+        'Auto-layout frames: where children sit across the layout direction. Default start.'
+      ),
+    widthSizing: z
+      .enum(LAYOUT_SIZINGS)
+      .describe(
+        'fixed (the default) keeps width. hug sizes an auto-layout frame to its children. fill makes a child of an auto-layout frame share its free space (or stretch, across the direction).'
+      ),
+    heightSizing: z.enum(LAYOUT_SIZINGS).describe('Like widthSizing, for height.')
   })
   .partial()
   .strict()
