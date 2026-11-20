@@ -259,7 +259,8 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
     id: nodeIdSchema,
     parentId: nodeIdSchema,
     order: z.number().optional()
-  })
+  }),
+  z.object({ kind: z.literal('reorderPage'), id: nodeIdSchema, order: z.number() })
 ])
 
 export const MAX_OPERATIONS_PER_BATCH = 500

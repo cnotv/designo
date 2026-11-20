@@ -195,6 +195,8 @@ export type DesignOperation =
   | { kind: 'update'; id: string; patch: DesignNodePatch }
   | { kind: 'delete'; id: string }
   | { kind: 'move'; id: string; parentId: string; order?: number }
+  /** Puts a page elsewhere in the print order; a page has no parent to move to. */
+  | { kind: 'reorderPage'; id: string; order: number }
 
 export type OperationResult = { ok: true; document: DesignDocument } | { ok: false; error: string }
 

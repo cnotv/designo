@@ -1,4 +1,4 @@
-import type { DesignDocument, DesignNodePatch, DesignOperation } from '@designo/core'
+import type { DesignDocument, DesignNode, DesignNodePatch, DesignOperation } from '@designo/core'
 import type { DocumentSummary } from '@designo/storage'
 import type { ComputedRef, Ref } from 'vue'
 import type {
@@ -31,7 +31,18 @@ export interface DesignoFiles {
 }
 
 export interface Editor {
-  document: Ref<DesignDocument | undefined>
+  /** The shown page as the root of a document view; edits still go to the whole file. */
+  document: ComputedRef<DesignDocument | undefined>
+  /** Every page of the file, in print order. */
+  pages: ComputedRef<DesignNode[]>
+  activePageId: ComputedRef<string>
+  showPage: (pageId: string) => void
+  /** Adds a page after the others and shows it. */
+  addPage: () => void
+  renamePage: (pageId: string, name: string) => void
+  movePage: (pageId: string, direction: -1 | 1) => void
+  /** Deletes a page with its layers; the only page is kept. */
+  deletePage: (pageId: string) => void
   selection: Ref<string[]>
   tool: Ref<Tool>
   viewport: Ref<Viewport>

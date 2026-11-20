@@ -11,7 +11,7 @@ import type { TextBoxMeasurer, TextEditSession } from '../editing/types.ts'
  * @returns The running edit and how to start and end it.
  */
 export const useTextEditing = (
-  document: Ref<DesignDocument | undefined>,
+  document: Readonly<Ref<DesignDocument | undefined>>,
   commit: (operations: readonly DesignOperation[]) => boolean,
   measureTextBox: TextBoxMeasurer
 ) => {

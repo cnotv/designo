@@ -114,7 +114,8 @@ which also still works with sign-in on (set `DESIGNO_ACCOUNT`, as above).
 
 A file starts with one page. A `createPage` operation (`id` optional, `order` to place it between
 others, `properties` such as `name`) adds another, and a `create` operation whose `parentId` is
-that page's id puts a node on it. Each page is its own coordinate space and its own page of the PDF.
+that page's id puts a node on it. `reorderPage` (`id`, `order`) moves a page in the print order, and
+`delete` removes a page with its nodes, any but the last. Each page is its own coordinate space and its own page of the PDF.
 
 `export_pdf` takes a `fileId` and returns the whole file as one PDF, in an embedded resource of
 type `application/pdf`. Frames with a `pdfPage` (a whole number from 1) are its pages, in that order,
@@ -141,7 +142,7 @@ text, when a text's fonts cannot be found, rather than leaving the text out.
 | `update_node`       | Changes some properties of one node                                                                        |
 | `delete_node`       | Deletes a node and everything inside it                                                                    |
 | `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points            |
-| `apply_ops`         | Applies up to 500 create, createPage, update, delete and move operations as one change                     |
+| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, delete and move operations as one change        |
 
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in
 the same batch can nest inside them. If any operation fails, nothing is saved.
