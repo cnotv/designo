@@ -11,6 +11,7 @@ import {
 import { getClippingFrames } from '../editing/selection.ts'
 import { searchSpatialIndex } from '../editing/spatialIndex.ts'
 import type { SpatialIndex, Viewport } from '../editing/types.ts'
+import { getPageGuideItems } from './pageGuideItems.ts'
 import type { CanvasSize, RgbaColor, SceneBatch, SceneItem, SceneSource } from './types.ts'
 
 const HALF_TURN_DEGREES = 180
@@ -71,7 +72,9 @@ export const buildScene = (
     .toSorted((first, second) => paintPositionOf(first) - paintPositionOf(second))
     .flatMap((nodeId) => {
       const node = source.document.nodes[nodeId]
-      return node ? [{ node, clipFrames: getClippingFrames(source.document, nodeId) }] : []
+      if (!node) return []
+      const item = { node, clipFrames: getClippingFrames(source.document, nodeId) }
+      return [item, ...getPageGuideItems(item, viewport.scale)]
     })
 }
 

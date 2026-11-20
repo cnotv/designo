@@ -8,6 +8,8 @@ import {
   type DesignDocument,
   type DesignNode,
   type DesignNodeTree,
+  type PageSetupInput,
+  getPageSetupPatch,
   type TextAlign
 } from '@designo/core'
 import {
@@ -86,6 +88,31 @@ export const getNodeTool = async (
   const node = document.nodes[input.nodeId]
   if (!node) throw new Error(`Node ${input.nodeId} does not exist`)
   return node
+}
+
+/**
+ * Sets a frame's page setup: size, bleed, facing and layout guides, written in millimetres or points.
+ * @param context - Where files live and how ids are made.
+ * @param input - The file, the frame and the setup; lengths are in `setup.unit`.
+ * @returns Nothing; the frame holds the setup in points.
+ */
+export const setPageSetupTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string; nodeId: string; setup: PageSetupInput }
+): Promise<{ nodeId: string }> => {
+  const document = await readDocument(context.dataDirectory, input.fileId)
+  const node = document.nodes[input.nodeId]
+  if (!node) throw new Error(`Node ${input.nodeId} does not exist`)
+  if (node.type !== 'frame') {
+    throw new Error(`Node ${input.nodeId} is a ${node.type}; a page setup belongs to a frame`)
+  }
+  await applyOperationsToFile(
+    context.dataDirectory,
+    input.fileId,
+    [{ kind: 'update', id: input.nodeId, patch: getPageSetupPatch(node, input.setup) }],
+    context.generateId
+  )
+  return { nodeId: input.nodeId }
 }
 
 /**

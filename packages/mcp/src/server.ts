@@ -14,7 +14,8 @@ import {
   fileIdSchema,
   nodeIdSchema,
   nodePatchSchema,
-  operationBatchSchema
+  operationBatchSchema,
+  pageSetupSchema
 } from '@designo/storage'
 import {
   applyOperationsTool,
@@ -25,7 +26,8 @@ import {
   getNodeTool,
   getScreenshotTool,
   listFilesTool,
-  measureTextTool
+  measureTextTool,
+  setPageSetupTool
 } from './tools.ts'
 import { MAX_SCREENSHOT_SCALE, MIN_SCREENSHOT_SCALE } from './rasterize.ts'
 import type { DesignoToolContext, PdfFile, ScreenshotImage } from './types.ts'
@@ -214,6 +216,15 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
       toToolResult(() =>
         applyOperationsTool(context, { fileId, operations: [{ kind: 'delete', id: nodeId }] })
       )
+  )
+  server.registerTool(
+    'set_page_setup',
+    {
+      description:
+        'Set a frame as a printed page: its size, bleed, facing and layout guides, written in millimetres (unit mm) or points (pt); the file stores points. The frame box is the trim and the bleed lies outside it. facing is single, left or right (one of a facing pair, with the inner margin along the spine) or spread (two pages in one frame). margins, columns, gutter and fold are layout guides: kept on the page, drawn under the content in the editor, never exported. Fields left out keep their value; guides: null removes the guides. Give the frame a pdfPage to print it.',
+      inputSchema: { fileId: fileIdSchema, nodeId: nodeIdSchema, setup: pageSetupSchema }
+    },
+    (input) => toToolResult(() => setPageSetupTool(context, input))
   )
   server.registerTool(
     'apply_ops',

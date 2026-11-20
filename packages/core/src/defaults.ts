@@ -1,7 +1,7 @@
 import type { DesignNodeProperties } from './types.ts'
 
 /** The file format version this code writes. Bumping it needs one migration step in the storage package. */
-export const CURRENT_FORMAT_VERSION = 7
+export const CURRENT_FORMAT_VERSION = 8
 
 /** The range a text node's `lineHeight` may take, as a multiple of the font size. */
 export const MIN_LINE_HEIGHT = 0.5
@@ -16,6 +16,9 @@ export const MIN_LETTER_SPACING = -0.5
 export const MAX_LETTER_SPACING = 2
 
 export const TEXT_ALIGNMENTS = ['left', 'center', 'right', 'justify'] as const
+export const PAGE_UNITS = ['pt', 'mm'] as const
+export const PAGE_FACINGS = ['single', 'left', 'right', 'spread'] as const
+
 export const FONT_STYLES = ['normal', 'italic'] as const
 
 export const LAYOUT_MODES = ['none', 'horizontal', 'vertical'] as const
@@ -58,7 +61,11 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   layoutAlign: 'start',
   layoutCrossAlign: 'start',
   widthSizing: 'fixed',
-  heightSizing: 'fixed'
+  heightSizing: 'fixed',
+  pageUnit: 'pt',
+  bleed: 0,
+  facing: 'single',
+  guides: null
 }
 
 export const CONTAINER_NODE_TYPES = ['page', 'frame', 'group'] as const

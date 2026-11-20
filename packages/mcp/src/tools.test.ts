@@ -23,7 +23,8 @@ import {
   getNodeTool,
   getScreenshotTool,
   listFilesTool,
-  measureTextTool
+  measureTextTool,
+  setPageSetupTool
 } from './tools.ts'
 import type { DesignoToolContext, ScreenshotFonts, ScreenshotText } from './types.ts'
 
@@ -754,5 +755,64 @@ describe('auto-layout on the node tools', () => {
       layoutMode: 'none',
       widthSizing: 'fixed'
     })
+  })
+})
+
+describe('set_page_setup', () => {
+  const makeFrame = async (): Promise<string> => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Book' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [{ kind: 'create', id: 'spread', type: 'frame', parentId: pageId }]
+    })
+    return fileId
+  }
+
+  it('sets a size, bleed and guides written in millimetres, and stores points', async () => {
+    const fileId = await makeFrame()
+    await setPageSetupTool(context, {
+      fileId,
+      nodeId: 'spread',
+      setup: {
+        unit: 'mm',
+        width: 420,
+        height: 210,
+        bleed: 3,
+        facing: 'spread',
+        margins: { top: 10, bottom: 10, inner: 15, outer: 10 },
+        columns: 2,
+        gutter: 5,
+        fold: true
+      }
+    })
+    const node = await getNodeTool(context, { fileId, nodeId: 'spread' })
+    expect(node.pageUnit).toBe('mm')
+    expect(node.width).toBeCloseTo(1190.55, 2)
+    expect(node.bleed).toBeCloseTo(8.504, 3)
+    expect(node.facing).toBe('spread')
+    expect(node.guides?.margins.inner).toBeCloseTo(42.52, 2)
+    expect(node.guides).toMatchObject({ columns: 2, fold: true })
+  })
+
+  it('refuses a node that is not a frame, and a missing one', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Book' })
+    await expect(
+      setPageSetupTool(context, { fileId, nodeId: pageId, setup: { width: 10 } })
+    ).rejects.toThrow('is a page')
+    await expect(
+      setPageSetupTool(context, { fileId, nodeId: 'nope', setup: { width: 10 } })
+    ).rejects.toThrow('does not exist')
+  })
+
+  it('is registered with its schema, and rejects a margin that is not a number', async () => {
+    const fileId = await makeFrame()
+    const client = await connectClient()
+    const { tools } = await client.listTools()
+    expect(tools.map((tool) => tool.name)).toContain('set_page_setup')
+    const result = await client.callTool({
+      name: 'set_page_setup',
+      arguments: { fileId, nodeId: 'spread', setup: { margins: { top: 'wide' } } }
+    })
+    expect(result.isError).toBe(true)
   })
 })
