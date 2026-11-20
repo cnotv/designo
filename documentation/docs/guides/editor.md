@@ -167,6 +167,8 @@ canvas, the layers, selection and export all work on the page you pick; the othe
 - **Delete:** **Delete** in the menu removes the page with everything on it. A file keeps at least
   one page, so the last cannot be deleted.
 
+![Switching pages, adding one, renaming it to Cover and moving it earlier](/img/page-switcher.gif)
+
 Each of these is one undoable step, and agents see the same operations (`createPage`,
 `reorderPage` and `delete`). A page is not a printed page: frames set up as pages for print live
 on a design page, as the next section describes.
