@@ -140,6 +140,7 @@ text, when a text's fonts cannot be found, rather than leaving the text out.
 | `create_node`       | Creates one frame, group, rectangle, ellipse or text node                                                  |
 | `update_node`       | Changes some properties of one node                                                                        |
 | `delete_node`       | Deletes a node and everything inside it                                                                    |
+| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points            |
 | `apply_ops`         | Applies up to 500 create, createPage, update, delete and move operations as one change                     |
 
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in

@@ -7,6 +7,58 @@ export type TextAlign = 'left' | 'center' | 'right' | 'justify'
 /** Whether a text is upright or slanted. */
 export type FontStyle = 'normal' | 'italic'
 
+/** The unit a page's size, bleed and guides are shown and typed in; stored values are points. */
+export type PageUnit = 'pt' | 'mm'
+
+/**
+ * What a frame is as a printed page. A left or right page is one of a facing pair, and its inner
+ * margin is the one along the spine; a spread is two facing pages drawn as one frame.
+ */
+export type PageFacing = 'single' | 'left' | 'right' | 'spread'
+
+/** The space kept clear at the edges of a page. The inner margin lies along the spine. */
+export interface PageMargins {
+  top: number
+  bottom: number
+  inner: number
+  outer: number
+}
+
+/**
+ * Layout guides of a page: margins, columns with a gutter between them, and a fold down the
+ * middle. They are kept on the page and drawn under its content, and are never exported.
+ */
+export interface PageGuides {
+  margins: PageMargins
+  columns: number
+  gutter: number
+  fold: boolean
+}
+
+/**
+ * A page setup as a person or an agent states it. Lengths are in `unit` (the frame's own when
+ * left out), and `getPageSetupPatch` turns it into the points a frame stores. Margin sides left
+ * out keep their value; `guides: null` removes the guides.
+ */
+export interface PageSetupInput {
+  unit?: PageUnit
+  width?: number
+  height?: number
+  bleed?: number
+  facing?: PageFacing
+  margins?: Partial<PageMargins>
+  columns?: number
+  gutter?: number
+  fold?: boolean
+  guides?: null
+}
+
+/** The properties a page setup changes. */
+export type PageSetupPatch = Pick<
+  DesignNodePatch,
+  'pageUnit' | 'width' | 'height' | 'bleed' | 'facing' | 'guides'
+>
+
 /** How a node's pixels combine with what is painted beneath it. */
 export type BlendMode = (typeof BLEND_MODES)[number]
 
@@ -101,6 +153,14 @@ export interface DesignNodeProperties {
   layoutCrossAlign: LayoutCrossAlign
   widthSizing: LayoutSizing
   heightSizing: LayoutSizing
+  /** Frames only: the unit the page's size, bleed and guides are shown in. */
+  pageUnit: PageUnit
+  /** Frames only: how far the printed area extends past the frame's box, which is the trim. */
+  bleed: number
+  /** Frames only: whether the frame is a single page, one of a facing pair or a spread. */
+  facing: PageFacing
+  /** Frames only: layout guides drawn under the content and never exported. */
+  guides: PageGuides | null
 }
 
 export interface DesignNode extends DesignNodeProperties {

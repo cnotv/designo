@@ -154,6 +154,24 @@ frame then places its children itself, so their X and Y no longer stick.
 It is one change like any other, so undo takes it back in one step. Text keeps the size it has, and
 hidden layers are skipped. Components and reordering by drag are not part of it yet.
 
+## Pages, units and guides
+
+Select a frame and the properties panel gains a **Page** section that makes it a printed page.
+
+- **Unit:** `mm` or `pt`. It sets how the width, height, bleed, margins and gutter are shown and
+  typed. The file stores points (one design unit, as in the PDF), so switching the unit changes no
+  size. A4 is 210 by 297 mm, which is 595.28 by 841.89 pt.
+- **Bleed:** how far the print extends past the page. The frame's box is the trim, so the bleed
+  lies outside it, drawn as a red outline.
+- **Facing:** a single page, a left or right page of a facing pair, or a spread, which is two
+  facing pages in one frame (twice the page width). Page order is the **PDF page** number.
+- **Guides:** margins, columns with a gutter, and a fold down the middle. The inner margin lies
+  along the spine, so on a left page it is the right one, and a spread mirrors it across its two
+  pages. Guides are kept on the frame, drawn over the frame's fill and under its content, and
+  never exported: not to SVG, PNG or PDF, and not in a screenshot. A turned frame draws none.
+
+Agents set the same through the MCP `set_page_setup` tool, in either unit.
+
 ## Export
 
 ![The Export section of the properties panel](/img/export.png)
@@ -175,8 +193,7 @@ The Export section sits at the bottom of the properties panel.
   as its visible content. One design unit is a point. Shapes, clipping frames, gradients, opacity and blend modes are vector; text is set in
   the fonts the editor lays it out with, embedded and selectable, with every line breaking where
   it does on the canvas. A layer with blur or a shadow becomes an image, because a PDF has no
-  blur. There are no layout guides yet, and none would be drawn. Bleed, trim marks and CMYK wait
-  for page units and are not part of this export.
+  blur. Layout guides are never drawn. Bleed, trim marks and CMYK are not part of this export yet.
 - **A file to try it on:** `pnpm sample:book` writes `book-sample` to the data directory: twelve
   numbered page frames laid out on one canvas, and an art direction board with no number. Its
   PDF has twelve pages and no board. It is rewritten each time it runs, so edit a copy.

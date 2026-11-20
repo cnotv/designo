@@ -42,6 +42,16 @@ a `page` node with no parent and an `order` among the pages, and the nodes on it
 any other. `getPageNodes` lists them in order, and the PDF exporter prints one PDF page for each, unless frames carry a `pdfPage`, in which case those frames are its pages.
 The editor does not show more than the first page yet.
 
+A frame can also be a printed page. `pageUnit` (`pt` or `mm`), `bleed`, `facing` (`single`, `left`,
+`right` or `spread`) and `guides` (margins, columns, gutter, fold) are properties of the node, so
+every change is an ordinary `update` operation. Lengths are stored in points, the unit the PDF is
+written in; the unit only says how they are shown. `@designo/core` holds the pure parts in
+`pageSetup.ts`: unit conversion, `getPageSetupPatch` (a setup in millimetres to the points
+stored) and `getPageGuideGeometry` (the trim, bleed, margin and column boxes and the fold). The
+editor draws guides as extra scene items placed right after their frame, so they lie over the
+frame's fill and under its content; they are never nodes, which is why no exporter, screenshot or
+hit test sees them.
+
 `applyOperations` applies a batch atomically: if any operation fails, the document is returned
 unchanged. The MCP `apply_ops` tool relies on this, so an agent's half-finished layout never
 lands on disk.
@@ -323,6 +333,7 @@ test in `migrations.test.ts` with a sample of the old file.
 | 1       | First format; a node turns around its top-left corner                                                              |                            |
 | 2       | A node turns around its centre; rotated nodes move so they are drawn exactly where they were                       | `migrateRotationPivot.ts`  |
 | 3       | Every node carries `textAlign`, `lineHeight` and `textWrap`; old files get the defaults, which draw text as before | `migrateTextProperties.ts` |
+| 8       | Every node carries `pageUnit`, `bleed`, `facing` and `guides`; old files get no bleed and no guides                | `migratePageSetup.ts`      |
 
 A new property every node carries needs a version, even with a default: the stored schema requires
 every property, so version 3 added `textAlign` (`left`), `lineHeight` (`1.2`) and `textWrap`

@@ -52,6 +52,7 @@ import {
 import EffectsSection from './EffectsSection.vue'
 import ExportSection from './ExportSection.vue'
 import FontPicker from './FontPicker.vue'
+import PageSetupSection from './PageSetupSection.vue'
 
 const { editor } = useEditorContext()
 
@@ -563,6 +564,10 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
       </div>
       <Separator />
       <EffectsSection :node="node" @update="update" />
+      <template v-if="node.type === 'frame'">
+        <Separator />
+        <PageSetupSection :node="node" @update="update" />
+      </template>
     </template>
 
     <div v-else-if="editor.selection.value.length > 1" class="flex flex-col gap-2">

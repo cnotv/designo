@@ -12,11 +12,14 @@ import {
   MIN_FONT_WEIGHT,
   MIN_LETTER_SPACING,
   MIN_LINE_HEIGHT,
+  PAGE_FACINGS,
+  PAGE_UNITS,
   TEXT_ALIGNMENTS
 } from '@designo/core'
 import { z } from 'zod'
 
 const MAX_TEXT_LENGTH = 10_000
+const MAX_GUIDE_COLUMNS = 24
 
 const HEX_COLOR = /^#(?:[\da-f]{6}|[\da-f]{8})$/i
 
@@ -58,6 +61,29 @@ const shadowSchema = z
   .object({ x: z.number(), y: z.number(), blur: z.number().min(0), color: hexColorSchema })
   .strict()
   .describe('A drop shadow: offset x and y, blur as a standard deviation, and a colour.')
+  .nullable()
+
+const guidesSchema = z
+  .object({
+    margins: z
+      .object({
+        top: z.number().min(0),
+        bottom: z.number().min(0),
+        inner: z
+          .number()
+          .min(0)
+          .describe('The margin along the spine; the left one of a single page.'),
+        outer: z.number().min(0)
+      })
+      .strict(),
+    columns: z.number().int().min(1).max(MAX_GUIDE_COLUMNS),
+    gutter: z.number().min(0).describe('The space between columns, in points.'),
+    fold: z.boolean().describe('Draws a fold line down the middle of the frame.')
+  })
+  .strict()
+  .describe(
+    'Layout guides kept on a frame and drawn under its content in the editor; never exported. All lengths are in points.'
+  )
   .nullable()
 
 export const nodePatchSchema = z
@@ -144,7 +170,48 @@ export const nodePatchSchema = z
       .describe(
         'fixed (the default) keeps width. hug sizes an auto-layout frame to its children. fill makes a child of an auto-layout frame share its free space (or stretch, across the direction).'
       ),
-    heightSizing: z.enum(LAYOUT_SIZINGS).describe('Like widthSizing, for height.')
+    heightSizing: z.enum(LAYOUT_SIZINGS).describe('Like widthSizing, for height.'),
+    pageUnit: z
+      .enum(PAGE_UNITS)
+      .describe('Frames only: the unit a page is shown in. Stored lengths are always points.'),
+    bleed: z
+      .number()
+      .min(0)
+      .describe(
+        'Frames only: how far the print extends past the frame, which is the trim, in points.'
+      ),
+    facing: z
+      .enum(PAGE_FACINGS)
+      .describe(
+        'Frames only: single, left or right (one of a facing pair; the inner margin lies along the spine), or spread (two facing pages in one frame).'
+      ),
+    guides: guidesSchema
+  })
+  .partial()
+  .strict()
+
+export const pageSetupSchema = z
+  .object({
+    unit: z
+      .enum(PAGE_UNITS)
+      .describe('The unit every length below is in; remembered on the frame.'),
+    width: z.number().positive(),
+    height: z.number().positive(),
+    bleed: z.number().min(0),
+    facing: z.enum(PAGE_FACINGS),
+    margins: z
+      .object({
+        top: z.number().min(0),
+        bottom: z.number().min(0),
+        inner: z.number().min(0),
+        outer: z.number().min(0)
+      })
+      .partial()
+      .strict(),
+    columns: z.number().int().min(1).max(MAX_GUIDE_COLUMNS),
+    gutter: z.number().min(0),
+    fold: z.boolean(),
+    guides: z.null().describe('null removes the layout guides.')
   })
   .partial()
   .strict()

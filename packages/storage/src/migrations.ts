@@ -2,6 +2,7 @@ import { CURRENT_FORMAT_VERSION, type DesignDocument } from '@designo/core'
 import { migrateEffects } from './migrateEffects.ts'
 import { migrateAutoLayout } from './migrateAutoLayout.ts'
 import { migrateFramePages } from './migrateFramePages.ts'
+import { migratePageSetup } from './migratePageSetup.ts'
 import { migrateRotationPivot } from './migrateRotationPivot.ts'
 import { migrateTextProperties } from './migrateTextProperties.ts'
 import { migrateTextStyles } from './migrateTextStyles.ts'
@@ -18,7 +19,8 @@ export const MIGRATION_STEPS: MigrationSteps = {
   3: migrateEffects,
   4: migrateTextStyles,
   5: migrateFramePages,
-  6: migrateAutoLayout
+  6: migrateAutoLayout,
+  7: migratePageSetup
 }
 
 const isRawDocument = (value: unknown): value is RawDocument =>
