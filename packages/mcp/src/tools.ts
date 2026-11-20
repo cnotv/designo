@@ -134,7 +134,7 @@ export const applyOperationsTool = async (
     operations,
     context.generateId
   )
-  const fits = await findTextBoxFits(
+  const { updates: fits, warnings: fitWarnings } = await findTextBoxFits(
     applied.document,
     operations,
     applied.createdNodeIds,
@@ -146,7 +146,10 @@ export const applyOperationsTool = async (
       : await applyOperationsToFile(context.dataDirectory, input.fileId, fits, context.generateId)
   return {
     createdNodeIds: applied.createdNodeIds,
-    warnings: findOutsideParentWarnings(document, operations, applied.createdNodeIds)
+    warnings: [
+      ...fitWarnings,
+      ...findOutsideParentWarnings(document, operations, applied.createdNodeIds)
+    ]
   }
 }
 

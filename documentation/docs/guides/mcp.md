@@ -196,7 +196,9 @@ clips its children), or outside the exported bounds. A child far from its frame,
 given coordinates relative to the frame when the tools expect absolute ones, is therefore simply
 not drawn, and `get_node` still shows it. Coordinates are absolute on the page. `create_node`,
 `update_node` and `apply_ops` return a `warnings` list that names each node they created or
-changed that lies wholly outside its parent frame, so that mistake is no longer silent.
+changed that lies wholly outside its parent frame, so that mistake is no longer silent. The list
+also names a text that could not be sized to its lines because its fonts are not available: it
+keeps the box it was given and may clip.
 
 Text keeps its blank lines in `export_svg` and `get_screenshot`: a line break in `text` moves down
 one line height (1.2 times `fontSize`), and an empty line leaves a gap of one.
