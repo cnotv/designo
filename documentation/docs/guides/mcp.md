@@ -63,6 +63,18 @@ Inside this repository nothing is needed: `.mcp.json` registers the server. Else
 claude mcp add designo -- npx tsx /absolute/path/to/designo/packages/mcp/src/main.ts
 ```
 
+## opencode
+
+Run this once in the Designo clone. It installs the dependencies and prints the config with your
+absolute path filled in:
+
+```sh
+pnpm install && printf '{"mcp":{"designo":{"type":"local","command":["pnpm","-s","--dir","%s/packages/mcp","start"]}}}\n' "$PWD"
+```
+
+Paste the output into `opencode.json`. Skipping `pnpm install` is what causes
+`sh: tsx: command not found`. If opencode cannot find `pnpm`, use the full path to it.
+
 ## Claude Desktop and other clients
 
 ```json
