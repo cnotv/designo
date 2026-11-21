@@ -65,15 +65,23 @@ claude mcp add designo -- npx tsx /absolute/path/to/designo/packages/mcp/src/mai
 
 ## opencode
 
-Run this once in the Designo clone. It installs the dependencies and prints the config with your
-absolute path filled in:
+Run this once in the Designo clone. It installs the dependencies first:
 
 ```sh
-pnpm install && printf '{"mcp":{"designo":{"type":"local","command":["pnpm","-s","--dir","%s/packages/mcp","start"]}}}\n' "$PWD"
+pnpm opencode:install
 ```
 
-Paste the output into `opencode.json`. Skipping `pnpm install` is what causes
-`sh: tsx: command not found`. If opencode cannot find `pnpm`, use the full path to it.
+It adds a `designo` entry to your global opencode config
+(`~/.config/opencode/opencode.json`, or under `$XDG_CONFIG_HOME`), so the tools are there in every
+project. Other settings and servers in that file are kept. The entry runs node and tsx by absolute
+path, so opencode needs neither `pnpm` nor your shell's `PATH`. Restart opencode and check with
+`opencode mcp list`.
+
+If the file has comments, the installer leaves it untouched and prints the entry to paste.
+Run it again after moving the clone or switching node versions. Skipping `pnpm install` is what
+causes `sh: tsx: command not found`, and "MCP server process exited" in opencode.
+
+Inside the clone itself nothing is needed: the committed `opencode.json` registers the server.
 
 ## Claude Desktop and other clients
 
