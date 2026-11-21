@@ -216,12 +216,25 @@ export const pageSetupSchema = z
   .partial()
   .strict()
 
-const storedNodeSchema = nodePatchSchema.required().extend({
-  id: nodeIdSchema,
-  type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'text']),
-  parentId: nodeIdSchema.nullable(),
-  order: z.number()
+/** How a node takes part in a component; set by the operations, never typed in by hand. */
+const componentLinksSchema = z.object({
+  isComponent: z.boolean().optional(),
+  sourceId: nodeIdSchema.optional(),
+  overrides: z.array(z.string()).optional()
 })
+
+/** A patch that may also make a frame or group a component, or stop it being one. */
+const nodeUpdateSchema = nodePatchSchema.extend({ isComponent: z.boolean().optional() })
+
+const storedNodeSchema = nodePatchSchema
+  .required()
+  .extend(componentLinksSchema.shape)
+  .extend({
+    id: nodeIdSchema,
+    type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'text']),
+    parentId: nodeIdSchema.nullable(),
+    order: z.number()
+  })
 
 export const storedDocumentSchema = z.object({
   formatVersion: z.literal(CURRENT_FORMAT_VERSION),
@@ -252,7 +265,18 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
     order: z.number().optional(),
     properties: nodePatchSchema.optional()
   }),
-  z.object({ kind: z.literal('update'), id: nodeIdSchema, patch: nodePatchSchema }),
+  z.object({ kind: z.literal('update'), id: nodeIdSchema, patch: nodeUpdateSchema }),
+  z.object({
+    kind: z.literal('createInstance'),
+    id: nodeIdSchema.optional(),
+    componentId: nodeIdSchema,
+    parentId: nodeIdSchema,
+    order: z.number().optional(),
+    x: z.number().optional(),
+    y: z.number().optional()
+  }),
+  z.object({ kind: z.literal('detachInstance'), id: nodeIdSchema }),
+  z.object({ kind: z.literal('resetOverrides'), id: nodeIdSchema }),
   z.object({ kind: z.literal('delete'), id: nodeIdSchema }),
   z.object({
     kind: z.literal('move'),

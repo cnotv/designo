@@ -44,6 +44,12 @@ const MENU_SECTIONS: readonly (readonly MenuEntry[])[] = [
     }
   ],
   [
+    { label: 'Create component', shortcut: '', run: (target) => target.makeComponent() },
+    { label: 'New instance', shortcut: '', run: (target) => target.createInstance() },
+    { label: 'Reset overrides', shortcut: '', run: (target) => target.resetOverrides() },
+    { label: 'Detach instance', shortcut: '', run: (target) => target.detachInstance() }
+  ],
+  [
     {
       label: 'Bring forward',
       shortcut: `${commandKey}]`,

@@ -10,6 +10,9 @@ const withGeneratedIds = (
     if (operation.kind === 'create') {
       return { ...operation, id: operation.id ?? generateId(operation.type) }
     }
+    if (operation.kind === 'createInstance') {
+      return { ...operation, id: operation.id ?? generateId('instance') }
+    }
     if (operation.kind === 'createPage') {
       return { ...operation, id: operation.id ?? generateId('page') }
     }
@@ -18,7 +21,11 @@ const withGeneratedIds = (
 
 const createdIds = (operations: readonly DesignOperation[]): string[] =>
   operations.flatMap((operation) =>
-    operation.kind === 'create' || operation.kind === 'createPage' ? [operation.id] : []
+    operation.kind === 'create' ||
+    operation.kind === 'createPage' ||
+    operation.kind === 'createInstance'
+      ? [operation.id]
+      : []
   )
 
 /**

@@ -163,7 +163,18 @@ export interface DesignNodeProperties {
   guides: PageGuides | null
 }
 
-export interface DesignNode extends DesignNodeProperties {
+/**
+ * How a node takes part in a component. A component is a frame or group with `isComponent`. A node
+ * of an instance names the component node it mirrors in `sourceId`, and lists the properties it
+ * keeps for itself in `overrides`; the rest follow the component.
+ */
+export interface DesignNodeComponentLinks {
+  isComponent?: boolean
+  sourceId?: string
+  overrides?: readonly string[]
+}
+
+export interface DesignNode extends DesignNodeProperties, DesignNodeComponentLinks {
   id: string
   type: DesignNodeType
   parentId: string | null
@@ -179,7 +190,7 @@ export interface DesignDocument {
   nodes: Readonly<Record<string, DesignNode>>
 }
 
-export type DesignNodePatch = Partial<DesignNodeProperties>
+export type DesignNodePatch = Partial<DesignNodeProperties> & Partial<DesignNodeComponentLinks>
 
 export type DesignOperation =
   | {
@@ -195,6 +206,20 @@ export type DesignOperation =
   | { kind: 'update'; id: string; patch: DesignNodePatch }
   | { kind: 'delete'; id: string }
   | { kind: 'move'; id: string; parentId: string; order?: number }
+  /** Places an instance of a component, which mirrors the component until a property is overridden. */
+  | {
+      kind: 'createInstance'
+      id: string
+      componentId: string
+      parentId: string
+      order?: number
+      x?: number
+      y?: number
+    }
+  /** Turns an instance into plain nodes that no longer follow the component. */
+  | { kind: 'detachInstance'; id: string }
+  /** Drops the overrides of a node and everything beneath it, so they follow the component again. */
+  | { kind: 'resetOverrides'; id: string }
   /** Puts a page elsewhere in the print order; a page has no parent to move to. */
   | { kind: 'reorderPage'; id: string; order: number }
 
