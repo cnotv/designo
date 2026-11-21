@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "pnpm --filter @designo/editor dev",
     "mcp": "pnpm --filter @designo/mcp start",
+    "opencode:install": "pnpm install && pnpm --filter @designo/mcp exec tsx src/installOpencode.ts",
     "sample:book": "pnpm --filter @designo/mcp sample:book",
     "build": "pnpm -r run build",
     "type-check": "pnpm -r run type-check",

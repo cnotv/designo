@@ -65,15 +65,37 @@ claude mcp add designo -- npx tsx /absolute/path/to/designo/packages/mcp/src/mai
 
 ## opencode
 
-Run this once in the Designo clone. It installs the dependencies and prints the config with your
-absolute path filled in:
+Run this once in the Designo clone. It installs the dependencies first:
 
 ```sh
-pnpm install && printf '{"mcp":{"designo":{"type":"local","command":["pnpm","-s","--dir","%s/packages/mcp","start"]}}}\n' "$PWD"
+pnpm opencode:install
 ```
 
-Paste the output into `opencode.json`. Skipping `pnpm install` is what causes
-`sh: tsx: command not found`. If opencode cannot find `pnpm`, use the full path to it.
+It adds a `designo` entry to your global opencode config
+(`~/.config/opencode/opencode.json`, or under `$XDG_CONFIG_HOME`), so the tools are there in every
+project. Other settings and servers in that file are kept. The entry runs node and tsx by absolute
+path, so opencode needs neither `pnpm` nor your shell's `PATH`. Restart opencode and check with
+`opencode mcp list`.
+
+If the file has comments, the installer leaves it untouched and prints the entry to paste.
+Run it again after moving the clone or switching node versions. Skipping `pnpm install` is what
+causes `sh: tsx: command not found`, and "MCP server process exited" in opencode.
+
+Inside the clone itself nothing is needed: the committed `opencode.json` registers the server.
+
+### How the install is tested
+
+The `opencode install` workflow (`.github/workflows/opencode-install.yml`) runs on every pull
+request that touches the MCP package, and by hand from the Actions tab. It does not use a
+microVM of its own: a GitHub-hosted `ubuntu-latest` runner is already a fresh virtual machine
+for each job and is thrown away afterwards, so a previous run cannot make it pass. On it, the job
+installs opencode from npm, runs `pnpm opencode:install`, checks the config holds the `designo`
+entry, starts the written command and waits for the MCP handshake, then runs `opencode mcp list`
+and fails if `designo` is missing or reported as failed.
+
+A microVM such as Firecracker would only be worth adding on a self-hosted runner, to keep
+untrusted code off the host. This job runs code from the pull request, which is why the workflow
+has read-only `contents` permission and no secrets.
 
 ## Claude Desktop and other clients
 
