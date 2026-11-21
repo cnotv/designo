@@ -72,6 +72,10 @@ export interface Editor {
   paste: () => void
   groupSelection: () => void
   ungroupSelection: () => void
+  makeComponent: () => void
+  createInstance: () => void
+  detachInstance: () => void
+  resetOverrides: () => void
   reorderSelection: (mode: LayerOrderMode) => void
   alignSelection: (kind: AlignKind) => void
   distributeSelection: (axis: DistributeAxis) => void

@@ -109,6 +109,12 @@ circle. After drawing, the editor returns to Move.
 - **Copy, cut, paste:** Ctrl/Cmd C, X and V. A paste goes into the layer's original parent, or the
   page if that is gone, and each further paste sits another 10 px along. The clipboard is kept
   inside the editor; copying also writes the layers as JSON to the system clipboard.
+- **Components:** the right-click menu makes the selected frame or group a component with Create
+  component. New instance places a copy beside it, and a copy follows the component: change the
+  component and every instance changes. A property edited on a node inside an instance is kept as
+  an override, so the component's later changes to it no longer reach that node. Reset overrides
+  makes the selection follow the component again, and Detach instance turns it into plain layers.
+  Layers inside an instance cannot be added, deleted or reordered; change the component instead.
 - **Group:** Ctrl/Cmd G wraps the selected layers, which must share a parent, in a group sized to
   them. Shift Ctrl/Cmd G ungroups, lifting the children out in place.
 - **Context menu:** right-click a layer in the layers panel, or the canvas, for Duplicate, Copy,

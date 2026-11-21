@@ -168,7 +168,10 @@ const applyCreate = (
   if (document.nodes[operation.id]) return failure(`Node ${operation.id} already exists`)
   const parentProblem =
     checkParent(document, operation.parentId) ??
-    checkNotInsideInstance(document, operation.parentId)
+    // A copied instance brings its own links, so duplicate and paste can rebuild one.
+    (operation.properties?.sourceId
+      ? undefined
+      : checkNotInsideInstance(document, operation.parentId))
   if (parentProblem) return failure(parentProblem)
   const node: DesignNode = {
     ...DEFAULT_NODE_PROPERTIES,

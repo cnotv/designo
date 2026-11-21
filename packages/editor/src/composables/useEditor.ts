@@ -16,6 +16,12 @@ import {
   createDuplicateOperations,
   createPasteOperations
 } from '../editing/clipboard.ts'
+import {
+  createDetachOperations,
+  createInstanceOperations,
+  createMakeComponentOperations,
+  createResetOverridesOperations
+} from '../editing/components.ts'
 import { createGroupOperations, createUngroupOperations } from '../editing/grouping.ts'
 import {
   createAddPageOperations,
@@ -142,6 +148,10 @@ type SelectionActions = Pick<
   | 'paste'
   | 'groupSelection'
   | 'ungroupSelection'
+  | 'makeComponent'
+  | 'createInstance'
+  | 'detachInstance'
+  | 'resetOverrides'
   | 'reorderSelection'
   | 'alignSelection'
   | 'distributeSelection'
@@ -207,6 +217,22 @@ const useSelectionActions = (
       ),
     ungroupSelection: () =>
       withDocument((current) => commitAndSelect(createUngroupOperations(current, selection.value))),
+    makeComponent: () =>
+      withDocument((current) =>
+        commitAndSelect(createMakeComponentOperations(current, selection.value))
+      ),
+    createInstance: () =>
+      withDocument((current) =>
+        commitAndSelect(
+          createInstanceOperations(current, selection.value, createNodeId('instance'))
+        )
+      ),
+    detachInstance: () =>
+      withDocument((current) => commitAndSelect(createDetachOperations(current, selection.value))),
+    resetOverrides: () =>
+      withDocument((current) =>
+        commitAndSelect(createResetOverridesOperations(current, selection.value))
+      ),
     reorderSelection: (mode: LayerOrderMode) =>
       withDocument((current) => commit(createLayerOrderOperations(current, selection.value, mode))),
     alignSelection: (kind: AlignKind) =>
