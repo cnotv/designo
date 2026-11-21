@@ -1,0 +1,59 @@
+# Installs opencode on a fresh runner, runs the documented installer, and checks opencode sees Designo.
+# A GitHub-hosted runner is a new VM per job, so nothing from an earlier run can make this pass.
+name: opencode install
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/mcp/**'
+      - 'opencode.json'
+      - 'package.json'
+      - '.github/workflows/opencode-install.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  opencode-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+      - name: Install opencode
+        run: npm install --global opencode-ai
+      - name: Run the documented installer
+        run: pnpm opencode:install
+      - name: Config holds the designo entry
+        run: |
+          cat ~/.config/opencode/opencode.json
+          node -e "const c=require(process.env.HOME+'/.config/opencode/opencode.json');if(!c.mcp?.designo)process.exit(1)"
+      - name: The written command answers the MCP handshake
+        run: |
+          node --input-type=module -e "
+          import { readFileSync } from 'node:fs'
+          import { spawn } from 'node:child_process'
+          const [command, ...args] = JSON.parse(readFileSync(process.env.HOME + '/.config/opencode/opencode.json', 'utf8')).mcp.designo.command
+          const server = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] })
+          const failTimer = setTimeout(() => { console.error('no handshake in 30s'); process.exit(1) }, 30000)
+          server.stdout.on('data', (chunk) => {
+            if (!String(chunk).includes('serverInfo')) return
+            console.log('handshake ok')
+            clearTimeout(failTimer)
+            server.kill()
+          })
+          server.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'ci', version: '0' } } }) + '\n')
+          "
+      - name: opencode lists designo
+        run: |
+          opencode mcp list | tee mcp-list.txt
+          grep -i designo mcp-list.txt
+          if grep -i designo mcp-list.txt | grep -i -E 'fail|error|disabled'; then exit 1; fi
