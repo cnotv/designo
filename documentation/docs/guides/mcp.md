@@ -83,6 +83,20 @@ causes `sh: tsx: command not found`, and "MCP server process exited" in opencode
 
 Inside the clone itself nothing is needed: the committed `opencode.json` registers the server.
 
+### How the install is tested
+
+The `opencode install` workflow (`.github/workflows/opencode-install.yml`) runs on every pull
+request that touches the MCP package, and by hand from the Actions tab. It does not use a
+microVM of its own: a GitHub-hosted `ubuntu-latest` runner is already a fresh virtual machine
+for each job and is thrown away afterwards, so a previous run cannot make it pass. On it, the job
+installs opencode from npm, runs `pnpm opencode:install`, checks the config holds the `designo`
+entry, starts the written command and waits for the MCP handshake, then runs `opencode mcp list`
+and fails if `designo` is missing or reported as failed.
+
+A microVM such as Firecracker would only be worth adding on a self-hosted runner, to keep
+untrusted code off the host. This job runs code from the pull request, which is why the workflow
+has read-only `contents` permission and no secrets.
+
 ## Claude Desktop and other clients
 
 ```json
