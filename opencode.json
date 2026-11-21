@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "designo": {
+      "type": "local",
+      "command": ["pnpm", "-s", "--filter", "@designo/mcp", "start"],
+      "enabled": true
+    }
+  }
+}
