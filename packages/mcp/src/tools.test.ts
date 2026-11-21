@@ -99,6 +99,23 @@ describe('MCP tools', () => {
     expect(tree.children[0]?.children[0]?.node.text).toBe('Hello')
   })
 
+  it('makes a component, places an instance and keeps an override', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Components' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        { kind: 'create', id: 'card', type: 'frame', parentId: pageId },
+        { kind: 'create', id: 'title', type: 'text', parentId: 'card', properties: { text: 'A' } },
+        { kind: 'update', id: 'card', patch: { isComponent: true } },
+        { kind: 'createInstance', id: 'copy', componentId: 'card', parentId: pageId, x: 200 },
+        { kind: 'update', id: 'copy:title', patch: { text: 'B' } },
+        { kind: 'update', id: 'title', patch: { fontSize: 30 } }
+      ]
+    })
+    const copy = await getNodeTool(context, { fileId, nodeId: 'copy:title' })
+    expect(copy).toMatchObject({ text: 'B', fontSize: 30, overrides: ['text'] })
+  })
+
   it('warns about a node that lies outside its parent frame, and about no other', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Frames' })
     const result = await applyOperationsTool(context, {

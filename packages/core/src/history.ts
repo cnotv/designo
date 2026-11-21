@@ -1,4 +1,4 @@
-import { applyOperation, getChildren } from './document.ts'
+import { applyOperation, getChildren, getSubtreeIds } from './document.ts'
 import type { DesignDocument, DesignNode, DesignNodePatch, DesignOperation } from './types.ts'
 
 const pickPreviousValues = (node: DesignNode, patch: DesignNodePatch): DesignNodePatch =>
@@ -10,6 +10,23 @@ const nodeProperties = (node: DesignNode): DesignNodePatch => {
   const { id: _id, type: _type, parentId: _parentId, order: _order, ...properties } = node
   return properties
 }
+
+// Puts back what detaching or resetting changed: the links, and the values the overrides held.
+const restoreComponentState = (document: DesignDocument, nodeId: string): DesignOperation[] =>
+  getSubtreeIds(document, nodeId).flatMap((id) => {
+    const node = document.nodes[id]
+    if (!node) return []
+    const overridden = Object.fromEntries(
+      (node.overrides ?? []).map((key) => [key, node[key as keyof DesignNode]])
+    )
+    return [
+      {
+        kind: 'update' as const,
+        id,
+        patch: { ...overridden, sourceId: node.sourceId, overrides: node.overrides }
+      }
+    ]
+  })
 
 const recreateSubtree = (document: DesignDocument, node: DesignNode): DesignOperation[] => {
   if (node.type === 'page') {
@@ -32,6 +49,9 @@ const recreateSubtree = (document: DesignDocument, node: DesignNode): DesignOper
   ]
 }
 
+const CREATING_KINDS: readonly string[] = ['create', 'createPage', 'createInstance']
+const RESTORING_KINDS: readonly string[] = ['detachInstance', 'resetOverrides']
+
 /**
  * Works out the operations that undo one operation, read against the document it applies to.
  * @param document - The document before the operation.
@@ -42,15 +62,14 @@ export const invertOperation = (
   document: DesignDocument,
   operation: DesignOperation
 ): DesignOperation[] => {
-  if (operation.kind === 'create' || operation.kind === 'createPage') {
-    return [{ kind: 'delete', id: operation.id }]
-  }
+  if (CREATING_KINDS.includes(operation.kind)) return [{ kind: 'delete', id: operation.id }]
   const node = document.nodes[operation.id]
   if (!node) return []
   if (operation.kind === 'update') {
     return [{ kind: 'update', id: node.id, patch: pickPreviousValues(node, operation.patch) }]
   }
   if (operation.kind === 'delete') return recreateSubtree(document, node)
+  if (RESTORING_KINDS.includes(operation.kind)) return restoreComponentState(document, node.id)
   if (operation.kind === 'reorderPage') {
     return [{ kind: 'reorderPage', id: node.id, order: node.order }]
   }

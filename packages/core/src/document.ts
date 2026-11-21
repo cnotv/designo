@@ -3,6 +3,17 @@ import {
   CURRENT_FORMAT_VERSION,
   DEFAULT_NODE_PROPERTIES
 } from './defaults.ts'
+import {
+  checkCreateInstance,
+  checkMakeComponent,
+  checkNotInsideInstance,
+  checkNotInstancePart,
+  createInstanceNode,
+  getSubtreeNodes,
+  isInstanceRoot,
+  syncInstances,
+  withOverridesAfterPatch
+} from './components.ts'
 import { layoutDocument } from './layout.ts'
 import type {
   DesignDocument,
@@ -155,7 +166,9 @@ const applyCreate = (
   operation: Extract<DesignOperation, { kind: 'create' }>
 ): OperationResult => {
   if (document.nodes[operation.id]) return failure(`Node ${operation.id} already exists`)
-  const parentProblem = checkParent(document, operation.parentId)
+  const parentProblem =
+    checkParent(document, operation.parentId) ??
+    checkNotInsideInstance(document, operation.parentId)
   if (parentProblem) return failure(parentProblem)
   const node: DesignNode = {
     ...DEFAULT_NODE_PROPERTIES,
@@ -206,14 +219,23 @@ const applyUpdate = (
 ): OperationResult => {
   const node = document.nodes[operation.id]
   if (!node) return failure(`Node ${operation.id} does not exist`)
-  return withValidNode(document, { ...node, ...operation.patch })
+  const updated = { ...node, ...operation.patch }
+  const componentProblem =
+    operation.patch.isComponent && !node.isComponent
+      ? checkMakeComponent(document, updated)
+      : undefined
+  if (componentProblem) return failure(componentProblem)
+  return withValidNode(document, withOverridesAfterPatch(document, updated, operation.patch))
 }
 
 const applyDelete = (
   document: DesignDocument,
   operation: Extract<DesignOperation, { kind: 'delete' }>
 ): OperationResult => {
-  if (!document.nodes[operation.id]) return failure(`Node ${operation.id} does not exist`)
+  const target = document.nodes[operation.id]
+  if (!target) return failure(`Node ${operation.id} does not exist`)
+  const instanceProblem = checkNotInstancePart(document, target)
+  if (instanceProblem) return failure(instanceProblem)
   const remainingPages = getPageNodes(document).filter((page) => page.id !== operation.id)
   if (operation.id === document.rootId && remainingPages.length === 0) {
     return failure('The only page cannot be deleted')
@@ -238,7 +260,10 @@ const applyMove = (
 ): OperationResult => {
   const node = document.nodes[operation.id]
   if (!node) return failure(`Node ${operation.id} does not exist`)
-  const parentProblem = checkParent(document, operation.parentId)
+  const parentProblem =
+    checkParent(document, operation.parentId) ??
+    checkNotInsideInstance(document, operation.parentId) ??
+    checkNotInstancePart(document, node)
   if (parentProblem) return failure(parentProblem)
   if (getSubtreeIds(document, operation.id).includes(operation.parentId)) {
     return failure(`Node ${operation.id} cannot move inside itself`)
@@ -263,6 +288,59 @@ const applyReorderPage = (
   })
 }
 
+const applyCreateInstance = (
+  document: DesignDocument,
+  operation: Extract<DesignOperation, { kind: 'createInstance' }>
+): OperationResult => {
+  if (document.nodes[operation.id]) return failure(`Node ${operation.id} already exists`)
+  const problem =
+    checkParent(document, operation.parentId) ??
+    checkCreateInstance(document, operation.componentId, operation.parentId)
+  if (problem) return failure(problem)
+  const component = document.nodes[operation.componentId] as DesignNode
+  const instance = createInstanceNode(component, {
+    id: operation.id,
+    parentId: operation.parentId,
+    order: operation.order ?? nextSiblingOrder(document, operation.parentId),
+    x: operation.x ?? 0,
+    y: operation.y ?? 0
+  })
+  return withNodes(document, { ...document.nodes, [instance.id]: instance })
+}
+
+const withoutLinks = (node: DesignNode): DesignNode => {
+  const { sourceId: _sourceId, overrides: _overrides, ...plain } = node
+  return plain
+}
+
+const applyDetachInstance = (
+  document: DesignDocument,
+  operation: Extract<DesignOperation, { kind: 'detachInstance' }>
+): OperationResult => {
+  const node = document.nodes[operation.id]
+  if (!node) return failure(`Node ${operation.id} does not exist`)
+  if (!isInstanceRoot(document, node)) return failure(`Node ${operation.id} is not an instance`)
+  const detached = getSubtreeNodes(document, node.id).map(withoutLinks)
+  return withNodes(document, {
+    ...document.nodes,
+    ...Object.fromEntries(detached.map((plain) => [plain.id, plain]))
+  })
+}
+
+const applyResetOverrides = (
+  document: DesignDocument,
+  operation: Extract<DesignOperation, { kind: 'resetOverrides' }>
+): OperationResult => {
+  const node = document.nodes[operation.id]
+  if (!node) return failure(`Node ${operation.id} does not exist`)
+  if (node.sourceId === undefined) return failure(`Node ${operation.id} is not part of an instance`)
+  const reset = getSubtreeNodes(document, node.id).map((member) => ({ ...member, overrides: [] }))
+  return withNodes(document, {
+    ...document.nodes,
+    ...Object.fromEntries(reset.map((member) => [member.id, member]))
+  })
+}
+
 const applyWithoutLayout = (
   document: DesignDocument,
   operation: DesignOperation
@@ -272,6 +350,9 @@ const applyWithoutLayout = (
   if (operation.kind === 'update') return applyUpdate(document, operation)
   if (operation.kind === 'delete') return applyDelete(document, operation)
   if (operation.kind === 'reorderPage') return applyReorderPage(document, operation)
+  if (operation.kind === 'createInstance') return applyCreateInstance(document, operation)
+  if (operation.kind === 'detachInstance') return applyDetachInstance(document, operation)
+  if (operation.kind === 'resetOverrides') return applyResetOverrides(document, operation)
   return applyMove(document, operation)
 }
 
@@ -287,7 +368,7 @@ export const applyOperation = (
 ): OperationResult => {
   const result = applyWithoutLayout(document, operation)
   // Layout is part of every operation, so undo, validation and sync need no second path.
-  return result.ok ? { ok: true, document: layoutDocument(result.document) } : result
+  return result.ok ? { ok: true, document: layoutDocument(syncInstances(result.document)) } : result
 }
 
 /**

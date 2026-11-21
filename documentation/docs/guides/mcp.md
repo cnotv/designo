@@ -162,21 +162,21 @@ text, when a text's fonts cannot be found, rather than leaving the text out.
 
 ## Tools
 
-| Tool                | Does                                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `list_files`        | Lists files with their ids and names                                                                       |
-| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                         |
-| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                         |
-| `get_node`          | Reads one node with every property                                                                         |
-| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                |
-| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                      |
-| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts |
-| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                              |
-| `create_node`       | Creates one frame, group, rectangle, ellipse or text node                                                  |
-| `update_node`       | Changes some properties of one node                                                                        |
-| `delete_node`       | Deletes a node and everything inside it                                                                    |
-| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points            |
-| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, delete and move operations as one change        |
+| Tool                | Does                                                                                                           |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `list_files`        | Lists files with their ids and names                                                                           |
+| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                             |
+| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                             |
+| `get_node`          | Reads one node with every property                                                                             |
+| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                    |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                          |
+| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts     |
+| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                  |
+| `create_node`       | Creates one frame, group, rectangle, ellipse or text node                                                      |
+| `update_node`       | Changes some properties of one node                                                                            |
+| `delete_node`       | Deletes a node and everything inside it                                                                        |
+| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                |
+| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, delete, move and component operations as one change |
 
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in
 the same batch can nest inside them. If any operation fails, nothing is saved.
@@ -193,6 +193,21 @@ more than one fallback font at once, such as an arrow and a Polish letter in a G
 can draw boxes for them, because resvg keeps only one font per text; a script on a line of its own
 draws right. When the API cannot be reached the
 screenshot is still drawn, with whatever fonts the machine has (DejaVu in the Docker image).
+
+### Components and instances
+
+`apply_ops` makes and places components. An `update` with `patch: { "isComponent": true }` turns a
+frame or group into a component; it cannot hold another component or an instance. `createInstance`
+(`componentId`, `parentId`, optional `id`, `x`, `y`) places a copy. Every node inside an instance has
+the id `<instance id>:<component node id>`, and an instance follows its component: a changed
+property, an added child or a removed child shows up in every instance. The instance keeps its own
+`x`, `y` and `name`, and never takes the component's `pdfPage`.
+
+Editing a property of a node inside an instance keeps it as an override, listed in the node's
+`overrides`; setting it back to the component's value makes it follow the component again.
+`resetOverrides` on a node clears the overrides of it and everything beneath it, and `detachInstance`
+turns an instance into plain nodes. Nodes inside an instance cannot be created, deleted or moved;
+change the component or detach the instance. Placing an instance inside a component is refused.
 
 ### Render limits and errors
 
