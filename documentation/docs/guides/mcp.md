@@ -65,10 +65,10 @@ claude mcp add designo -- npx tsx /absolute/path/to/designo/packages/mcp/src/mai
 
 ## opencode
 
-Run this once in the Designo clone:
+Run this once in the Designo clone. It installs the dependencies first:
 
 ```sh
-pnpm install && pnpm opencode:install
+pnpm opencode:install
 ```
 
 It adds a `designo` entry to your global opencode config
