@@ -78,6 +78,23 @@ describe('createInstance', () => {
   })
 })
 
+describe('positions', () => {
+  it('keeps the children of an instance inside it, and moves them with it', () => {
+    expect(instanceTitle(withInstance)).toMatchObject({ x: 300, y: 40 })
+  })
+
+  it('does not count moving the whole instance as an override', () => {
+    const moved = unwrap(
+      applyOperations(withInstance, [
+        { kind: 'update', id: 'copy', patch: { x: 500 } },
+        { kind: 'update', id: 'copy:title', patch: { x: 500, y: 40 } }
+      ])
+    )
+    expect(instanceTitle(moved)).toMatchObject({ x: 500, y: 40 })
+    expect(instanceTitle(moved)?.overrides ?? []).toEqual([])
+  })
+})
+
 describe('following the component', () => {
   it('passes a component change to instances', () => {
     const changed = unwrap(

@@ -128,6 +128,33 @@ export const createInstanceNode = (
   sourceId: component.id
 })
 
+interface Offset {
+  x: number
+  y: number
+}
+
+// Positions are absolute on the page, so what sits inside an instance is the component's
+// position moved by however far the instance itself sits from the component.
+const offsetOfInstance = (instance: DesignNode, component: DesignNode): Offset => ({
+  x: instance.x - component.x,
+  y: instance.y - component.y
+})
+
+const findInstanceRoot = (document: DesignDocument, node: DesignNode): DesignNode | undefined => {
+  if (isInstanceRoot(document, node)) return node
+  const parent = node.parentId === null ? undefined : document.nodes[node.parentId]
+  return parent ? findInstanceRoot(document, parent) : undefined
+}
+
+const mirroredValue = (source: DesignNode, key: string, offset: Offset): unknown =>
+  key === 'x' || key === 'y' ? source[key] + offset[key] : source[key as keyof DesignNode]
+
+const offsetWithin = (document: DesignDocument, node: DesignNode): Offset => {
+  const root = findInstanceRoot(document, node)
+  const component = root?.sourceId ? document.nodes[root.sourceId] : undefined
+  return root && component ? offsetOfInstance(root, component) : { x: 0, y: 0 }
+}
+
 // The box of a text that is not a fixed-width box follows its words, so it is never an override.
 const isAutoSizedText = (node: DesignNode): boolean => node.type === 'text' && !node.textWrap
 
@@ -153,7 +180,7 @@ export const withOverridesAfterPatch = (
       !(isInstanceRoot(document, node) && OWN_TO_INSTANCE_ROOT.includes(key)) &&
       !(isAutoSizedText(node) && (key === 'width' || key === 'height')) &&
       JSON.stringify(node[key as keyof DesignNode]) !==
-        JSON.stringify(source[key as keyof DesignNode])
+        JSON.stringify(mirroredValue(source, key, offsetWithin(document, node)))
   )
   const untouched = (node.overrides ?? []).filter((key) => !(key in patch))
   return { ...node, overrides: [...new Set([...untouched, ...differing])] }
@@ -162,17 +189,23 @@ export const withOverridesAfterPatch = (
 const mirroredProperties = (
   source: DesignNode,
   existing: DesignNode,
-  isRoot: boolean
+  isRoot: boolean,
+  offset: Offset
 ): Partial<DesignNode> => {
   const overridden = new Set(existing.overrides ?? [])
   return Object.fromEntries(
-    Object.entries(source).filter(
-      ([key]) =>
-        !NOT_MIRRORED.includes(key) &&
-        !NEVER_MIRRORED.includes(key) &&
-        !overridden.has(key) &&
-        !(isRoot && OWN_TO_INSTANCE_ROOT.includes(key))
-    )
+    Object.entries(source)
+      .map(([key, value]) => [
+        key,
+        key === 'x' || key === 'y' ? mirroredValue(source, key, offset) : value
+      ])
+      .filter(
+        ([key]) =>
+          !NOT_MIRRORED.includes(key) &&
+          !NEVER_MIRRORED.includes(key) &&
+          !overridden.has(key) &&
+          !(isRoot && OWN_TO_INSTANCE_ROOT.includes(key))
+      )
   )
 }
 
@@ -185,10 +218,11 @@ const syncCopy = (
   document: DesignDocument,
   source: DesignNode,
   copy: DesignNode,
-  rootId: string,
+  where: { rootId: string; offset: Offset },
   isRoot: boolean
 ): CopyChanges => {
-  const synced: DesignNode = { ...copy, ...mirroredProperties(source, copy, isRoot) }
+  const { rootId, offset } = where
+  const synced: DesignNode = { ...copy, ...mirroredProperties(source, copy, isRoot, offset) }
   const copyChildren = getChildren(document, copy.id)
   const sourceChildren = getChildren(document, source.id)
   const sourceChildIds = new Set(sourceChildren.map((child) => child.id))
@@ -205,7 +239,7 @@ const syncCopy = (
         order: child.order,
         sourceId: child.id
       },
-      rootId,
+      where,
       false
     )
   )
@@ -235,15 +269,16 @@ export const syncInstances = (document: DesignDocument): DesignDocument => {
       document.nodes[node.sourceId]?.isComponent
   )
   if (instances.length === 0) return document
-  const changes = instances.map((instance) =>
-    syncCopy(
+  const changes = instances.map((instance) => {
+    const component = document.nodes[instance.sourceId ?? ''] as DesignNode
+    return syncCopy(
       document,
-      document.nodes[instance.sourceId ?? ''] as DesignNode,
+      component,
       instance,
-      instance.id,
+      { rootId: instance.id, offset: offsetOfInstance(instance, component) },
       true
     )
-  )
+  })
   const removed = new Set(changes.flatMap((change) => change.remove))
   const nodes = Object.fromEntries(
     Object.entries({
