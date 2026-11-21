@@ -14,8 +14,7 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "sample:book": "tsx src/samples/writeBookSample.ts",
-    "type-check": "tsc -p tsconfig.json",
-    "install:opencode": "tsx src/installOpencode.ts"
+    "type-check": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@designo/auth": "workspace:*",
