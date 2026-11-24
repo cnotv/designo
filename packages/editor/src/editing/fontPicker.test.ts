@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { findFontFamilies, readPickedFamilyName, toFontFamilyValue } from './fontPicker.ts'
+import {
+  findFontFamilies,
+  findPickedFamily,
+  readPickedFamilyName,
+  toFontFamilyValue
+} from './fontPicker.ts'
 
 const family = (name: string, category = 'serif') => ({
   id: name.toLowerCase().replaceAll(' ', '-'),
   family: name,
-  category
+  category,
+  weights: [400, 700],
+  styles: ['normal']
 })
 
 const FAMILIES = [
@@ -66,5 +73,15 @@ describe('readPickedFamilyName', () => {
     expect(readPickedFamilyName('"Playfair Display", serif')).toBe('Playfair Display')
     expect(readPickedFamilyName('Inter, system-ui, sans-serif')).toBe('Inter')
     expect(readPickedFamilyName('')).toBe('')
+  })
+})
+
+describe('findPickedFamily', () => {
+  it('finds the family a font list starts with, whatever the case', () => {
+    expect(findPickedFamily(FAMILIES, '"playfair display", serif')?.id).toBe('playfair-display')
+  })
+
+  it('finds nothing for a family the list does not have', () => {
+    expect(findPickedFamily(FAMILIES, 'Georgia, serif')).toBeUndefined()
   })
 })

@@ -2,6 +2,8 @@ import { DEFAULT_NODE_PROPERTIES, MAX_LINE_HEIGHT, MIN_LINE_HEIGHT } from '@desi
 import { describe, expect, it } from 'vitest'
 import {
   FONT_WEIGHT_OPTIONS,
+  getFontWeightOptions,
+  isItalicAvailable,
   readFontWeight,
   readLetterSpacingInput,
   readLineHeightInput,
@@ -93,5 +95,44 @@ describe('readLineHeightInput', () => {
 
   it.each(['', '  ', 'abc', 'Infinity', 'NaN'])('leaves the property alone for %j', (raw) => {
     expect(readLineHeightInput(raw)).toBeUndefined()
+  })
+})
+
+describe('getFontWeightOptions', () => {
+  const values = (available: readonly number[], current: number) =>
+    getFontWeightOptions(available, current).map((option) => option.value)
+
+  it('offers every weight when the family does not say which it has', () => {
+    expect(values([], 400)).toEqual(FONT_WEIGHT_OPTIONS.map((option) => option.value))
+  })
+
+  it('offers only the weights the family has', () => {
+    expect(values([400, 700], 400)).toEqual([400, 700])
+  })
+
+  it('keeps the weight a node already has, so the select never shows a blank', () => {
+    expect(values([400, 700], 300)).toEqual([300, 400, 700])
+  })
+
+  it('names the weights as type designers do', () => {
+    expect(getFontWeightOptions([700], 700)).toEqual([{ value: 700, label: 'Bold' }])
+  })
+})
+
+describe('isItalicAvailable', () => {
+  it('is true when the family does not say which styles it has', () => {
+    expect(isItalicAvailable([], 'normal')).toBe(true)
+  })
+
+  it('is false for a family with upright faces only', () => {
+    expect(isItalicAvailable(['normal'], 'normal')).toBe(false)
+  })
+
+  it('is true for a family with an italic face', () => {
+    expect(isItalicAvailable(['normal', 'italic'], 'normal')).toBe(true)
+  })
+
+  it('stays true for a text that is italic already, so it can be turned off', () => {
+    expect(isItalicAvailable(['normal'], 'italic')).toBe(true)
   })
 })

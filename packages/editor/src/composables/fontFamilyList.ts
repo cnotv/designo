@@ -1,6 +1,6 @@
 import { loadFontFamilyList } from '@designo/fonts'
 import type { FontsourceFamilySummary } from '@designo/storage'
-import { readonly, ref, shallowRef } from 'vue'
+import { computed, readonly, ref, shallowRef } from 'vue'
 
 type FamilyListStatus = 'idle' | 'loading' | 'ready' | 'failed'
 
@@ -26,7 +26,9 @@ const load = async (): Promise<void> => {
  * after a failure.
  */
 export const useFontFamilyList = () => ({
-  families: readonly(families),
+  // Not `readonly(families)`, which would make every family deeply readonly and so untypeable
+  // as the plain objects the editing helpers take.
+  families: computed(() => families.value),
   status: readonly(status),
   load
 })

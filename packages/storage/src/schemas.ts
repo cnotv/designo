@@ -312,7 +312,16 @@ export const fontsourceFamilySchema = z.object({
   variants: z.record(z.string(), z.record(z.string(), z.record(z.string(), fontsourceFilesSchema)))
 })
 
-/** The families the Fontsource API lists, each with what a font picker needs to show it. */
+/**
+ * The families the Fontsource API lists, each with what a font picker needs to show it. The
+ * weights and styles are empty when the list does not say, which the editor reads as unknown.
+ */
 export const fontsourceFamilyListSchema = z.array(
-  z.object({ id: z.string().min(1), family: z.string().min(1), category: z.string() })
+  z.object({
+    id: z.string().min(1),
+    family: z.string().min(1),
+    category: z.string(),
+    weights: z.array(z.number()).default([]),
+    styles: z.array(z.string()).default([])
+  })
 )

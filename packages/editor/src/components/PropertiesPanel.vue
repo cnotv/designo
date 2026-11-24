@@ -10,7 +10,7 @@ import {
   Plus,
   Trash2
 } from 'lucide-vue-next'
-import { computed, type Component } from 'vue'
+import { computed, watch, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,6 +27,8 @@ import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
+import { useFontFamilyList } from '../composables/fontFamilyList.ts'
+import { findPickedFamily } from '../editing/fontPicker.ts'
 import {
   LAYOUT_ALIGN_OPTIONS,
   LAYOUT_CROSS_ALIGN_OPTIONS,
@@ -39,7 +41,8 @@ import {
 } from '../editing/autoLayout.ts'
 import { readPdfPageInput } from '../editing/pdfPage.ts'
 import {
-  FONT_WEIGHT_OPTIONS,
+  getFontWeightOptions,
+  isItalicAvailable,
   readFontWeight,
   readLetterSpacingInput,
   readLineHeightInput,
@@ -94,6 +97,29 @@ const node = computed(() => {
     ? editor.document.value?.nodes[nodeId]
     : undefined
 })
+
+const fontFamilyList = useFontFamilyList()
+
+// The list says which weights and styles a family has; it loads once, when a text is selected.
+watch(
+  () => node.value?.type === 'text',
+  (isText) => {
+    if (isText) void fontFamilyList.load()
+  },
+  { immediate: true }
+)
+
+const pickedFamily = computed(() =>
+  node.value ? findPickedFamily(fontFamilyList.families.value, node.value.fontFamily) : undefined
+)
+
+const fontWeightOptions = computed(() =>
+  node.value ? getFontWeightOptions(pickedFamily.value?.weights ?? [], node.value.fontWeight) : []
+)
+
+const italicAvailable = computed(() =>
+  node.value ? isItalicAvailable(pickedFamily.value?.styles ?? [], node.value.fontStyle) : true
+)
 
 const parentNode = computed(() =>
   node.value?.parentId ? editor.document.value?.nodes[node.value.parentId] : undefined
@@ -387,7 +413,7 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             </SelectTrigger>
             <SelectContent>
               <SelectItem
-                v-for="option in FONT_WEIGHT_OPTIONS"
+                v-for="option in fontWeightOptions"
                 :key="option.value"
                 :value="String(option.value)"
               >
@@ -399,6 +425,7 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             size="sm"
             aria-label="Italic"
             title="Italic"
+            :disabled="!italicAvailable"
             :model-value="node.fontStyle === 'italic'"
             @update:model-value="update({ fontStyle: $event ? 'italic' : 'normal' })"
           >

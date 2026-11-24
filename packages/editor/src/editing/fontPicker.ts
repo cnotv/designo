@@ -57,3 +57,17 @@ export const toFontFamilyValue = (family: FontsourceFamilySummary): string => {
  */
 export const readPickedFamilyName = (fontFamily: string): string =>
   parseFontFamilyList(fontFamily)[0] ?? ''
+
+/**
+ * Finds the list entry of the family a node draws with.
+ * @param families - Every family the font list has.
+ * @param fontFamily - A node's `fontFamily`.
+ * @returns The entry, or undefined for a family the list does not have, such as Georgia.
+ */
+export const findPickedFamily = (
+  families: readonly FontsourceFamilySummary[],
+  fontFamily: string
+): FontsourceFamilySummary | undefined => {
+  const name = readPickedFamilyName(fontFamily).toLowerCase()
+  return families.find((entry) => entry.family.toLowerCase() === name)
+}
