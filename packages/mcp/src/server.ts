@@ -17,6 +17,7 @@ import {
   operationBatchSchema,
   pageSetupSchema
 } from '@designo/storage'
+import { addImageTool } from './addImage.ts'
 import {
   applyOperationsTool,
   createFileTool,
@@ -36,6 +37,8 @@ const SERVER_VERSION = '0.0.0'
 const MAX_TREE_DEPTH = 50
 const MAX_MEASURED_TEXT_LENGTH = 100_000
 const MAX_FONT_FAMILY_LENGTH = 200
+// A 20 MB picture is about 28 million characters of base64.
+const MAX_IMAGE_BASE64_LENGTH = 28_000_000
 
 const toToolResult = async (work: () => Promise<unknown>): Promise<CallToolResult> => {
   try {
@@ -190,6 +193,24 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
       toToolResult(() =>
         applyOperationsTool(context, { fileId, operations: [{ kind: 'create', ...operation }] })
       )
+  )
+  server.registerTool(
+    'add_image',
+    {
+      description:
+        'Store a picture (PNG, JPEG, WebP or GIF, at most 20 MB, sent as base64) and place it as an image node under a page, frame or group. It is stretched to the node box, so give the width or the height alone to keep its proportions; with neither it takes its own size in pixels. Coordinates are absolute on the page. Returns assetId, which another image node can use as its imageAsset, the new nodeId, and its size. Screenshots, SVG and PDF include the picture.',
+      inputSchema: {
+        fileId: fileIdSchema,
+        parentId: nodeIdSchema,
+        data: z.string().min(1).max(MAX_IMAGE_BASE64_LENGTH),
+        name: z.string().max(200).optional(),
+        x: z.number().optional(),
+        y: z.number().optional(),
+        width: z.number().positive().optional(),
+        height: z.number().positive().optional()
+      }
+    },
+    (input) => toToolResult(() => addImageTool(context, input))
   )
   server.registerTool(
     'update_node',

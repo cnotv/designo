@@ -17,19 +17,19 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 
 ## Packages
 
-| Package             | Status  | Role                                                                                      |
-| ------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `@designo/core`     | built   | Document model, operations, queries. Pure: no DOM, no I/O                                 |
-| `@designo/storage`  | built   | Validated, atomic file reads and writes; the operation schema; applying a batch to a file |
-| `@designo/mcp`      | built   | MCP server for agents (stdio)                                                             |
-| `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP         |
-| `@designo/exporter` | built   | Pure SVG export of a node, and a PDF of a document (pdfkit, `@designo/exporter/pdf`)      |
-| `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files    |
-| `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it |
-| `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI             |
-| `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11)          |
-| `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                             |
-| `exporter` (rest)   | phase 4 | Vue/HTML code, PDF bleed, trim and CMYK                                                   |
+| Package             | Status  | Role                                                                                                         |
+| ------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `@designo/core`     | built   | Document model, operations, queries. Pure: no DOM, no I/O                                                    |
+| `@designo/storage`  | built   | Validated, atomic file reads and writes; the picture store; the operation schema; applying a batch to a file |
+| `@designo/mcp`      | built   | MCP server for agents (stdio)                                                                                |
+| `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP                            |
+| `@designo/exporter` | built   | Pure SVG export of a node, and a PDF of a document (pdfkit, `@designo/exporter/pdf`)                         |
+| `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files                       |
+| `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it                    |
+| `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI                                |
+| `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11)                             |
+| `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                                                |
+| `exporter` (rest)   | phase 4 | Vue/HTML code, PDF bleed, trim and CMYK                                                                      |
 
 ## Document model
 
@@ -334,6 +334,7 @@ test in `migrations.test.ts` with a sample of the old file.
 | 2       | A node turns around its centre; rotated nodes move so they are drawn exactly where they were                       | `migrateRotationPivot.ts`  |
 | 3       | Every node carries `textAlign`, `lineHeight` and `textWrap`; old files get the defaults, which draw text as before | `migrateTextProperties.ts` |
 | 8       | Every node carries `pageUnit`, `bleed`, `facing` and `guides`; old files get no bleed and no guides                | `migratePageSetup.ts`      |
+| 9       | Every node carries `imageAsset`, for the image node; old files get none, so they draw as before                    | `migrateImages.ts`         |
 
 A new property every node carries needs a version, even with a default: the stored schema requires
 every property, so version 3 added `textAlign` (`left`), `lineHeight` (`1.2`) and `textWrap`
@@ -345,6 +346,18 @@ break only at newlines; with `textWrap` true the `width` is a wrap width, which 
 `@designo/text` breaks lines at. The SVG exporter has no shaper of its own: it breaks a fixed-width
 text where the `getTextLines` option says, and the MCP server fills that from the layout engine.
 Without the option it aligns lines inside the `width` but never wraps them.
+
+## Pictures
+
+An image node holds `imageAsset`, the id of a picture in the asset store, never the bytes. The
+store is the `assets/` folder of the data directory, and an id is the SHA-256 of the file plus its
+type (`<64 hex>.png`), so the same picture is kept once. `writeAsset` in `@designo/storage` decides
+the type from the file's first bytes, caps the size at 20 MB and refuses everything but PNG, JPEG,
+WebP and GIF, so no script can be stored as a picture. The editor server reaches the store at
+`/api/files/assets` (POST an image, GET `assets/<id>`), and the MCP `add_image` tool writes to it
+directly. A renderer that cannot read the picture draws the node's fill. The SVG exporter takes
+a `getImageHref` option and the PDF exporter a `getImageBytes` one; the MCP server fills both from
+the store, and the editor draws from `/api/files/assets` through an in-memory cache.
 
 ## Decisions
 

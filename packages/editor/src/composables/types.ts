@@ -1,4 +1,10 @@
-import type { DesignDocument, DesignNode, DesignNodePatch, DesignOperation } from '@designo/core'
+import type {
+  DesignDocument,
+  DesignNode,
+  DesignNodePatch,
+  DesignOperation,
+  StationeryTemplate
+} from '@designo/core'
 import type { DocumentSummary } from '@designo/storage'
 import type { ComputedRef, Ref } from 'vue'
 import type {
@@ -39,6 +45,8 @@ export interface Editor {
   showPage: (pageId: string) => void
   /** Adds a page after the others and shows it. */
   addPage: () => void
+  /** Adds a page laid out from a stationery template and shows it. */
+  addPageFromTemplate: (template: StationeryTemplate) => void
   renamePage: (pageId: string, name: string) => void
   movePage: (pageId: string, direction: -1 | 1) => void
   /** Deletes a page with its layers; the only page is kept. */

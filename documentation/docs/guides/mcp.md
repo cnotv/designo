@@ -172,11 +172,19 @@ text, when a text's fonts cannot be found, rather than leaving the text out.
 | `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                          |
 | `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts     |
 | `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                  |
-| `create_node`       | Creates one frame, group, rectangle, ellipse or text node                                                      |
+| `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                               |
+| `add_image`         | Stores a PNG, JPEG, WebP or GIF sent as base64 and places it as an image node; returns `assetId`               |
 | `update_node`       | Changes some properties of one node                                                                            |
 | `delete_node`       | Deletes a node and everything inside it                                                                        |
 | `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                |
 | `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, delete, move and component operations as one change |
+
+`add_image` takes the picture as base64 `data` (at most 20 MB), because a path or a URL would let
+an agent read files from, or make requests as, the machine the server runs on. Give `width` or
+`height` alone to keep the picture's proportions; with neither it takes its own size in pixels.
+It returns `assetId`, which an image node's `imageAsset` property holds, so a picture added once
+can be placed again with `create_node` or `apply_ops`. The server decides the type from the
+file's first bytes, never from a name, and refuses anything that is not one of the four.
 
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in
 the same batch can nest inside them. If any operation fails, nothing is saved.

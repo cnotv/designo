@@ -542,4 +542,55 @@ describe('exportNodeToSvg', () => {
   it('exports an empty page as a 1x1 canvas instead of an invalid svg', () => {
     expect(exportNodeToSvg(build([]), 'page')).toContain('viewBox="0 0 1 1"')
   })
+
+  describe('images', () => {
+    const IMAGE_ID = `${'a'.repeat(64)}.png`
+    const imageDocument = (properties: Record<string, unknown> = {}): DesignDocument =>
+      build([
+        {
+          kind: 'create',
+          id: 'photo',
+          type: 'image',
+          parentId: 'page',
+          properties: {
+            x: 10,
+            y: 20,
+            width: 120,
+            height: 80,
+            imageAsset: IMAGE_ID,
+            ...properties
+          }
+        }
+      ])
+
+    it('draws the picture stretched to the box, from the href it is given', () => {
+      const svg = exportNodeToSvg(imageDocument(), 'photo', {
+        getImageHref: (assetId) => (assetId === IMAGE_ID ? 'data:image/png;base64,AAAA' : undefined)
+      })
+      expect(svg).toContain(
+        '<image x="10" y="20" width="120" height="80" preserveAspectRatio="none" href="data:image/png;base64,AAAA"/>'
+      )
+    })
+
+    it('turns and fades the picture with the node', () => {
+      const svg = exportNodeToSvg(imageDocument({ opacity: 0.5, rotation: 90 }), 'photo', {
+        getImageHref: () => 'data:image/png;base64,AAAA'
+      })
+      expect(svg).toContain('opacity="0.5"')
+      expect(svg).toContain('transform="rotate(90 70 60)"')
+    })
+
+    it('draws the fill as a placeholder when the picture is not available', () => {
+      const svg = exportNodeToSvg(imageDocument(), 'photo')
+      expect(svg).not.toContain('<image')
+      expect(svg).toContain('<rect x="10" y="20" width="120" height="80" fill="#d9d9d9"/>')
+    })
+
+    it('escapes the href so a value cannot break out of the attribute', () => {
+      const svg = exportNodeToSvg(imageDocument(), 'photo', {
+        getImageHref: () => 'x" onload="alert(1)'
+      })
+      expect(svg).not.toContain('onload="alert(1)"')
+    })
+  })
 })

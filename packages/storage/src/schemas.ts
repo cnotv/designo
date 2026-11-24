@@ -86,6 +86,11 @@ const guidesSchema = z
   )
   .nullable()
 
+/** A stored picture's id: the SHA-256 of its bytes, then its type. */
+export const assetIdSchema = z
+  .string()
+  .regex(/^[\da-f]{64}\.(?:png|jpg|webp|gif)$/, 'An asset id, as add_image returns it')
+
 export const nodePatchSchema = z
   .object({
     name: z.string().max(200),
@@ -104,6 +109,11 @@ export const nodePatchSchema = z
     stroke: colorSchema,
     strokeWidth: z.number().min(0),
     cornerRadius: z.number().min(0),
+    imageAsset: assetIdSchema
+      .nullable()
+      .describe(
+        'Images only: the id add_image returned for a stored picture. The picture is stretched to the width and height. null shows the fill as a placeholder.'
+      ),
     text: z.string().max(MAX_TEXT_LENGTH),
     fontSize: z.number().positive(),
     fontFamily: z.string().max(200),
@@ -231,7 +241,7 @@ const storedNodeSchema = nodePatchSchema
   .extend(componentLinksSchema.shape)
   .extend({
     id: nodeIdSchema,
-    type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'text']),
+    type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'text', 'image']),
     parentId: nodeIdSchema.nullable(),
     order: z.number()
   })
@@ -248,7 +258,14 @@ export const documentSummaryListSchema = z.array(
   z.object({ id: fileIdSchema, name: z.string(), nodeCount: z.number() })
 )
 
-export const creatableNodeTypeSchema = z.enum(['frame', 'group', 'rectangle', 'ellipse', 'text'])
+export const creatableNodeTypeSchema = z.enum([
+  'frame',
+  'group',
+  'rectangle',
+  'ellipse',
+  'text',
+  'image'
+])
 
 export const operationInputSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -312,7 +329,16 @@ export const fontsourceFamilySchema = z.object({
   variants: z.record(z.string(), z.record(z.string(), z.record(z.string(), fontsourceFilesSchema)))
 })
 
-/** The families the Fontsource API lists, each with what a font picker needs to show it. */
+/**
+ * The families the Fontsource API lists, each with what a font picker needs to show it. The
+ * weights and styles are empty when the list does not say, which the editor reads as unknown.
+ */
 export const fontsourceFamilyListSchema = z.array(
-  z.object({ id: z.string().min(1), family: z.string().min(1), category: z.string() })
+  z.object({
+    id: z.string().min(1),
+    family: z.string().min(1),
+    category: z.string(),
+    weights: z.array(z.number()).default([]),
+    styles: z.array(z.string()).default([])
+  })
 )

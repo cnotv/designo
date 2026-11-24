@@ -13,13 +13,25 @@ describe('loadFontFamilyList', () => {
       Promise.resolve(
         answer(200, [
           { id: 'lora', family: 'Lora', category: 'serif', subsets: ['latin'] },
-          { id: 'caveat', family: 'Caveat', category: 'handwriting', weights: [400] }
+          {
+            id: 'caveat',
+            family: 'Caveat',
+            category: 'handwriting',
+            weights: [400],
+            styles: ['normal', 'italic']
+          }
         ])
       )
     )
     expect(families).toEqual([
-      { id: 'caveat', family: 'Caveat', category: 'handwriting' },
-      { id: 'lora', family: 'Lora', category: 'serif' }
+      {
+        id: 'caveat',
+        family: 'Caveat',
+        category: 'handwriting',
+        weights: [400],
+        styles: ['normal', 'italic']
+      },
+      { id: 'lora', family: 'Lora', category: 'serif', weights: [], styles: [] }
     ])
   })
 

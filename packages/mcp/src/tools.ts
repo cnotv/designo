@@ -24,6 +24,7 @@ import { toTextLayoutRequest } from '@designo/text'
 import { layoutTextWithFontsourceFonts } from './textLayout.ts'
 import { findTextBoxFits, inferFixedWidth } from './fitTextBoxes.ts'
 import { findOutsideParentWarnings } from './outsideParentWarnings.ts'
+import { loadDocumentImages, loadSubtreeImages, toImageLookups } from './images.ts'
 import { rasterizeSvgToPng } from './rasterize.ts'
 import { loadScreenshotFonts } from './screenshotFonts.ts'
 import type {
@@ -185,7 +186,9 @@ export const exportSvgTool = async (
   const document = await readDocument(context.dataDirectory, input.fileId)
   const nodeId = input.nodeId ?? document.rootId
   return exportNodeToSvg(document, nodeId, {
-    getTextLines: await findTextLines(context, document, nodeId)
+    getTextLines: await findTextLines(context, document, nodeId),
+    getImageHref: toImageLookups(await loadSubtreeImages(context.dataDirectory, document, nodeId))
+      .getImageHref
   })
 }
 
@@ -212,12 +215,14 @@ export const exportPdfTool = async (
         .map(async (node) => [node.id, await layoutText(toTextLayoutRequest(node))] as const)
     )
   )
+  const lookups = toImageLookups(await loadDocumentImages(context.dataDirectory, document))
   const bytes = await exportDocumentToPdf(document, {
+    ...lookups,
     getTextLayout: (node) => layouts.get(node.id),
     getFontBytes: context.getFontBytes ?? layoutTextWithFontsourceFonts.getFontBytes,
     rasterizeNode: async (nodeId) => {
       const outcome = await (context.rasterize ?? rasterizeSvgToPng)(
-        exportNodeToSvg(document, nodeId),
+        exportNodeToSvg(document, nodeId, { getImageHref: lookups.getImageHref }),
         PDF_RASTER_SCALE,
         []
       )
@@ -260,7 +265,9 @@ export const getScreenshotTool = async (
   const svg = exportNodeToSvg(document, nodeId, {
     resolveFontFamily: fonts.resolveFontFamily,
     getFontMetrics: fonts.getFontMetrics,
-    getTextLines: await findTextLines(context, document, nodeId)
+    getTextLines: await findTextLines(context, document, nodeId),
+    getImageHref: toImageLookups(await loadSubtreeImages(context.dataDirectory, document, nodeId))
+      .getImageHref
   })
   const outcome = await (context.rasterize ?? rasterizeSvgToPng)(svg, input.scale ?? 1, fonts.files)
   if (!outcome.ok) throw new Error(outcome.message)

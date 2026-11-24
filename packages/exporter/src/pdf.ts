@@ -232,6 +232,26 @@ const drawRaster = (context: ExportContext, node: DesignNode, image: Uint8Array)
   })
 }
 
+// PNG and JPEG are embedded as they are; the PDF library reads no other type.
+const EMBEDDABLE_IMAGE = /\.(?:png|jpg)$/
+
+const isEmbeddableImage = (node: DesignNode): boolean =>
+  node.imageAsset !== null && EMBEDDABLE_IMAGE.test(node.imageAsset)
+
+const drawImage = (context: ExportContext, node: DesignNode, opacity: number): void => {
+  const bytes =
+    node.imageAsset === null ? undefined : context.options.getImageBytes?.(node.imageAsset)
+  if (!bytes || !isEmbeddableImage(node)) {
+    paintFill(context, node, opacity)
+    return
+  }
+  setGraphicsState(context, opacity, 'normal')
+  context.pdf.image(new Uint8Array(bytes).buffer, node.x, node.y, {
+    width: node.width,
+    height: node.height
+  })
+}
+
 const drawChildren = (context: ExportContext, node: DesignNode, opacity: number): void =>
   getChildren(context.document, node.id).forEach((child) => drawNode(context, child, opacity))
 
@@ -250,6 +270,7 @@ const drawNode = (context: ExportContext, node: DesignNode, inheritedOpacity: nu
   } else {
     applyRotation(context, node)
     if (node.type === 'text') drawText(context, node, opacity)
+    else if (node.type === 'image') drawImage(context, node, opacity)
     else if (node.type === 'page' || node.type === 'group') drawChildren(context, node, opacity)
     else {
       paintFill(context, node, opacity)
@@ -275,6 +296,10 @@ const getPdfPages = (document: DesignDocument): DesignNode[] => {
   return marked.length > 0 ? marked : getPageNodes(document)
 }
 
+// A WebP or a GIF is drawn to a PNG with the other nodes that need an image.
+const isRasterImage = (node: DesignNode): boolean =>
+  node.type === 'image' && node.imageAsset !== null && !isEmbeddableImage(node)
+
 const rasterizeEffects = async (
   document: DesignDocument,
   options: PdfExportOptions
@@ -285,7 +310,7 @@ const rasterizeEffects = async (
     .flatMap((page) => getSubtreeIds(document, page.id))
     .flatMap((id) => {
       const node = document.nodes[id]
-      return node?.visible && hasFilter(node) ? [node] : []
+      return node?.visible && (hasFilter(node) || isRasterImage(node)) ? [node] : []
     })
   const images = await Promise.all(nodes.map((node) => rasterizeNode(node.id)))
   return new Map(

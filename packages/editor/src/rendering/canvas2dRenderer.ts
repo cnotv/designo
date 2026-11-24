@@ -1,6 +1,7 @@
 import { getFillGradient, getGradientLine, hasLayerEffects, type DesignNode } from '@designo/core'
 import { getBoundsCenter } from '../editing/rotation.ts'
 import { paintText } from './fallbackText.ts'
+import { getLoadedImage } from './imageCache.ts'
 import { prepareCanvas } from './prepareCanvas.ts'
 import type { Scene, SceneItem, SceneRenderer } from './types.ts'
 
@@ -96,6 +97,17 @@ const paintShape = (
   }
 }
 
+// A picture still loading draws as its fill, which the shape path paints.
+const paintImage = (
+  context: CanvasRenderingContext2D,
+  node: DesignNode,
+  devicePixelsPerUnit: number
+): void => {
+  const picture = node.imageAsset ? getLoadedImage(node.imageAsset) : undefined
+  if (picture) context.drawImage(picture, 0, 0, node.width, node.height)
+  else paintShape(context, node, devicePixelsPerUnit)
+}
+
 // Rotation turns a node around its centre, so its box stays where it is while the node spins.
 const moveToNodeOrigin = (context: CanvasRenderingContext2D, node: DesignNode): void => {
   const center = getBoundsCenter(node)
@@ -124,6 +136,7 @@ const paintSceneItem = (
   context.globalAlpha = node.opacity
   moveToNodeOrigin(context, node)
   if (node.type === 'text') paintText(context, node)
+  else if (node.type === 'image') paintImage(context, node, devicePixelsPerUnit)
   else paintShape(context, node, devicePixelsPerUnit)
   context.restore()
 }

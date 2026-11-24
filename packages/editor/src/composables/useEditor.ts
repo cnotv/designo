@@ -3,10 +3,12 @@ import {
   getChildren,
   getPageNodes,
   getPaintOrder,
+  getTemplateOperations,
   invertOperations,
   type DesignDocument,
   type DesignNodePatch,
-  type DesignOperation
+  type DesignOperation,
+  type StationeryTemplate
 } from '@designo/core'
 import { computed, ref, watch, type Ref } from 'vue'
 import { createAlignOperations, createDistributeOperations } from '../editing/alignment.ts'
@@ -276,6 +278,12 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
     if (document.value) action(document.value)
   }
 
+  // The first operation of a page batch creates the page, which is the one to show.
+  const addPageAndShow = (operations: readonly DesignOperation[]): void => {
+    const [pageOperation] = operations
+    if (pageOperation && commit(operations)) showPageById(pageOperation.id)
+  }
+
   const showPageById = (pageId: string): void => {
     if (pageId === activePageId.value) return
     chosenPageId.value = pageId
@@ -333,10 +341,9 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
         commit(createPropertyOperations(current, nodeId, patch, measureTextBox))
       ),
     showPage: showPageById,
-    addPage: () => {
-      const pageId = createNodeId('page')
-      if (commit(createAddPageOperations(pageId))) showPageById(pageId)
-    },
+    addPage: () => addPageAndShow(createAddPageOperations(createNodeId('page'))),
+    addPageFromTemplate: (template: StationeryTemplate) =>
+      addPageAndShow(getTemplateOperations(template, createNodeId)),
     renamePage: (pageId: string, name: string) =>
       withWholeDocument((current) => commit(createRenamePageOperations(current, pageId, name))),
     movePage: (pageId: string, direction: -1 | 1) =>

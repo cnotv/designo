@@ -37,6 +37,7 @@ come from the server's settings.
 | Rectangle | R   | Draw a rectangle                                  |
 | Ellipse   | O   | Draw an ellipse                                   |
 | Text      | T   | Click to place text, then type it on the canvas   |
+| Image     |     | The **Add image** button opens a file chooser     |
 
 Drag to draw; a click without a drag draws at a default size. Hold Shift for a square or a
 circle. After drawing, the editor returns to Move.
@@ -76,8 +77,10 @@ circle. After drawing, the editor returns to Move.
   weight list (Thin to Black) and an Italic button, four buttons to align its lines left, centre,
   right or justified inside its width, and **Auto width** or **Fixed width**. Justified text
   stretches the spaces of every wrapped line except the last of each paragraph, so it needs a
-  fixed width. The weight and style load that file of the family from Fontsource, the nearest one
-  when the family lacks it. An auto-width box follows its words and
+  fixed width. The weight and style load that file of the family from Fontsource. The weight list
+  offers only the weights the family has, and Italic is off for a family with no italic face; a
+  family the font list does not know, such as Georgia, offers all nine, and the nearest weight is
+  drawn. An auto-width box follows its words and
   never wraps them; a fixed-width box keeps its width and wraps its lines there. Typing a width
   into a text layer makes it fixed-width, and choosing **Auto width** fits the box to the words
   again. Each change is one undo step, and the in-place text editor follows the alignment, line
@@ -167,6 +170,10 @@ canvas, the layers, selection and export all work on the page you pick; the othe
 
 - **Switch:** click a page. The view fits the new page and the selection clears.
 - **Add:** the **Add page** button puts a new page after the others and shows it.
+- **From a template:** the **Add page from a template** button next to it lists stationery
+  layouts: a letterhead on A4, a business card, a DL envelope and a postcard. Each adds a page
+  holding a white frame at the standard size, in millimetres, with placeholder text and shapes to
+  type over. The page is one undo step.
 - **Rename:** double-click a page, or choose **Rename** from its menu; Enter keeps the name and
   Escape drops it.
 - **Reorder:** **Move earlier** and **Move later** in the page's menu.
@@ -178,6 +185,20 @@ canvas, the layers, selection and export all work on the page you pick; the othe
 Each of these is one undoable step, and agents see the same operations (`createPage`,
 `reorderPage` and `delete`). A page is not a printed page: frames set up as pages for print live
 on a design page, as the next section describes.
+
+## Images
+
+**Add image** in the toolbar opens a file chooser for a PNG, JPEG, WebP or GIF of up to 20 MB.
+The picture is sent to the server's picture store and placed in the middle of the view, inside
+the frame there if there is one, at its own size or smaller so its longer side is at most 400
+units. It is an ordinary layer: move, resize, rotate, fade and reorder it. The picture is
+stretched to the layer's box, so hold the proportions yourself when you resize. **Replace image**
+in its properties swaps the picture. A picture that has not loaded yet shows the layer's fill.
+
+The file is kept once under the hash of its bytes in `assets/` in the data directory, however
+many layers use it. Pictures need the server: the static demo has no store, so its button is off.
+SVG and PDF export and `get_screenshot` include pictures. The PDF embeds PNG and JPEG as they
+are and draws WebP and GIF as images through the same rasteriser that draws a blurred layer.
 
 ## Pages, units and guides
 

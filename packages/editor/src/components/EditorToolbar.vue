@@ -1,12 +1,23 @@
 <script setup lang="ts">
-import { Circle, Frame, Maximize, MousePointer2, Redo2, Square, Type, Undo2 } from 'lucide-vue-next'
-import { computed, type Component } from 'vue'
+import {
+  Circle,
+  Frame,
+  ImagePlus,
+  Maximize,
+  MousePointer2,
+  Redo2,
+  Square,
+  Type,
+  Undo2
+} from 'lucide-vue-next'
+import { computed, useTemplateRef, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEditorContext } from '../composables/editorContext.ts'
+import { useImageInsertion } from '../composables/useImageInsertion.ts'
 import type { SignedInAccount, Tool } from '../editing/types.ts'
 import AccountMenu from './AccountMenu.vue'
 
@@ -17,6 +28,18 @@ const { editor, files } = useEditorContext()
 const { isDemo, saveError } = files
 
 const PERCENT = 100
+const IMAGE_TYPES = 'image/png,image/jpeg,image/webp,image/gif'
+
+const { insertImageFile } = useImageInsertion(editor, files)
+const imageInput = useTemplateRef<HTMLInputElement>('imageInput')
+
+const onImageChosen = (event: Event): void => {
+  const input = event.target as HTMLInputElement
+  const [file] = input.files ?? []
+  // Cleared so the same file can be chosen again after it is removed.
+  input.value = ''
+  if (file) void insertImageFile(file)
+}
 
 const tools: { tool: Tool; label: string; shortcut: string; icon: Component }[] = [
   { tool: 'select', label: 'Move', shortcut: 'V', icon: MousePointer2 },
@@ -54,6 +77,28 @@ const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PER
         </TooltipContent>
       </Tooltip>
     </ToggleGroup>
+    <Tooltip>
+      <TooltipTrigger as-child>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Add image"
+          :disabled="isDemo"
+          @click="imageInput?.click()"
+        >
+          <ImagePlus />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{{ isDemo ? 'Images need the Designo server' : 'Add image' }}</TooltipContent>
+    </Tooltip>
+    <input
+      ref="imageInput"
+      type="file"
+      class="hidden"
+      :accept="IMAGE_TYPES"
+      aria-label="Image file"
+      @change="onImageChosen"
+    />
     <Separator orientation="vertical" class="h-6!" />
     <Tooltip>
       <TooltipTrigger as-child>

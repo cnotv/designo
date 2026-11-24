@@ -4,6 +4,7 @@ import {
   MIN_LETTER_SPACING,
   MIN_LINE_HEIGHT,
   type DesignNode,
+  type FontStyle,
   type TextAlign
 } from '@designo/core'
 import type { TextWidthMode } from './types.ts'
@@ -29,6 +30,34 @@ export const FONT_WEIGHT_OPTIONS: readonly { value: number; label: string }[] = 
   { value: 800, label: 'Extra bold' },
   { value: 900, label: 'Black' }
 ]
+
+/**
+ * The weights the weight select offers for a family.
+ * @param available - The weights the family has; empty when the font list does not say.
+ * @param current - The node's weight, kept in the list so the select never shows a blank.
+ * @returns The options, lightest first.
+ */
+export const getFontWeightOptions = (
+  available: readonly number[],
+  current: number
+): readonly { value: number; label: string }[] =>
+  available.length === 0
+    ? FONT_WEIGHT_OPTIONS
+    : FONT_WEIGHT_OPTIONS.filter(
+        (option) => option.value === current || available.includes(option.value)
+      )
+
+/**
+ * Says whether the italic toggle can turn italic on.
+ * @param availableStyles - The styles the family has; empty when the font list does not say.
+ * @param current - The node's style, so an italic text can always be turned back to upright.
+ * @returns False only for a family known to have no italic face.
+ */
+export const isItalicAvailable = (
+  availableStyles: readonly string[],
+  current: FontStyle
+): boolean =>
+  availableStyles.length === 0 || current === 'italic' || availableStyles.includes('italic')
 
 export const TEXT_WIDTH_MODE_OPTIONS: readonly { value: TextWidthMode; label: string }[] = [
   { value: 'auto', label: 'Auto width' },

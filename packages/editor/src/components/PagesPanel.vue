@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, FilePlus, MoreHorizontal, Pencil, Trash2 } from 'lucide-vue-next'
+import { STATIONERY_TEMPLATES } from '@designo/core'
+import {
+  ArrowDown,
+  ArrowUp,
+  FilePlus,
+  LayoutTemplate,
+  MoreHorizontal,
+  Pencil,
+  Trash2
+} from 'lucide-vue-next'
 import { nextTick, ref, useTemplateRef } from 'vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,9 +46,27 @@ const finishRename = (): void => {
   <section class="flex max-h-48 flex-col" aria-label="Pages">
     <div class="flex items-center justify-between px-3 pt-3 pb-1">
       <h2 class="text-muted-foreground font-semibold">Pages</h2>
-      <Button variant="ghost" size="icon-xs" aria-label="Add page" @click="editor.addPage()">
-        <FilePlus />
-      </Button>
+      <div class="flex items-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" size="icon-xs" aria-label="Add page from a template">
+              <LayoutTemplate />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" @close-auto-focus.prevent>
+            <DropdownMenuItem
+              v-for="template in STATIONERY_TEMPLATES"
+              :key="template.id"
+              @select="editor.addPageFromTemplate(template)"
+            >
+              {{ template.name }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" size="icon-xs" aria-label="Add page" @click="editor.addPage()">
+          <FilePlus />
+        </Button>
+      </div>
     </div>
     <ul class="min-h-0 overflow-y-auto px-1 pb-2">
       <li

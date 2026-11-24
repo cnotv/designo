@@ -10,7 +10,7 @@ import {
   Plus,
   Trash2
 } from 'lucide-vue-next'
-import { computed, type Component } from 'vue'
+import { computed, useTemplateRef, watch, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,6 +27,9 @@ import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
+import { useFontFamilyList } from '../composables/fontFamilyList.ts'
+import { useImageInsertion } from '../composables/useImageInsertion.ts'
+import { findPickedFamily } from '../editing/fontPicker.ts'
 import {
   LAYOUT_ALIGN_OPTIONS,
   LAYOUT_CROSS_ALIGN_OPTIONS,
@@ -39,7 +42,8 @@ import {
 } from '../editing/autoLayout.ts'
 import { readPdfPageInput } from '../editing/pdfPage.ts'
 import {
-  FONT_WEIGHT_OPTIONS,
+  getFontWeightOptions,
+  isItalicAvailable,
   readFontWeight,
   readLetterSpacingInput,
   readLineHeightInput,
@@ -54,7 +58,7 @@ import ExportSection from './ExportSection.vue'
 import FontPicker from './FontPicker.vue'
 import PageSetupSection from './PageSetupSection.vue'
 
-const { editor } = useEditorContext()
+const { editor, files } = useEditorContext()
 
 const PERCENT = 100
 const HEX_COLOR = /^#[\da-f]{6}$/i
@@ -94,6 +98,39 @@ const node = computed(() => {
     ? editor.document.value?.nodes[nodeId]
     : undefined
 })
+
+const { replaceImageFile } = useImageInsertion(editor, files)
+const replaceInput = useTemplateRef<HTMLInputElement>('replaceInput')
+
+const onReplacementChosen = (event: Event): void => {
+  const input = event.target as HTMLInputElement
+  const [file] = input.files ?? []
+  input.value = ''
+  if (file && node.value) void replaceImageFile(node.value.id, file)
+}
+
+const fontFamilyList = useFontFamilyList()
+
+// The list says which weights and styles a family has; it loads once, when a text is selected.
+watch(
+  () => node.value?.type === 'text',
+  (isText) => {
+    if (isText) void fontFamilyList.load()
+  },
+  { immediate: true }
+)
+
+const pickedFamily = computed(() =>
+  node.value ? findPickedFamily(fontFamilyList.families.value, node.value.fontFamily) : undefined
+)
+
+const fontWeightOptions = computed(() =>
+  node.value ? getFontWeightOptions(pickedFamily.value?.weights ?? [], node.value.fontWeight) : []
+)
+
+const italicAvailable = computed(() =>
+  node.value ? isItalicAvailable(pickedFamily.value?.styles ?? [], node.value.fontStyle) : true
+)
 
 const parentNode = computed(() =>
   node.value?.parentId ? editor.document.value?.nodes[node.value.parentId] : undefined
@@ -361,6 +398,30 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
         </div>
       </template>
 
+      <template v-if="node.type === 'image'">
+        <Separator />
+        <div class="flex flex-col gap-1.5">
+          <Label for="property-image">Image</Label>
+          <Button
+            id="property-image"
+            variant="outline"
+            size="sm"
+            :disabled="files.isDemo.value"
+            @click="replaceInput?.click()"
+          >
+            Replace image
+          </Button>
+          <input
+            ref="replaceInput"
+            type="file"
+            class="hidden"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            aria-label="Replacement image file"
+            @change="onReplacementChosen"
+          />
+        </div>
+      </template>
+
       <template v-if="node.type === 'text'">
         <Separator />
         <div class="flex flex-col gap-1.5">
@@ -387,7 +448,7 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             </SelectTrigger>
             <SelectContent>
               <SelectItem
-                v-for="option in FONT_WEIGHT_OPTIONS"
+                v-for="option in fontWeightOptions"
                 :key="option.value"
                 :value="String(option.value)"
               >
@@ -399,6 +460,7 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             size="sm"
             aria-label="Italic"
             title="Italic"
+            :disabled="!italicAvailable"
             :model-value="node.fontStyle === 'italic'"
             @update:model-value="update({ fontStyle: $event ? 'italic' : 'normal' })"
           >

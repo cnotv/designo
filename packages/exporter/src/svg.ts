@@ -306,6 +306,22 @@ const renderText = (node: DesignNode, options: SvgExportOptions): string => {
   ])}>${renderTextContent(node, options)}</text>`
 }
 
+const renderImage = (node: DesignNode, options: SvgExportOptions): string => {
+  const href = node.imageAsset === null ? undefined : options.getImageHref?.(node.imageAsset)
+  if (href === undefined) {
+    return renderRectangleShape(node, [paintAttributes(node), ...presentationAttributes(node)])
+  }
+  return `<image ${joinAttributes([
+    `x="${formatNumber(node.x)}"`,
+    `y="${formatNumber(node.y)}"`,
+    `width="${formatNumber(node.width)}"`,
+    `height="${formatNumber(node.height)}"`,
+    'preserveAspectRatio="none"',
+    `href="${escapeXml(href)}"`,
+    ...presentationAttributes(node)
+  ])}/>`
+}
+
 const wrapInGroup = (attributes: readonly string[], content: string): string =>
   attributes.length === 0 ? content : `<g ${joinAttributes(attributes)}>${content}</g>`
 
@@ -359,7 +375,8 @@ const renderNode = (
     rectangle: () =>
       `${renderDefinitions(node)}${renderRectangleShape(node, [paintAttributes(node), ...presentationAttributes(node)])}`,
     ellipse: () => renderEllipse(node),
-    text: () => renderText(node, options)
+    text: () => renderText(node, options),
+    image: () => renderImage(node, options)
   }
   return renderers[node.type]()
 }

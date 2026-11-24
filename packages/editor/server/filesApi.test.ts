@@ -104,4 +104,39 @@ describe('files API', () => {
     })
     expect(response.status).toBe(404)
   })
+
+  describe('pictures', () => {
+    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7])
+    const upload = (body: BodyInit, headers: Record<string, string> = {}) =>
+      fetch(`${baseUrl}/assets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/png', ...headers },
+        body
+      })
+
+    it('stores an uploaded picture and serves it back', async () => {
+      const { assetId } = await (await upload(png)).json()
+      const served = await fetch(`${baseUrl}/assets/${assetId}`)
+      expect(served.headers.get('content-type')).toBe('image/png')
+      expect(served.headers.get('x-content-type-options')).toBe('nosniff')
+      expect(new Uint8Array(await served.arrayBuffer())).toEqual(png)
+    })
+
+    it('refuses bytes that are not a picture, whatever the content type says', async () => {
+      expect((await upload('<svg onload="alert(1)">')).status).toBe(400)
+    })
+
+    it('refuses an upload that is not sent as an image', async () => {
+      expect((await upload(png, { 'Content-Type': 'text/plain' })).status).toBe(415)
+    })
+
+    it('refuses an upload from another site', async () => {
+      expect((await upload(png, { Origin: 'https://evil.example' })).status).toBe(403)
+    })
+
+    it('reports an unknown picture and a malformed id', async () => {
+      expect((await fetch(`${baseUrl}/assets/${'a'.repeat(64)}.png`)).status).toBe(404)
+      expect((await fetch(`${baseUrl}/assets/..%2Fsecret.png`)).status).toBe(404)
+    })
+  })
 })

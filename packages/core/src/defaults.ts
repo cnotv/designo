@@ -1,7 +1,7 @@
 import type { DesignNodeProperties } from './types.ts'
 
 /** The file format version this code writes. Bumping it needs one migration step in the storage package. */
-export const CURRENT_FORMAT_VERSION = 8
+export const CURRENT_FORMAT_VERSION = 9
 
 /** The range a text node's `lineHeight` may take, as a multiple of the font size. */
 export const MIN_LINE_HEIGHT = 0.5
@@ -45,6 +45,7 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   stroke: null,
   strokeWidth: 1,
   cornerRadius: 0,
+  imageAsset: null,
   text: '',
   fontSize: 16,
   fontFamily: 'Inter, system-ui, sans-serif',
