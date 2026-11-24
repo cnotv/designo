@@ -1,3 +1,4 @@
+import { millimetresToPoints } from './pageSetup.ts'
 import type { PaperSize, PageSetupInput } from './types.ts'
 
 /**
@@ -48,3 +49,23 @@ export const getPaperSizeSetup = (size: PaperSize): PageSetupInput => ({
   width: size.width,
   height: size.height
 })
+
+// A size matches when the stored points round to its millimetres; the page setup fields round
+// to two decimals, so an exact comparison would miss a size typed by hand.
+const POINT_TOLERANCE = 0.5
+
+/**
+ * The standard size a frame already is, in either unit, so the page setup can show it.
+ * @param widthInPoints - The frame's stored width.
+ * @param heightInPoints - The frame's stored height.
+ * @returns The matching size, or undefined for a custom size.
+ */
+export const findPaperSize = (
+  widthInPoints: number,
+  heightInPoints: number
+): PaperSize | undefined =>
+  PAPER_SIZES.find(
+    (size) =>
+      Math.abs(widthInPoints - millimetresToPoints(size.width)) < POINT_TOLERANCE &&
+      Math.abs(heightInPoints - millimetresToPoints(size.height)) < POINT_TOLERANCE
+  )

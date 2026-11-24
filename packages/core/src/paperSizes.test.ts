@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getPageSetupPatch, millimetresToPoints } from './pageSetup.ts'
-import { getPaperSizeSetup, PAPER_SIZES } from './paperSizes.ts'
+import { findPaperSize, getPaperSizeSetup, PAPER_SIZES } from './paperSizes.ts'
 import { DEFAULT_NODE_PROPERTIES } from './defaults.ts'
 import type { DesignNode } from './types.ts'
 
@@ -28,9 +28,31 @@ describe('PAPER_SIZES', () => {
     })
   })
 
-  it('puts A4 at 595.28 by 841.89 points, the size the document stores', () => {
-    expect(millimetresToPoints(210)).toBeCloseTo(595.28, 2)
-    expect(millimetresToPoints(297)).toBeCloseTo(841.89, 2)
+  it('has no two sizes close enough to be taken for each other', () => {
+    const everySizeFindsItself = PAPER_SIZES.every(
+      (size) =>
+        findPaperSize(millimetresToPoints(size.width), millimetresToPoints(size.height))?.id ===
+        size.id
+    )
+    expect(everySizeFindsItself).toBe(true)
+  })
+})
+
+describe('findPaperSize', () => {
+  it('finds A4 from the points the document stores', () => {
+    expect(findPaperSize(595.28, 841.89)?.id).toBe('a4')
+  })
+
+  it('finds A4 from a size typed by hand to two decimals', () => {
+    expect(findPaperSize(595.3, 841.9)?.id).toBe('a4')
+  })
+
+  it('leaves a custom size without a match', () => {
+    expect(findPaperSize(600, 800)).toBeUndefined()
+  })
+
+  it('does not match a landscape page', () => {
+    expect(findPaperSize(841.89, 595.28)).toBeUndefined()
   })
 })
 

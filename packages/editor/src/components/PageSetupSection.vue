@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {
   getPageSetupPatch,
+  findPaperSize,
   getPaperSizeSetup,
-  millimetresToPoints,
   PAGE_FACINGS,
   PAGE_UNITS,
   PAPER_SIZES,
@@ -45,10 +45,6 @@ const MARGIN_SIDES: { key: keyof PageMargins; label: string }[] = [
   { key: 'outer', label: 'Outer' }
 ]
 const MAX_COLUMNS = 24
-// A preset matches when the stored points round to its millimetres; the fields round to two
-// decimals, so an exact comparison would miss a size typed by hand.
-const POINT_TOLERANCE = 0.5
-
 const PAPER_SIZE_GROUPS: { group: PaperSizeGroup; label: string }[] = [
   { group: 'iso', label: 'ISO paper' },
   { group: 'us', label: 'US paper' },
@@ -60,14 +56,7 @@ const unit = computed(() => props.node.pageUnit)
 const guides = computed<PageGuides | null>(() => props.node.guides)
 
 // A size the frame is already, so the select shows it; undefined leaves the placeholder.
-const selectedPaperSize = computed(() => {
-  const { width, height } = props.node
-  return PAPER_SIZES.find(
-    (size) =>
-      Math.abs(width - millimetresToPoints(size.width)) < POINT_TOLERANCE &&
-      Math.abs(height - millimetresToPoints(size.height)) < POINT_TOLERANCE
-  )?.id
-})
+const selectedPaperSize = computed(() => findPaperSize(props.node.width, props.node.height)?.id)
 
 const paperSizesIn = (group: PaperSizeGroup): readonly PaperSize[] =>
   PAPER_SIZES.filter((size) => size.group === group)
