@@ -75,6 +75,27 @@ export interface PaperSize {
   height: number
 }
 
+/** A layer of a stationery template; positions and sizes are in millimetres on the page. */
+export interface TemplateNode {
+  type: 'text' | 'rectangle'
+  name: string
+  x: number
+  y: number
+  width: number
+  height: number
+  properties?: DesignNodePatch
+}
+
+/** A ready layout for stationery, which a person starts a design from. */
+export interface StationeryTemplate {
+  /** Stable id, such as `letterhead`. */
+  id: string
+  name: string
+  /** The `id` of a size in `PAPER_SIZES`. */
+  paperSizeId: string
+  nodes: readonly TemplateNode[]
+}
+
 /** How a node's pixels combine with what is painted beneath it. */
 export type BlendMode = (typeof BLEND_MODES)[number]
 
