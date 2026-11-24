@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import {
   getPageSetupPatch,
+  findPaperSize,
+  getPaperSizeSetup,
   PAGE_FACINGS,
   PAGE_UNITS,
+  PAPER_SIZES,
   type DesignNode,
   type DesignNodePatch,
   type PageGuides,
   type PageMargins,
-  type PageSetupInput
+  type PageSetupInput,
+  type PaperSize,
+  type PaperSizeGroup
 } from '@designo/core'
 import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
@@ -16,7 +21,9 @@ import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
@@ -38,11 +45,28 @@ const MARGIN_SIDES: { key: keyof PageMargins; label: string }[] = [
   { key: 'outer', label: 'Outer' }
 ]
 const MAX_COLUMNS = 24
+const PAPER_SIZE_GROUPS: { group: PaperSizeGroup; label: string }[] = [
+  { group: 'iso', label: 'ISO paper' },
+  { group: 'us', label: 'US paper' },
+  { group: 'envelope', label: 'Envelopes' },
+  { group: 'card', label: 'Cards' }
+]
 
 const unit = computed(() => props.node.pageUnit)
 const guides = computed<PageGuides | null>(() => props.node.guides)
 
+// A size the frame is already, so the select shows it; undefined leaves the placeholder.
+const selectedPaperSize = computed(() => findPaperSize(props.node.width, props.node.height)?.id)
+
+const paperSizesIn = (group: PaperSizeGroup): readonly PaperSize[] =>
+  PAPER_SIZES.filter((size) => size.group === group)
+
 const apply = (setup: PageSetupInput): void => emit('update', getPageSetupPatch(props.node, setup))
+
+const applyPaperSize = (raw: unknown): void => {
+  const size = PAPER_SIZES.find((candidate) => candidate.id === raw)
+  if (size) apply(getPaperSizeSetup(size))
+}
 
 const inputValue = (event: Event): string => (event.target as HTMLInputElement).value
 
@@ -76,6 +100,22 @@ const updateFacing = (raw: unknown): void => {
 <template>
   <section class="flex flex-col gap-2" aria-label="Page setup">
     <h2 class="text-muted-foreground font-semibold">Page</h2>
+    <div class="flex flex-col gap-1.5">
+      <Label for="page-paper-size">Paper size</Label>
+      <Select :model-value="selectedPaperSize" @update:model-value="applyPaperSize">
+        <SelectTrigger id="page-paper-size" size="sm" class="w-full text-xs">
+          <SelectValue placeholder="Custom size" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup v-for="section in PAPER_SIZE_GROUPS" :key="section.group">
+            <SelectLabel>{{ section.label }}</SelectLabel>
+            <SelectItem v-for="size in paperSizesIn(section.group)" :key="size.id" :value="size.id">
+              {{ size.name }} ({{ size.width }} x {{ size.height }} mm)
+            </SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
     <div class="grid grid-cols-2 gap-2">
       <div class="flex flex-col gap-1.5">
         <Label for="page-unit">Unit</Label>

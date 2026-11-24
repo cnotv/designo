@@ -183,6 +183,14 @@ on a design page, as the next section describes.
 
 Select a frame and the properties panel gains a **Page** section that makes it a printed page.
 
+- **Paper size:** a preset for standard stationery, grouped into ISO paper (A0 to A7 and B0 to
+  B7), US paper (Letter, Legal, Tabloid and more), envelopes (DL, C4, C5, C6 and #10) and cards
+  (business cards, a postcard and a square card). Picking one sets the unit to `mm` and the
+  frame's size; bleed and guides stay as they are. A frame of a size the list has shows it, and
+  any other shows **Custom size**.
+
+  ![The Paper size list open, grouped into ISO paper, US paper, envelopes and cards](/img/paper-size.png)
+
 - **Unit:** `mm` or `pt`. It sets how the width, height, bleed, margins and gutter are shown and
   typed. The file stores points (one design unit, as in the PDF), so switching the unit changes no
   size. A4 is 210 by 297 mm, which is 595.28 by 841.89 pt.

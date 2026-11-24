@@ -1,0 +1,202 @@
+- generic:
+    - generic [aria-hidden]:
+        - generic:
+            - banner:
+                - generic: Designo
+                - group:
+                    - button [pressed]
+                    - button
+                    - button
+                    - button
+                    - button
+                - button
+                - button [disabled]
+                - button [disabled]
+                - generic:
+                    - button:
+                        - generic: 75%
+            - complementary:
+                - navigation:
+                    - heading [level=2]: Files
+                    - button:
+                        - generic: Demo
+                - region:
+                    - generic:
+                        - heading [level=2]: Pages
+                        - generic:
+                            - button
+                            - button
+                    - list:
+                        - listitem:
+                            - button:
+                                - generic: Page 1
+                            - button
+                        - listitem:
+                            - button:
+                                - generic: Letterhead
+                            - button
+                - region:
+                    - heading [level=2]: Layers
+                    - generic:
+                        - generic:
+                            - generic:
+                                - list:
+                                    - listitem [ref=e59]:
+                                        - button [pressed] [ref=e155]:
+                                            - generic [ref=e61]: Sheet
+                                        - button [ref=e156]
+                                    - listitem [ref=e63]:
+                                        - button [ref=e157]:
+                                            - generic [ref=e65]: Text
+                                        - button [ref=e158]
+                                    - listitem [ref=e67]:
+                                        - button [ref=e159]:
+                                            - generic [ref=e69]: Text
+                                        - button [ref=e160]
+                                    - listitem [ref=e71]:
+                                        - button [ref=e161]:
+                                            - generic [ref=e73]: Image
+                                        - button [ref=e162]
+            - main
+            - complementary:
+                - region:
+                    - group:
+                        - button [disabled]
+                        - button [disabled]
+                        - button [disabled]
+                        - button [disabled]
+                        - button [disabled]
+                        - button [disabled]
+                        - button [disabled]
+                        - button [disabled]
+                    - generic:
+                        - generic: Name
+                        - textbox: Sheet
+                    - generic:
+                        - generic:
+                            - generic: X
+                            - spinbutton: '400'
+                        - generic:
+                            - generic: 'Y'
+                            - spinbutton: '0'
+                        - generic:
+                            - generic: W
+                            - spinbutton: '420'
+                        - generic:
+                            - generic: H
+                            - spinbutton: '594'
+                        - generic:
+                            - generic: Rotation
+                            - spinbutton: '0'
+                        - generic:
+                            - generic: Opacity %
+                            - spinbutton: '100'
+                        - generic:
+                            - generic: Radius
+                            - spinbutton: '0'
+                        - generic:
+                            - generic: PDF page
+                            - spinbutton
+                    - generic:
+                        - generic: Auto layout
+                        - group:
+                            - button [pressed]: 'Off'
+                            - button: Row
+                            - button: Column
+                    - generic:
+                        - combobox:
+                            - generic: Fixed
+                        - combobox:
+                            - generic: Fixed
+                    - generic:
+                        - generic:
+                            - generic: Fill
+                            - button
+                        - generic:
+                            - textbox: '#ffffff'
+                            - textbox: '#ffffff'
+                    - generic:
+                        - generic:
+                            - generic: Stroke
+                            - button
+                    - generic:
+                        - generic:
+                            - generic:
+                                - generic: Gradient
+                                - button
+                    - region:
+                        - heading [level=2]: Page
+                        - generic:
+                            - generic: Paper size
+                            - combobox [expanded]:
+                                - generic: Custom size
+                        - generic:
+                            - generic:
+                                - generic: Unit
+                                - combobox:
+                                    - generic: pt
+                            - generic:
+                                - generic: Facing
+                                - combobox:
+                                    - generic: Single page
+                            - generic:
+                                - generic: Width (pt)
+                                - spinbutton: '420'
+                            - generic:
+                                - generic: Height (pt)
+                                - spinbutton: '594'
+                            - generic:
+                                - generic: Bleed (pt)
+                                - spinbutton: '0'
+                        - generic:
+                            - heading [level=3]: Guides
+                            - button: Add
+                        - paragraph: Guides lie under the content and are never exported.
+                    - region:
+                        - heading [level=2]: Export
+                        - generic:
+                            - generic:
+                                - generic: Format
+                                - combobox:
+                                    - generic: SVG
+                            - generic:
+                                - generic: Scale
+                                - combobox [disabled]:
+                                    - generic: 2x
+                        - button: Export SVG
+                        - paragraph: Exports the selected layer.
+    - listbox [ref=e163]:
+        - group "ISO paper" [ref=e164]:
+            - option "A0 (841 x 1189 mm)" [active] [ref=e166]
+            - option "A1 (594 x 841 mm)" [ref=e169]
+            - option "A2 (420 x 594 mm)" [ref=e172]
+            - option "A3 (297 x 420 mm)" [ref=e175]
+            - option "A4 (210 x 297 mm)" [ref=e178]
+            - option "A5 (148 x 210 mm)" [ref=e181]
+            - option "A6 (105 x 148 mm)" [ref=e184]
+            - option "A7 (74 x 105 mm)" [ref=e187]
+            - option "B0 (1000 x 1414 mm)" [ref=e190]
+            - option "B1 (707 x 1000 mm)" [ref=e193]
+            - option "B2 (500 x 707 mm)" [ref=e196]
+            - option "B3 (353 x 500 mm)" [ref=e199]
+            - option "B4 (250 x 353 mm)" [ref=e202]
+            - option "B5 (176 x 250 mm)" [ref=e205]
+            - option "B6 (125 x 176 mm)" [ref=e208]
+            - option "B7 (88 x 125 mm)" [ref=e211]
+        - group "US paper" [ref=e214]:
+            - option "Letter (215.9 x 279.4 mm)" [ref=e216]
+            - option "Legal (215.9 x 355.6 mm)" [ref=e219]
+            - option "Tabloid (279.4 x 431.8 mm)" [ref=e222]
+            - option "Executive (184.2 x 266.7 mm)" [ref=e225]
+            - option "Half Letter (139.7 x 215.9 mm)" [ref=e228]
+        - group "Envelopes" [ref=e231]:
+            - option "DL (220 x 110 mm)" [ref=e233]
+            - option "C4 (324 x 229 mm)" [ref=e236]
+            - option "C5 (229 x 162 mm)" [ref=e239]
+            - option "C6 (162 x 114 mm)" [ref=e242]
+            - option "#10 (241.3 x 104.8 mm)" [ref=e245]
+        - group "Cards" [ref=e248]:
+            - option "Business card (85 x 55 mm)" [ref=e250]
+            - option "US business card (88.9 x 50.8 mm)" [ref=e253]
+            - option "Postcard (100 x 148 mm)" [ref=e256]
+            - option "Square card (140 x 140 mm)" [ref=e259]
