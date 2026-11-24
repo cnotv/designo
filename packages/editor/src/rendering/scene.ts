@@ -81,12 +81,17 @@ export const buildScene = (
 const isBlended = (node: DesignNode): boolean =>
   hasLayerEffects(node) && node.blendMode !== 'normal'
 
+const batchKindOf = (node: DesignNode): SceneBatch['kind'] => {
+  if (node.type === 'text') return 'text'
+  return node.type === 'image' ? 'image' : 'shapes'
+}
+
 const clipKey = (item: SceneItem): string => item.clipFrames.map((frame) => frame.id).join('/')
 
 /**
  * Splits a scene into runs that one draw call can take: consecutive shapes under the same
- * clipping frames, and consecutive texts under the same clipping frames, which draw together
- * from the glyph atlas.
+ * clipping frames, consecutive texts under the same clipping frames, which draw together from
+ * the glyph atlas, and consecutive images, each drawn from a texture of its own.
  * @param items - The scene, back to front.
  * @returns The batches, back to front.
  */
@@ -100,7 +105,7 @@ export const batchScene = (items: readonly SceneItem[]): SceneBatch[] => {
     blended: boolean
   }[] = []
   items.forEach((item) => {
-    const kind = item.node.type === 'text' ? 'text' : 'shapes'
+    const kind = batchKindOf(item.node)
     const clip = clipKey(item)
     const blended = isBlended(item.node)
     const last = batches.at(-1)

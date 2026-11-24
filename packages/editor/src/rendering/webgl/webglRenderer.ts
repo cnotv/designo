@@ -10,6 +10,7 @@ import { bindQuadCorners, createQuadBuffer } from './glQuad.ts'
 import { createBackdropTexture } from './backdropTexture.ts'
 import { RAMP_ROWS, createGradientRamps } from './gradientRamps.ts'
 import { SHAPE_UNIFORMS, createShapeDrawer } from './shapeDrawer.ts'
+import { createImageDrawer, type ImageDrawer } from './imageDrawer.ts'
 import { createTextureTextDrawer } from './textureTextDrawer.ts'
 
 const FLOAT_BYTES = 4
@@ -90,6 +91,28 @@ const clearFrame = (gl: WebGL2RenderingContext): void => {
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
 }
 
+// What the shape program needs once a frame: the canvas's device size and the ramp texture's rows.
+const setShapeFrameUniforms = (
+  gl: WebGL2RenderingContext,
+  program: WebGLProgram,
+  uniforms: ReturnType<typeof readUniforms<(typeof SHAPE_UNIFORMS)[number]>>,
+  device: { width: number; height: number }
+): void => {
+  gl.useProgram(program)
+  gl.uniform2f(uniforms.u_deviceSize, device.width, device.height)
+  gl.uniform1f(uniforms.u_rampRows, RAMP_ROWS)
+}
+
+// A picture still loading draws as its fill, which the shape path paints.
+const drawImages = (
+  imageDrawer: ImageDrawer,
+  items: readonly SceneItem[],
+  drawShapes: (nodes: readonly DesignNode[], clipPass: boolean) => void
+): void =>
+  items.forEach(({ node }) => {
+    if (!imageDrawer.draw(node)) drawShapes([node], false)
+  })
+
 /**
  * Makes the WebGL2 renderer: shapes as instanced quads whose edges a signed distance field draws,
  * frames clipping their contents through the stencil buffer, and text as instanced glyph quads
@@ -113,7 +136,8 @@ export const createWebglRenderer = (
   const shapeUniforms = readUniforms(gl, shapeProgram, SHAPE_UNIFORMS)
   const quad = createQuadBuffer(gl)
   const textureText = createTextureTextDrawer(gl, quad)
-  if (!textureText) return undefined
+  const imageDrawer = createImageDrawer(gl, quad)
+  if (!textureText || !imageDrawer) return undefined
   const instances = gl.createBuffer()
   const shapeVertexArray = createShapeVertexArray(gl, quad, instances)
   const ramps = createGradientRamps(gl)
@@ -123,6 +147,7 @@ export const createWebglRenderer = (
   const viewTargets: ViewUniformTarget[] = [
     { program: shapeProgram, uniforms: shapeUniforms },
     textureText.viewTarget,
+    imageDrawer.viewTarget,
     ...(glyphPipeline ? [glyphPipeline.viewTarget] : [])
   ]
 
@@ -177,13 +202,12 @@ export const createWebglRenderer = (
     gl.viewport(0, 0, device.width, device.height)
     clearFrame(gl)
     setViewUniforms(gl, scene, viewTargets)
-    gl.useProgram(shapeProgram)
-    gl.uniform2f(shapeUniforms.u_deviceSize, device.width, device.height)
-    gl.uniform1f(shapeUniforms.u_rampRows, RAMP_ROWS)
+    setShapeFrameUniforms(gl, shapeProgram, shapeUniforms, device)
     batchScene(scene.items).forEach((batch) => {
       applyClip(batch.items[0]?.clipFrames ?? [])
       const [blendedItem] = batch.items
       if (batch.kind === 'text') drawTexts(batch.items, scene)
+      else if (batch.kind === 'image') drawImages(imageDrawer, batch.items, drawShapes)
       else if (batch.blended && blendedItem) drawBlendedShape(blendedItem.node, device)
       else
         drawShapes(
@@ -197,6 +221,7 @@ export const createWebglRenderer = (
 
   const dispose = (): void => {
     textureText.dispose()
+    imageDrawer.dispose()
     ramps.dispose()
     backdrop.dispose()
     glyphPipeline?.dispose()

@@ -4,6 +4,7 @@ import { useEditorContext } from '../composables/editorContext.ts'
 import { indexDocument } from '../editing/spatialIndex.ts'
 import { createCanvas2dRenderer } from '../rendering/canvas2dRenderer.ts'
 import { drawOverlay } from '../rendering/drawOverlay.ts'
+import { onImageLoaded } from '../rendering/imageCache.ts'
 import { prepareCanvas } from '../rendering/prepareCanvas.ts'
 import { buildScene, createSceneSource } from '../rendering/scene.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
@@ -29,6 +30,12 @@ const createRenderer = (canvas: HTMLCanvasElement): SceneRenderer | undefined =>
 // Fonts load after the first frame that needs them, which draws the text the Canvas 2D way; this
 // counts their arrivals so the scene is drawn again with the glyph path.
 const fontsLoaded = ref(0)
+// Pictures load after the first frame that has them, which draws their fill; this counts the
+// arrivals so the scene is drawn again with the pictures.
+const imageLoads = ref(0)
+const stopListeningForImages = onImageLoaded(() => {
+  imageLoads.value += 1
+})
 const atlasStats = ref<{ pages: number; glyphs: number }>()
 
 // The index and paint order are rebuilt only when the document changes, not on pan or zoom.
@@ -42,6 +49,7 @@ const readCssColor = (canvas: HTMLCanvasElement, name: string, fallback: string)
 
 const drawScene = (): void => {
   void fontsLoaded.value
+  void imageLoads.value
   const source = sceneSource.value
   const size = editor.canvasSize.value
   if (!renderer.value || !source || size.width === 0) return
@@ -120,6 +128,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   stopListeningForFonts()
+  stopListeningForImages()
   document.fonts.removeEventListener('loadingdone', onBrowserFontsLoaded)
   resizeObserver.disconnect()
   overlayCanvas.value?.removeEventListener('wheel', onWheel)

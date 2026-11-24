@@ -28,9 +28,9 @@ export interface SceneItem {
   clipFrames: readonly DesignNode[]
 }
 
-/** A run of items one draw call can take: shapes or texts that share clipping. */
+/** A run of items one draw call can take: shapes, texts or images that share clipping. */
 export interface SceneBatch {
-  kind: 'shapes' | 'text'
+  kind: 'shapes' | 'text' | 'image'
   items: readonly SceneItem[]
   /** True for a shape with a blend mode, which is drawn alone against a copy of what is behind it. */
   blended: boolean

@@ -10,7 +10,7 @@ import {
   Plus,
   Trash2
 } from 'lucide-vue-next'
-import { computed, watch, type Component } from 'vue'
+import { computed, useTemplateRef, watch, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,6 +28,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import AlignmentControls from './AlignmentControls.vue'
 import { useEditorContext } from '../composables/editorContext.ts'
 import { useFontFamilyList } from '../composables/fontFamilyList.ts'
+import { useImageInsertion } from '../composables/useImageInsertion.ts'
 import { findPickedFamily } from '../editing/fontPicker.ts'
 import {
   LAYOUT_ALIGN_OPTIONS,
@@ -57,7 +58,7 @@ import ExportSection from './ExportSection.vue'
 import FontPicker from './FontPicker.vue'
 import PageSetupSection from './PageSetupSection.vue'
 
-const { editor } = useEditorContext()
+const { editor, files } = useEditorContext()
 
 const PERCENT = 100
 const HEX_COLOR = /^#[\da-f]{6}$/i
@@ -97,6 +98,16 @@ const node = computed(() => {
     ? editor.document.value?.nodes[nodeId]
     : undefined
 })
+
+const { replaceImageFile } = useImageInsertion(editor, files)
+const replaceInput = useTemplateRef<HTMLInputElement>('replaceInput')
+
+const onReplacementChosen = (event: Event): void => {
+  const input = event.target as HTMLInputElement
+  const [file] = input.files ?? []
+  input.value = ''
+  if (file && node.value) void replaceImageFile(node.value.id, file)
+}
 
 const fontFamilyList = useFontFamilyList()
 
@@ -384,6 +395,30 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
               </SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      </template>
+
+      <template v-if="node.type === 'image'">
+        <Separator />
+        <div class="flex flex-col gap-1.5">
+          <Label for="property-image">Image</Label>
+          <Button
+            id="property-image"
+            variant="outline"
+            size="sm"
+            :disabled="files.isDemo.value"
+            @click="replaceInput?.click()"
+          >
+            Replace image
+          </Button>
+          <input
+            ref="replaceInput"
+            type="file"
+            class="hidden"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            aria-label="Replacement image file"
+            @change="onReplacementChosen"
+          />
         </div>
       </template>
 
