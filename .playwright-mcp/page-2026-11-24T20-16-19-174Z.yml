@@ -1,0 +1,152 @@
+- generic [ref=e3]:
+    - banner [ref=e4]:
+        - generic [ref=e5]: Designo
+        - group "Tools" [ref=e6]:
+            - button "Move" [pressed] [ref=e7]
+            - button "Frame" [ref=e8]
+            - button "Rectangle" [ref=e9]
+            - button "Ellipse" [ref=e10]
+            - button "Text" [ref=e11]
+        - button "Add image" [ref=e12]
+        - button "Undo" [disabled]
+        - button "Redo" [disabled]
+        - button "Zoom to fit" [ref=e14]:
+            - generic [ref=e15]: 75%
+    - complementary [ref=e16]:
+        - navigation "Files" [ref=e17]:
+            - heading "Files" [level=2] [ref=e18]
+            - button "Demo" [ref=e19]
+        - region "Pages" [ref=e21]:
+            - generic [ref=e22]:
+                - heading "Pages" [level=2] [ref=e23]
+                - generic [ref=e24]:
+                    - button "Add page from a template" [ref=e25]
+                    - button "Add page" [ref=e26]
+            - list [ref=e27]:
+                - listitem [ref=e51]:
+                    - button "Page 1" [ref=e52]
+                    - button "Actions for Page 1" [ref=e54]
+                - listitem [ref=e55]:
+                    - button "Letterhead" [ref=e56]
+                    - button "Actions for Letterhead" [ref=e58]
+        - region "Layers" [ref=e28]:
+            - heading "Layers" [level=2] [ref=e29]
+            - list [ref=e34]:
+                - listitem [ref=e59]:
+                    - button "Sheet" [active] [pressed] [ref=e60]
+                    - button "Hide Sheet" [ref=e62]
+                - listitem [ref=e63]:
+                    - button "Text" [ref=e64]
+                    - button "Hide Text" [ref=e66]
+                - listitem [ref=e67]:
+                    - button "Text" [ref=e68]
+                    - button "Hide Text" [ref=e70]
+                - listitem [ref=e71]:
+                    - button "Image" [ref=e72]
+                    - button "Hide Image" [ref=e74]
+    - main [ref=e35]
+    - complementary [ref=e38]:
+        - region "Properties" [ref=e39]:
+            - group "Align and distribute" [ref=e76]:
+                - button "Align left" [disabled]
+                - button "Align horizontal centre" [disabled]
+                - button "Align right" [disabled]
+                - button "Align top" [disabled]
+                - button "Align vertical centre" [disabled]
+                - button "Align bottom" [disabled]
+                - button "Distribute horizontally" [disabled]
+                - button "Distribute vertically" [disabled]
+            - generic [ref=e77]:
+                - generic [ref=e78]: Name
+                - textbox "Name" [ref=e79]: Sheet
+            - generic [ref=e80]:
+                - generic [ref=e81]:
+                    - generic [ref=e82]: X
+                    - spinbutton "X" [ref=e83]: '400'
+                - generic [ref=e84]:
+                    - generic [ref=e85]: 'Y'
+                    - spinbutton "Y" [ref=e86]: '0'
+                - generic [ref=e87]:
+                    - generic [ref=e88]: W
+                    - spinbutton "W" [ref=e89]: '420'
+                - generic [ref=e90]:
+                    - generic [ref=e91]: H
+                    - spinbutton "H" [ref=e92]: '594'
+                - generic [ref=e93]:
+                    - generic [ref=e94]: Rotation
+                    - spinbutton "Rotation" [ref=e95]: '0'
+                - generic [ref=e96]:
+                    - generic [ref=e97]: Opacity %
+                    - spinbutton "Opacity %" [ref=e98]: '100'
+                - generic [ref=e99]:
+                    - generic [ref=e100]: Radius
+                    - spinbutton "Radius" [ref=e101]: '0'
+                - generic [ref=e102]:
+                    - generic [ref=e103]: PDF page
+                    - spinbutton "PDF page" [ref=e104]
+            - generic [ref=e105]:
+                - generic [ref=e106]: Auto layout
+                - group "Layout direction" [ref=e107]:
+                    - button "Off" [pressed] [ref=e108]
+                    - button "Row" [ref=e109]
+                    - button "Column" [ref=e110]
+            - generic [ref=e111]:
+                - combobox "Width sizing" [ref=e112]:
+                    - generic: Fixed
+                - combobox "Height sizing" [ref=e113]:
+                    - generic: Fixed
+            - generic [ref=e114]:
+                - generic [ref=e115]:
+                    - generic [ref=e116]: Fill
+                    - button "Remove fill" [ref=e117]
+                - generic [ref=e118]:
+                    - textbox "Fill colour" [ref=e119]: '#ffffff'
+                    - textbox "Fill" [ref=e120]: '#ffffff'
+            - generic [ref=e122]:
+                - generic [ref=e123]: Stroke
+                - button "Add stroke" [ref=e124]
+            - generic "Effects" [ref=e125]:
+                - generic [ref=e127]:
+                    - generic [ref=e128]: Gradient
+                    - button "Add gradient" [ref=e129]
+            - region "Page setup" [ref=e130]:
+                - heading "Page" [level=2] [ref=e131]
+                - generic [ref=e132]:
+                    - generic [ref=e133]: Paper size
+                    - combobox "Paper size" [ref=e134]:
+                        - generic: Custom size
+                - generic [ref=e135]:
+                    - generic [ref=e136]:
+                        - generic [ref=e137]: Unit
+                        - combobox "Unit" [ref=e138]:
+                            - generic: pt
+                    - generic [ref=e139]:
+                        - generic [ref=e140]: Facing
+                        - combobox "Facing" [ref=e141]:
+                            - generic: Single page
+                    - generic [ref=e142]:
+                        - generic [ref=e143]: Width (pt)
+                        - spinbutton "Width (pt)" [ref=e144]: '420'
+                    - generic [ref=e145]:
+                        - generic [ref=e146]: Height (pt)
+                        - spinbutton "Height (pt)" [ref=e147]: '594'
+                    - generic [ref=e148]:
+                        - generic [ref=e149]: Bleed (pt)
+                        - spinbutton "Bleed (pt)" [ref=e150]: '0'
+                - generic [ref=e151]:
+                    - heading "Guides" [level=3] [ref=e152]
+                    - button "Add" [ref=e153]
+                - paragraph [ref=e154]: Guides lie under the content and are never exported.
+            - region "Export" [ref=e41]:
+                - heading "Export" [level=2] [ref=e42]
+                - generic [ref=e43]:
+                    - generic [ref=e44]:
+                        - generic [ref=e45]: Format
+                        - combobox "Format" [ref=e46]:
+                            - generic: SVG
+                    - generic [ref=e47]:
+                        - generic [ref=e48]: Scale
+                        - combobox "Scale" [disabled] [ref=e49]:
+                            - generic: 2x
+                - button "Export SVG" [ref=e75]
+                - paragraph [ref=e50]: Exports the selected layer.

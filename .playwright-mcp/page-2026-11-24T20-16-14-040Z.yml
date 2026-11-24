@@ -1,0 +1,47 @@
+- generic [ref=e3]:
+    - banner [ref=e4]:
+        - generic [ref=e5]: Designo
+        - group "Tools" [ref=e6]:
+            - button "Move" [pressed] [ref=e7]
+            - button "Frame" [ref=e8]
+            - button "Rectangle" [ref=e9]
+            - button "Ellipse" [ref=e10]
+            - button "Text" [ref=e11]
+        - button "Add image" [ref=e12]
+        - button "Undo" [disabled]
+        - button "Redo" [disabled]
+        - button "Zoom to fit" [ref=e14]:
+            - generic [ref=e15]: 100%
+    - complementary [ref=e16]:
+        - navigation "Files" [ref=e17]:
+            - heading "Files" [level=2] [ref=e18]
+            - button "Demo" [ref=e19]
+        - region "Pages" [ref=e21]:
+            - generic [ref=e22]:
+                - heading "Pages" [level=2] [ref=e23]
+                - generic [ref=e24]:
+                    - button "Add page from a template" [ref=e25]
+                    - button "Add page" [ref=e26]
+            - list [ref=e27]
+        - region "Layers" [ref=e28]:
+            - heading "Layers" [level=2] [ref=e29]
+            - generic [ref=e32]:
+                - paragraph [ref=e33]: Draw with the toolbar, or ask an agent through the MCP server.
+                - list [ref=e34]
+    - main [ref=e35]
+    - complementary [ref=e38]:
+        - region "Properties" [ref=e39]:
+            - paragraph [ref=e40]: Select a layer to edit its properties.
+            - region "Export" [ref=e41]:
+                - heading "Export" [level=2] [ref=e42]
+                - generic [ref=e43]:
+                    - generic [ref=e44]:
+                        - generic [ref=e45]: Format
+                        - combobox "Format" [ref=e46]:
+                            - generic: SVG
+                    - generic [ref=e47]:
+                        - generic [ref=e48]: Scale
+                        - combobox "Scale" [disabled] [ref=e49]:
+                            - generic: 2x
+                - button "Export SVG" [disabled]
+                - paragraph [ref=e50]: Exports the whole page.
