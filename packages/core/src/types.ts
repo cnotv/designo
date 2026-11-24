@@ -59,6 +59,22 @@ export type PageSetupPatch = Pick<
   'pageUnit' | 'width' | 'height' | 'bleed' | 'facing' | 'guides'
 >
 
+/** A family of standard stationery sizes, as the page setup groups them. */
+export type PaperSizeGroup = 'iso' | 'us' | 'envelope' | 'card'
+
+/** A standard stationery size, such as A4 or US Letter, in millimetres. */
+export interface PaperSize {
+  /** Stable id, such as `a4`, used as the select's value. */
+  id: string
+  /** The name shown in the page setup, such as `A4`. */
+  name: string
+  group: PaperSizeGroup
+  /** The page's width, in millimetres. */
+  width: number
+  /** The page's height, in millimetres. */
+  height: number
+}
+
 /** How a node's pixels combine with what is painted beneath it. */
 export type BlendMode = (typeof BLEND_MODES)[number]
 
