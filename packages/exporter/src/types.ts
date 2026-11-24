@@ -39,6 +39,11 @@ export interface SvgExportOptions {
    * which is close but depends on how a renderer reads the font's hanging baseline.
    */
   getFontMetrics?: (face: TextFace) => FontLineMetrics | undefined
+  /**
+   * The `href` an image node is drawn from, usually a data URI of the stored picture. Without it,
+   * or when it returns undefined, the node draws as its fill, a placeholder.
+   */
+  getImageHref?: (assetId: string) => string | undefined
 }
 
 /** A node drawn to a PNG, covering the box `getExportBounds` gives for it. */
@@ -57,4 +62,9 @@ export interface PdfExportOptions {
    * has no blur, so these nodes are images; without it they are drawn sharp.
    */
   rasterizeNode?: (nodeId: string) => Promise<RasterizedNode | undefined>
+  /**
+   * The bytes of a stored picture by its asset id. PNG and JPEG are embedded as they are; WebP and
+   * GIF go through `rasterizeNode`. Without them an image node is drawn as its fill.
+   */
+  getImageBytes?: (assetId: string) => Uint8Array | undefined
 }

@@ -8,6 +8,7 @@ import {
   readDocument
 } from '@designo/storage'
 import { z } from 'zod'
+import { handleAssetsRequest, isAssetsPath } from './assetsApi.ts'
 import { MAX_BODY_BYTES, jsonRequestProblem, readJsonBody, sendError, sendJson } from './http.ts'
 
 export const FILES_ROUTE = '/api/files'
@@ -84,7 +85,8 @@ const handleRead = async (
 
 /**
  * Answers a request under the files route. GET lists files or reads one; POST to
- * `<file id>/operations` applies a batch of operations to that file.
+ * `<file id>/operations` applies a batch of operations to that file; `assets` stores and serves
+ * pictures.
  * @param dataDirectory - Where Designo files live.
  * @param request - The incoming request.
  * @param response - Where the JSON answer goes.
@@ -98,6 +100,11 @@ export const handleFilesRequest = async (
   pathAfterRoute: string
 ): Promise<void> => {
   const path = (pathAfterRoute.split('?')[0] ?? '').replace(/^\/+/, '')
+  // `assets` is the picture store's path, so a file cannot be reached under that name.
+  if (isAssetsPath(path)) {
+    await handleAssetsRequest(dataDirectory, request, response, path)
+    return
+  }
   const isOperations = path.endsWith(OPERATIONS_SUFFIX)
   const fileId = isOperations ? path.slice(0, -OPERATIONS_SUFFIX.length) : path
   if (fileId !== '' && !fileIdSchema.safeParse(fileId).success) {

@@ -1,5 +1,5 @@
 import type { BLEND_MODES, CURRENT_FORMAT_VERSION } from './defaults.ts'
-export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text'
+export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text' | 'image'
 
 /** Which edge a text node's lines sit against, inside the node's width. */
 export type TextAlign = 'left' | 'center' | 'right' | 'justify'
@@ -159,6 +159,11 @@ export interface DesignNodeProperties {
   stroke: string | null
   strokeWidth: number
   cornerRadius: number
+  /**
+   * Images only: the id of the stored picture, drawn stretched to the node's box; null draws the
+   * node's `fill` as a placeholder.
+   */
+  imageAsset: string | null
   text: string
   fontSize: number
   fontFamily: string

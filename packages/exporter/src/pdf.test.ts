@@ -241,4 +241,53 @@ describe('exportDocumentToPdf', () => {
     expect(withImage).toContain('/Subtype /Image')
     expect(asText(await exportDocumentToPdf(document, options))).not.toContain('/Subtype /Image')
   })
+
+  describe('images', () => {
+    const PNG_ID = `${'b'.repeat(64)}.png`
+    const WEBP_ID = `${'c'.repeat(64)}.webp`
+    const imageDocument = (imageAsset: string): DesignDocument =>
+      build(createDocument('file', 'Pictures', 'page'), [
+        {
+          kind: 'create',
+          id: 'photo',
+          type: 'image',
+          parentId: 'page',
+          properties: { x: 0, y: 0, width: 80, height: 60, imageAsset }
+        }
+      ])
+
+    it('embeds a PNG as an image', async () => {
+      const document = imageDocument(PNG_ID)
+      const pdf = asText(
+        await exportDocumentToPdf(document, {
+          ...(await optionsFor(document)),
+          getImageBytes: () => ONE_PIXEL_PNG
+        })
+      )
+      expect(pdf).toContain('/Subtype /Image')
+    })
+
+    it('asks the rasterizer for a WebP, which the PDF cannot embed as it is', async () => {
+      const document = imageDocument(WEBP_ID)
+      const asked: string[] = []
+      const pdf = asText(
+        await exportDocumentToPdf(document, {
+          ...(await optionsFor(document)),
+          getImageBytes: () => Uint8Array.from([1, 2, 3]),
+          rasterizeNode: (nodeId) => {
+            asked.push(nodeId)
+            return Promise.resolve(ONE_PIXEL_PNG)
+          }
+        })
+      )
+      expect(asked).toEqual(['photo'])
+      expect(pdf).toContain('/Subtype /Image')
+    })
+
+    it('draws the fill when the picture is not available', async () => {
+      const document = imageDocument(PNG_ID)
+      const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))
+      expect(pdf).not.toContain('/Subtype /Image')
+    })
+  })
 })
