@@ -126,8 +126,8 @@ as a GIF, because a GIF renders inline from a link and an MP4 shows as a bare on
 - **Every feature and every bug fix adds a case to the default view.** The default view is the
   bundled sample in `packages/editor/src/samples/paletteDocument.ts`, which the static demo and an
   empty data directory show. Add a node that shows the new behaviour, or the input that used to
-  break, so it is tried in the running editor and stays covered by the sample's unit test. A
-  change with nothing visible says so in the pull request instead.
+  break, so it is tried in the running editor. A change with nothing visible says so in the pull
+  request instead.
 - **One feature, one issue, one pull request.** A feature that ships together is a single issue,
   branch and pull request, however many steps it has: the steps are a checklist in the issue and
   commits in the pull request. Never open a sub-issue or a pull request per step; split only when
