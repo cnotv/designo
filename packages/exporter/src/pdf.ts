@@ -9,7 +9,7 @@ import {
   type DesignDocument,
   type DesignNode
 } from '@designo/core'
-import type { LaidOutLine } from '@designo/text'
+import type { LaidOutLine, PlacedGlyph } from '@designo/text'
 import { getExportBounds, hasFilter } from './svg.ts'
 import type { PdfExportOptions } from './types.ts'
 
@@ -212,24 +212,36 @@ interface TextRun {
   /** Characters before the word's last glyph, and how far that glyph sits from the first. */
   prefixText: string
   lastGlyphOffset: number
+  /** The colour of the span the word is in; undefined follows the node's fill. */
+  fill: string | undefined
+  /** True for a list marker, which never joins the word after it. */
+  isMarker: boolean
 }
 
 const isSpace = (text: string): boolean => text.trim() === ''
 
-// A word is a run of glyphs in one font, moving forward; the spaces after it join it as text only.
-// One text object per word lets extractors read real spaces and costs far less than one per glyph.
+// A list marker stands for no character of the text, so it brings its own.
+const getRunGlyphText = (text: string, line: LaidOutLine, glyph: PlacedGlyph): string =>
+  glyph.markerText ?? getGlyphText(text, line, glyph.cluster)
+
+// A word is a run of glyphs in one font and one colour, moving forward; the spaces after it join it
+// as text only. One text object per word lets extractors read real spaces and costs far less than
+// one per glyph.
 const getLineRuns = (text: string, line: LaidOutLine): TextRun[] =>
   line.glyphs.reduce<TextRun[]>((runs, glyph) => {
-    const glyphText = getGlyphText(text, line, glyph.cluster)
+    const glyphText = getRunGlyphText(text, line, glyph)
     const last = runs.at(-1)
     if (glyphText === '') return runs
     if (isSpace(glyphText)) {
       if (last) last.text += glyphText
       return runs
     }
+    const isMarker = glyph.markerText !== undefined
     const continues =
       last !== undefined &&
       last.fontId === glyph.fontId &&
+      last.fill === glyph.fill &&
+      last.isMarker === isMarker &&
       !isSpace(last.text.slice(-1)) &&
       glyph.x > last.x + last.lastGlyphOffset
     if (continues) {
@@ -246,47 +258,61 @@ const getLineRuns = (text: string, line: LaidOutLine): TextRun[] =>
         y: glyph.y,
         text: glyphText,
         prefixText: '',
-        lastGlyphOffset: 0
+        lastGlyphOffset: 0,
+        fill: glyph.fill,
+        isMarker
       }
     ]
   }, [])
 
+const setPaint = (context: ExportContext, fill: string, opacity: number): void => {
+  const paint = parsePaint(fill)
+  setGraphicsState(context, opacity * paint.alpha, 'normal')
+  context.pdf.fillColor(paint.color)
+}
+
+const drawRun = (context: ExportContext, node: DesignNode, run: TextRun, opacity: number): void => {
+  const { pdf } = context
+  // A span with a colour of its own paints its words with it; the restore gives the node's back.
+  if (run.fill !== undefined) {
+    pdf.save()
+    setPaint(context, run.fill, opacity)
+  }
+  pdf.font(useFont(context, run.fontId)).fontSize(node.fontSize)
+  // The layout places each glyph, kerning included; pdfkit advances by the font's own widths, so
+  // the difference is spread over the word's characters to land its last glyph where the layout did.
+  const characterSpacing =
+    run.prefixText === ''
+      ? 0
+      : (run.lastGlyphOffset - pdf.widthOfString(run.prefixText)) / run.prefixText.length
+  pdf.text(run.text, node.x + run.x, node.y + run.y, {
+    baseline: 'alphabetic',
+    lineBreak: false,
+    characterSpacing
+  })
+  if (run.fill !== undefined) pdf.restore()
+}
+
 const drawLayoutText = (
   context: ExportContext,
   node: DesignNode,
-  lines: readonly LaidOutLine[]
-): void => {
-  const { pdf } = context
+  lines: readonly LaidOutLine[],
+  opacity: number
+): void =>
   lines.forEach((line) =>
-    getLineRuns(node.text, line).forEach((run) => {
-      pdf.font(useFont(context, run.fontId)).fontSize(node.fontSize)
-      // The layout places each glyph, kerning included; pdfkit advances by the font's own widths, so
-      // the difference is spread over the word's characters to land its last glyph where the layout did.
-      const characterSpacing =
-        run.prefixText === ''
-          ? 0
-          : (run.lastGlyphOffset - pdf.widthOfString(run.prefixText)) / run.prefixText.length
-      pdf.text(run.text, node.x + run.x, node.y + run.y, {
-        baseline: 'alphabetic',
-        lineBreak: false,
-        characterSpacing
-      })
-    })
+    getLineRuns(node.text, line).forEach((run) => drawRun(context, node, run, opacity))
   )
-}
 
 const drawText = (context: ExportContext, node: DesignNode, opacity: number): void => {
   if (node.fill === null || node.text === '') return
-  const { color, alpha } = parsePaint(node.fill)
-  setGraphicsState(context, opacity * alpha, 'normal')
-  context.pdf.fillColor(color)
+  setPaint(context, node.fill, opacity)
   const layout = context.options.getTextLayout(node)
   if (!layout) {
     throw new Error(
       `The text "${node.name || node.id}" could not be laid out: the fonts for its family, or for a character in it, are not available.`
     )
   }
-  drawLayoutText(context, node, layout.lines)
+  drawLayoutText(context, node, layout.lines, opacity)
 }
 
 const drawRaster = (context: ExportContext, node: DesignNode, image: Uint8Array): void => {

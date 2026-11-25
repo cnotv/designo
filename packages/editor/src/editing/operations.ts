@@ -208,6 +208,9 @@ const TEXT_BOX_PROPERTIES = [
   'letterSpacing',
   'lineHeight',
   'textWrap',
+  'spans',
+  'listStyle',
+  'listIndent',
   'width'
 ] as const
 
@@ -222,7 +225,10 @@ const WIDTH_PROPERTIES = [
   'fontWeight',
   'fontStyle',
   'letterSpacing',
-  'textWrap'
+  'textWrap',
+  'spans',
+  'listStyle',
+  'listIndent'
 ] as const
 
 // A fixed-width box keeps the width it was given and only grows taller, as tall as its words
@@ -243,7 +249,10 @@ const fitTextBox = (
     fontSize: next.fontSize,
     lineHeight: next.lineHeight,
     textAlign: next.textAlign,
-    wrapWidth: isFixedWidth ? next.width : undefined
+    wrapWidth: isFixedWidth ? next.width : undefined,
+    spans: next.spans,
+    listStyle: next.listStyle,
+    listIndent: next.listIndent
   })
   const followsWords = !isFixedWidth && WIDTH_PROPERTIES.some((property) => property in patch)
   return followsWords

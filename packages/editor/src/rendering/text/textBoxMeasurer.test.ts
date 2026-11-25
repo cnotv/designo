@@ -12,7 +12,10 @@ const request: TextBoxRequest = {
   fontSize: 16,
   lineHeight: 1.2,
   textAlign: 'center',
-  wrapWidth: 120
+  wrapWidth: 120,
+  spans: [],
+  listStyle: 'none',
+  listIndent: 1.5
 }
 
 const layout: TextLayout = { lines: [], width: 120, height: 57.6, lineHeight: 19.2 }
@@ -31,7 +34,10 @@ describe('createTextBoxMeasurer', () => {
       fontSize: 16,
       lineHeight: 1.2,
       alignment: 'center',
-      wrapWidth: 120
+      wrapWidth: 120,
+      spans: [],
+      listStyle: 'none',
+      listIndent: 1.5
     })
   })
 

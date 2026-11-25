@@ -11,7 +11,10 @@ const toLayoutRequest = (request: Parameters<TextBoxMeasurer>[0]): TextLayoutReq
   fontSize: request.fontSize,
   lineHeight: request.lineHeight,
   alignment: request.textAlign,
-  wrapWidth: request.wrapWidth
+  wrapWidth: request.wrapWidth,
+  spans: request.spans,
+  listStyle: request.listStyle,
+  listIndent: request.listIndent
 })
 
 /**

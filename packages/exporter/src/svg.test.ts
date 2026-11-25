@@ -347,6 +347,44 @@ describe('exportNodeToSvg', () => {
     expect(svg).toContain('<tspan x="0" y="17">two</tspan>')
   })
 
+  it('draws a span in its own weight, style and colour inside one line', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: {
+          text: 'CI automation: fast',
+          fontSize: 10,
+          spans: [{ start: 0, end: 14, fontWeight: 700, fontStyle: 'italic', fill: '#ff0000' }]
+        }
+      }
+    ])
+    expect(exportNodeToSvg(document, 'label')).toContain(
+      '<tspan x="0" y="0"><tspan font-weight="700" font-style="italic" fill="#ff0000">CI automation:</tspan> fast</tspan>'
+    )
+  })
+
+  it('puts a marker in the margin of every paragraph and indents the lines past it', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'label',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: 'one\ntwo', fontSize: 10, listStyle: 'number', listIndent: 2 }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'label')
+    expect(svg).toContain(
+      '<tspan x="0" y="0" text-anchor="start">1.</tspan><tspan x="20" y="0">one</tspan>'
+    )
+    expect(svg).toContain(
+      '<tspan x="0" y="12" text-anchor="start">2.</tspan><tspan x="20" y="12">two</tspan>'
+    )
+  })
+
   it('breaks a fixed-width text where the layout does, and ignores the layout for auto-width text', () => {
     const document = build([
       {

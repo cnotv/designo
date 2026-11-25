@@ -44,9 +44,45 @@ const layout = (text: string, options: Partial<TextLayoutInput> = {}) =>
       letterSpacing: 0,
       lineHeight: LINE_HEIGHT_MULTIPLE,
       wrapWidth: undefined,
+      spans: [],
+      listStyle: 'none',
+      listIndent: 1.5,
       ...options
     },
     monospaceShaper
+  )
+
+// Every character 1000 units wide, so a span drawn in it is twice as wide as the rest.
+const wideShaper: TextShaper = {
+  ...monospaceShaper,
+  shapeRuns: (text, direction) =>
+    monospaceShaper.shapeRuns(text, direction).map((run) => ({
+      ...run,
+      fontId: 'wide',
+      glyphs: run.glyphs.map((glyph) => ({ ...glyph, xAdvance: 1000 }))
+    }))
+}
+
+const layoutWithSpans = (
+  text: string,
+  spans: TextLayoutInput['spans'],
+  options: Partial<TextLayoutInput> = {}
+) =>
+  layoutText(
+    {
+      text,
+      fontSize: FONT_SIZE,
+      alignment: 'left',
+      letterSpacing: 0,
+      lineHeight: LINE_HEIGHT_MULTIPLE,
+      wrapWidth: undefined,
+      spans,
+      listStyle: 'none',
+      listIndent: 1.5,
+      ...options
+    },
+    monospaceShaper,
+    [wideShaper]
   )
 
 const clustersOf = (result: ReturnType<typeof layout>, lineIndex: number) =>
@@ -330,7 +366,10 @@ describe('layoutText with the bundled fonts', () => {
     alignment: 'left',
     letterSpacing: 0,
     lineHeight: 1.2,
-    wrapWidth: undefined
+    wrapWidth: undefined,
+    spans: [],
+    listStyle: 'none',
+    listIndent: 1.5
   }
   let shaper: TextShaper
   let result: ReturnType<typeof layoutText>
@@ -383,5 +422,70 @@ describe('layoutText with the bundled fonts', () => {
       line.glyphs.some((glyph) => glyph.fontId === 'noto-sans-arabic')
     )
     expect(arabicLines).toHaveLength(1)
+  })
+})
+
+describe('layoutText with spans', () => {
+  it('shapes a span with its own font and gives its glyphs its colour', () => {
+    const [line] = layoutWithSpans('abcd', [{ start: 1, end: 3, fill: '#ff0000' }]).lines
+    expect(line?.glyphs.map((glyph) => glyph.fontId)).toEqual(['mono', 'wide', 'wide', 'mono'])
+    expect(line?.glyphs.map((glyph) => glyph.fill)).toEqual([
+      undefined,
+      '#ff0000',
+      '#ff0000',
+      undefined
+    ])
+    expect(line?.glyphs.map((glyph) => glyph.x)).toEqual([0, 10, 30, 50])
+    expect(line?.width).toBe(60)
+  })
+
+  it('keeps clusters as offsets in the whole text, across lines', () => {
+    const result = layoutWithSpans('ab\ncd', [{ start: 3, end: 5, fill: '#00ff00' }])
+    expect(clustersOf(result, 1)).toEqual([3, 4])
+    expect(result.lines[1]?.glyphs.map((glyph) => glyph.fill)).toEqual(['#00ff00', '#00ff00'])
+  })
+
+  it('wraps by the width a span takes', () => {
+    const result = layoutWithSpans('aa bb', [{ start: 3, end: 5 }], { wrapWidth: 50 })
+    expect(result.lines.map((line) => [line.start, line.end])).toEqual([
+      [0, 2],
+      [3, 5]
+    ])
+  })
+})
+
+describe('layoutText with a list', () => {
+  it('indents every paragraph and puts a bullet in the margin', () => {
+    const result = layoutWithSpans('ab\ncd', [], { listStyle: 'bullet' })
+    result.lines.forEach((line) => {
+      expect(line.glyphs.find((glyph) => glyph.markerText === undefined)?.x).toBe(30)
+      expect(line.glyphs.filter((glyph) => glyph.markerText !== undefined)).toHaveLength(1)
+    })
+    const marker = result.lines[0]?.glyphs.find((glyph) => glyph.markerText !== undefined)
+    expect(marker).toMatchObject({ x: 0, markerText: '\u2022' })
+    expect(result.width).toBe(30 + 2 * CHARACTER_WIDTH)
+  })
+
+  it('numbers the paragraphs', () => {
+    const result = layoutWithSpans('a\nb', [], { listStyle: 'number' })
+    const markers = result.lines.map((line) =>
+      line.glyphs.flatMap((glyph) => glyph.markerText ?? '').join('')
+    )
+    expect(markers).toEqual(['1.', '2.'])
+  })
+
+  it('hangs wrapped lines at the indent and marks only the first', () => {
+    const result = layoutWithSpans('aa bb', [], { listStyle: 'bullet', wrapWidth: 50 })
+    expect(result.lines).toHaveLength(2)
+    expect(result.lines[0]?.glyphs.some((glyph) => glyph.markerText !== undefined)).toBe(true)
+    expect(result.lines[1]?.glyphs.some((glyph) => glyph.markerText !== undefined)).toBe(false)
+    expect(result.lines[1]?.glyphs[0]?.x).toBe(30)
+    expect(result.lines[1]?.x).toBe(30)
+  })
+
+  it('leaves a plain text with no marker and no indent', () => {
+    const [line] = layoutWithSpans('ab', []).lines
+    expect(line?.glyphs[0]?.x).toBe(0)
+    expect(line?.glyphs.some((glyph) => glyph.markerText !== undefined)).toBe(false)
   })
 })

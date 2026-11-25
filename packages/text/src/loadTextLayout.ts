@@ -1,3 +1,4 @@
+import { loadRequestFamilies, loadRequestFontFiles } from './requestFaces.ts'
 import type { TextLayout, TextLayoutRequest, TextRuntime } from './types.ts'
 
 /**
@@ -13,8 +14,8 @@ export const loadTextLayout = async (
   request: TextLayoutRequest
 ): Promise<TextLayout | undefined> => {
   try {
-    await library.loadFamilies(request)
-    await library.getRegistry(request)?.loadFontsForText(request.text)
+    await loadRequestFamilies(library, request)
+    await loadRequestFontFiles(library, request)
   } catch {
     return undefined
   }

@@ -2,10 +2,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import {
   FONT_STYLES,
+  LIST_STYLES,
   MAX_FONT_WEIGHT,
   MAX_LETTER_SPACING,
+  MAX_LIST_INDENT,
   MIN_FONT_WEIGHT,
   MIN_LETTER_SPACING,
+  MIN_LIST_INDENT,
   TEXT_ALIGNMENTS
 } from '@designo/core'
 import { z } from 'zod'
@@ -15,7 +18,8 @@ import {
   nodeIdSchema,
   nodePatchSchema,
   operationBatchSchema,
-  pageSetupSchema
+  pageSetupSchema,
+  textSpansSchema
 } from '@designo/storage'
 import { addImageTool } from './addImage.ts'
 import {
@@ -134,7 +138,10 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
         fontSize: z.number().positive().optional(),
         lineHeight: z.number().positive().optional(),
         textAlign: z.enum(TEXT_ALIGNMENTS).optional(),
-        width: z.number().positive().optional()
+        width: z.number().positive().optional(),
+        spans: textSpansSchema.optional(),
+        listStyle: z.enum(LIST_STYLES).optional(),
+        listIndent: z.number().min(MIN_LIST_INDENT).max(MAX_LIST_INDENT).optional()
       },
       annotations: READ_ONLY
     },

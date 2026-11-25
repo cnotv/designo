@@ -15,6 +15,7 @@ import {
   withOverridesAfterPatch
 } from './components.ts'
 import { layoutDocument } from './layout.ts'
+import { checkTextSpans, clampSpansToText } from './textSpans.ts'
 import type {
   DesignDocument,
   DesignNode,
@@ -156,10 +157,10 @@ const checkLayout = (node: DesignNode): string | undefined => {
   return undefined
 }
 
-const withValidNode = (document: DesignDocument, node: DesignNode): OperationResult =>
-  checkLayout(node)
-    ? failure(checkLayout(node) ?? '')
-    : withNodes(document, { ...document.nodes, [node.id]: node })
+const withValidNode = (document: DesignDocument, node: DesignNode): OperationResult => {
+  const problem = checkLayout(node) ?? checkTextSpans(node)
+  return problem ? failure(problem) : withNodes(document, { ...document.nodes, [node.id]: node })
+}
 
 const applyCreate = (
   document: DesignDocument,
@@ -222,7 +223,7 @@ const applyUpdate = (
 ): OperationResult => {
   const node = document.nodes[operation.id]
   if (!node) return failure(`Node ${operation.id} does not exist`)
-  const updated = { ...node, ...operation.patch }
+  const updated = { ...node, ...clampSpansToText(operation.patch, node) }
   const componentProblem =
     operation.patch.isComponent && !node.isComponent
       ? checkMakeComponent(document, updated)

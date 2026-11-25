@@ -4,6 +4,8 @@ import {
   FONT_WEIGHT_OPTIONS,
   getFontWeightOptions,
   isItalicAvailable,
+  LIST_STYLE_OPTIONS,
+  readListStyle,
   readFontWeight,
   readLetterSpacingInput,
   readLineHeightInput,
@@ -134,5 +136,20 @@ describe('isItalicAvailable', () => {
 
   it('stays true for a text that is italic already, so it can be turned off', () => {
     expect(isItalicAvailable(['normal'], 'italic')).toBe(true)
+  })
+})
+
+describe('readListStyle', () => {
+  it.each(['none', 'bullet', 'number'])('reads %s', (value) => {
+    expect(readListStyle(value)).toBe(value)
+  })
+
+  it('offers each style the file format has', () => {
+    expect(LIST_STYLE_OPTIONS.map((option) => option.value)).toEqual(['none', 'bullet', 'number'])
+  })
+
+  it('ignores a deselect and anything else', () => {
+    expect(readListStyle('')).toBeUndefined()
+    expect(readListStyle('roman')).toBeUndefined()
   })
 })

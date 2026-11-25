@@ -6,6 +6,8 @@ import {
   AlignLeft,
   AlignRight,
   Italic,
+  List,
+  ListOrdered,
   Minus,
   Plus,
   Trash2
@@ -49,8 +51,10 @@ import {
   readFontWeight,
   readLetterSpacingInput,
   readLineHeightInput,
+  readListStyle,
   readTextAlign,
   readTextWidthMode,
+  LIST_STYLE_OPTIONS,
   TEXT_ALIGN_OPTIONS,
   TEXT_WIDTH_MODE_OPTIONS,
   textWidthModeOf
@@ -92,6 +96,12 @@ const ALIGN_ICONS: Record<string, Component> = {
   center: AlignCenter,
   right: AlignRight,
   justify: AlignJustify
+}
+
+const LIST_ICONS: Record<string, Component> = {
+  none: Minus,
+  bullet: List,
+  number: ListOrdered
 }
 
 const node = computed(() => {
@@ -197,6 +207,11 @@ const updateNumber = (key: NumberKey, event: Event, minimum = Number.NEGATIVE_IN
 const updateTextAlign = (raw: unknown): void => {
   const textAlign = readTextAlign(raw)
   if (textAlign) update({ textAlign })
+}
+
+const updateListStyle = (raw: unknown): void => {
+  const listStyle = readListStyle(raw)
+  if (listStyle) update({ listStyle })
 }
 
 const updateTextWidthMode = (raw: unknown): void => {
@@ -592,6 +607,24 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
               class="px-2 text-xs"
             >
               {{ option.label }}
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <ToggleGroup
+            type="single"
+            size="sm"
+            aria-label="List style"
+            :model-value="node.listStyle"
+            @update:model-value="updateListStyle"
+          >
+            <ToggleGroupItem
+              v-for="option in LIST_STYLE_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+              :aria-label="option.label"
+              :title="option.label"
+              class="px-2 text-xs"
+            >
+              <component :is="LIST_ICONS[option.value]" />
             </ToggleGroupItem>
           </ToggleGroup>
         </div>

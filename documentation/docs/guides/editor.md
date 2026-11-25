@@ -87,6 +87,14 @@ circle. After drawing, the editor returns to Move.
   height and wrapping of the drawn text. The box of a text layer is the box its text is drawn in:
   a fixed-width layer grows as tall as its lines wrap to as you type, and an auto-width one is as
   wide as its longest line. Files saved before these existed open with the defaults.
+- **Lists and rich text:** three buttons in a text layer's properties make its paragraphs a
+  bulleted or numbered **list**: every line break starts a paragraph with its marker in the margin
+  and the lines hung past it, all in one text layer (the indent is `listIndent`, 1.5 times the font
+  size by default). Spans, a stretch of the text with its own weight, italic or colour, are set
+  through the MCP server for now and drawn by the canvas, the SVG and the PDF; editing the words
+  keeps each span on its characters up to the end of the text and cuts the rest. The in-place
+  editor shows the text in the node's own style, and the Canvas 2D fallback draws a list and its
+  spans with the node's style until the fonts have loaded.
 - **Font:** with a text layer selected, the **Font** field in the properties panel opens a search
   of every Google font family (from the [Fontsource](https://fontsource.org) API, loaded the first
   time you open it). Type to filter, pick one, and the layer's font family is set to it, with a

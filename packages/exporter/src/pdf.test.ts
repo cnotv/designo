@@ -55,6 +55,21 @@ const optionsFor = async (document: DesignDocument): Promise<PdfExportOptions> =
   }
 }
 
+// The page content is deflated, so what is drawn is read from the inflated streams.
+const contentOf = (bytes: Uint8Array): string =>
+  [...asLatin1(bytes).matchAll(/stream\r?\n([\S\s]*?)\r?\nendstream/g)]
+    .map((match) => {
+      try {
+        return inflateSync(Buffer.from(match[1] ?? '', 'latin1')).toString('latin1')
+      } catch {
+        return ''
+      }
+    })
+    .join('\n')
+
+// TextDecoder's latin1 is windows-1252, which would corrupt deflated bytes above 0x7f.
+const asLatin1 = (bytes: Uint8Array): string => Buffer.from(bytes).toString('latin1')
+
 const asText = (bytes: Uint8Array): string => new TextDecoder('latin1').decode(bytes)
 const countMatches = (source: string, pattern: RegExp): number => source.match(pattern)?.length ?? 0
 
@@ -237,6 +252,49 @@ describe('exportDocumentToPdf', () => {
     )
     expect(text).toBe(sentence)
     expect(runs).toHaveLength(sentence.split(' ').length)
+  })
+
+  it('paints a span in its own colour and the rest in the fill of the node', async () => {
+    const document = build(createDocument('file', 'Text', 'page'), [
+      {
+        kind: 'create',
+        id: 'title',
+        type: 'text',
+        parentId: 'page',
+        properties: {
+          text: 'ab cd',
+          fontFamily: 'Inter',
+          fontSize: 24,
+          fill: '#0000ff',
+          spans: [{ start: 3, end: 5, fill: '#ff0000' }]
+        }
+      }
+    ])
+    const content = contentOf(await exportDocumentToPdf(document, await optionsFor(document)))
+    expect(content).toMatch(/0 0 1 (rg|sc)/)
+    expect(content).toMatch(/1 0 0 (rg|sc)/)
+  })
+
+  it('draws a list marker for each paragraph as selectable text, apart from its words', async () => {
+    const document = build(createDocument('file', 'Text', 'page'), [
+      {
+        kind: 'create',
+        id: 'list',
+        type: 'text',
+        parentId: 'page',
+        properties: {
+          text: 'one\ntwo',
+          fontFamily: 'Inter',
+          fontSize: 24,
+          fill: '#000000',
+          listStyle: 'number'
+        }
+      }
+    ])
+    const { runs } = extractPdfText(await exportDocumentToPdf(document, await optionsFor(document)))
+    expect(runs).toHaveLength(4)
+    expect(runs.join('|')).toContain('1.')
+    expect(runs.join('|')).toContain('2.')
   })
 
   it('embeds each font of a line that mixes fallback fonts', async () => {

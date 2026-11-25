@@ -10,7 +10,9 @@ import {
   type DesignNodeTree,
   type PageSetupInput,
   getPageSetupPatch,
-  type TextAlign
+  type ListStyle,
+  type TextAlign,
+  type TextSpan
 } from '@designo/core'
 import {
   applyOperationsToFile,
@@ -312,6 +314,38 @@ export const getScreenshotTool = async (
   return { mimeType: 'image/png', data: outcome.png.toString('base64') }
 }
 
+type TextMeasureInput = {
+  text: string
+  fontFamily?: string
+  fontWeight?: number
+  fontStyle?: 'normal' | 'italic'
+  letterSpacing?: number
+  fontSize?: number
+  lineHeight?: number
+  textAlign?: TextAlign
+  width?: number
+  spans?: readonly TextSpan[]
+  listStyle?: ListStyle
+  listIndent?: number
+}
+
+const toMeasuredFace = (input: TextMeasureInput) => ({
+  fontFamily: input.fontFamily ?? DEFAULT_NODE_PROPERTIES.fontFamily,
+  fontWeight: input.fontWeight ?? DEFAULT_NODE_PROPERTIES.fontWeight,
+  fontStyle: input.fontStyle ?? DEFAULT_NODE_PROPERTIES.fontStyle,
+  letterSpacing: input.letterSpacing ?? DEFAULT_NODE_PROPERTIES.letterSpacing,
+  fontSize: input.fontSize ?? DEFAULT_NODE_PROPERTIES.fontSize
+})
+
+const toMeasuredBox = (input: TextMeasureInput) => ({
+  lineHeight: input.lineHeight ?? DEFAULT_NODE_PROPERTIES.lineHeight,
+  alignment: input.textAlign ?? DEFAULT_NODE_PROPERTIES.textAlign,
+  wrapWidth: input.width,
+  spans: input.spans ?? DEFAULT_NODE_PROPERTIES.spans,
+  listStyle: input.listStyle ?? DEFAULT_NODE_PROPERTIES.listStyle,
+  listIndent: input.listIndent ?? DEFAULT_NODE_PROPERTIES.listIndent
+})
+
 /**
  * Measures a text the way the editor lays it out, so an agent can size a panel before it draws.
  * @param context - Where files live and how text is laid out.
@@ -320,28 +354,12 @@ export const getScreenshotTool = async (
  */
 export const measureTextTool = async (
   context: DesignoToolContext,
-  input: {
-    text: string
-    fontFamily?: string
-    fontWeight?: number
-    fontStyle?: 'normal' | 'italic'
-    letterSpacing?: number
-    fontSize?: number
-    lineHeight?: number
-    textAlign?: TextAlign
-    width?: number
-  }
+  input: TextMeasureInput
 ): Promise<TextMeasurement> => {
   const layout = await (context.layoutText ?? layoutTextWithFontsourceFonts)({
     text: input.text,
-    fontFamily: input.fontFamily ?? DEFAULT_NODE_PROPERTIES.fontFamily,
-    fontWeight: input.fontWeight ?? DEFAULT_NODE_PROPERTIES.fontWeight,
-    fontStyle: input.fontStyle ?? DEFAULT_NODE_PROPERTIES.fontStyle,
-    letterSpacing: input.letterSpacing ?? DEFAULT_NODE_PROPERTIES.letterSpacing,
-    fontSize: input.fontSize ?? DEFAULT_NODE_PROPERTIES.fontSize,
-    lineHeight: input.lineHeight ?? DEFAULT_NODE_PROPERTIES.lineHeight,
-    alignment: input.textAlign ?? DEFAULT_NODE_PROPERTIES.textAlign,
-    wrapWidth: input.width
+    ...toMeasuredFace(input),
+    ...toMeasuredBox(input)
   })
   if (!layout) {
     throw new Error(

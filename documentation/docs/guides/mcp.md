@@ -282,6 +282,9 @@ wrapped text. A link has no style of its own; underline or colour the text yours
 | `textAlign`     | `left`, `center`, `right`, `justify` | `left`   | Puts every line against that edge of the node's `width`; `justify` fills it (needs `textWrap`) |
 | `lineHeight`    | a number from 0.5 to 10              | `1.2`    | The distance between lines, as a multiple of `fontSize`                                        |
 | `textWrap`      | `true`, `false`                      | `false`  | `true` makes the node a fixed-width box that wraps its lines at `width`                        |
+| `spans`         | a list of `{ start, end, ... }`      | `[]`     | Stretches of `text` drawn with their own `fontWeight`, `fontStyle` or `fill` (see below)       |
+| `listStyle`     | `none`, `bullet`, `number`           | `none`   | Puts a marker before every paragraph and hangs its lines past it                               |
+| `listIndent`    | a number from 0 to 10                | `1.5`    | How far a list's lines sit past the marker, as a multiple of `fontSize`                        |
 
 The server sizes every text a call creates or changes, as the editor does: with `textWrap` off the
 box follows the words in width and height, with it on the `width` stays and the height follows the
@@ -294,9 +297,20 @@ honour `textAlign` and `lineHeight`. A text with `textWrap` off draws each line 
 They draw `justify` as left aligned, because SVG has no way to stretch a line's spaces; the editor
 justifies it. `justify` stretches the spaces of every wrapped line except the last of each paragraph.
 
+A span is `{ "start": 0, "end": 14, "fontWeight": 700, "fill": "#b00020" }`: `start` (included) and
+`end` (excluded) are UTF-16 offsets into `text`, and what a span leaves out follows the node. Spans
+are in order, never overlap and stay inside the text, or the operation fails and says which span.
+To bold the lead-in of a bullet, give one text node `listStyle: "bullet"` and a span over the words;
+that replaces a frame of three nodes. Send the whole `spans` list to change it. Changing `text`
+alone cuts the spans to the new length, so send `spans` with it when the words move. A list marks
+every paragraph (each line break starts one) with a bullet or `1.`, `2.`, and wrapped lines hang at
+the indent. Spans and lists are laid out by the same engine, so wrapping, `measure_text`, the
+screenshot, the SVG and the PDF agree; the PDF selects the marker as text. The SVG sets a span's
+weight and style by attribute, so its fonts need that weight to show.
+
 `measure_text` answers how big a text will be before you draw it. Give `text` and the font you
 will use (`fontFamily`, `fontWeight`, `fontStyle`, `letterSpacing`, `fontSize`, `lineHeight`,
-`textAlign`, each defaulting to a new text node's); add `width` to wrap it like a fixed-width node. It returns `width`, `height`, `lineCount`
+`textAlign`, `spans`, `listStyle`, `listIndent`, each defaulting to a new text node's); add `width` to wrap it like a fixed-width node. It returns `width`, `height`, `lineCount`
 and the text of each `lines` entry, so a panel can be sized to its text instead of guessed. It
 needs the same fonts as a screenshot, and says so when they are not available.
 

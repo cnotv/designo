@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { nodePatchSchema, operationBatchSchema } from './schemas.ts'
+import { createDocument } from '@designo/core'
+import { nodePatchSchema, operationBatchSchema, storedDocumentSchema } from './schemas.ts'
 
 describe('text properties in a patch', () => {
   it('accepts each alignment, a line height and the wrap switch', () => {
@@ -65,4 +66,38 @@ describe('link in a patch', () => {
       expect(nodePatchSchema.safeParse({ link }).success).toBe(false)
     }
   )
+})
+
+describe('text spans and lists in a patch', () => {
+  it('accepts spans with their own weight, style and colour, and a list style', () => {
+    expect(
+      nodePatchSchema.safeParse({
+        spans: [{ start: 0, end: 4, fontWeight: 700, fontStyle: 'italic', fill: '#ff0000' }],
+        listStyle: 'number',
+        listIndent: 2
+      }).success
+    ).toBe(true)
+  })
+
+  it.each([
+    { spans: [{ start: 0, end: 4, fontWeight: 50 }] },
+    { spans: [{ start: -1, end: 4 }] },
+    { spans: [{ start: 0, end: 4, fill: 'red' }] },
+    { spans: [{ start: 0, end: 4, colour: '#ff0000' }] },
+    { listStyle: 'roman' },
+    { listIndent: -1 }
+  ])('rejects %j', (patch) => {
+    expect(nodePatchSchema.safeParse(patch).success).toBe(false)
+  })
+
+  it('reads a stored node from before spans existed as one with none and no list', () => {
+    const document = createDocument('file-a', 'Doc', 'page-a')
+    const page = Object.fromEntries(
+      Object.entries(document.nodes['page-a'] ?? {}).filter(
+        ([key]) => !['spans', 'listStyle', 'listIndent'].includes(key)
+      )
+    )
+    const parsed = storedDocumentSchema.parse({ ...document, nodes: { 'page-a': page } })
+    expect(parsed.nodes['page-a']).toMatchObject({ spans: [], listStyle: 'none', listIndent: 1.5 })
+  })
 })

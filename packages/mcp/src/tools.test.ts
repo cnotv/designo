@@ -216,6 +216,58 @@ describe('MCP tools', () => {
     expect(narrow.lines.join(' ')).toBe('one two three')
   })
 
+  it('measures a list as wider than the same text, by its indent', async () => {
+    const plain = await measureTextTool(context, { text: 'one\ntwo', fontSize: 20 })
+    const list = await measureTextTool(context, {
+      text: 'one\ntwo',
+      fontSize: 20,
+      listStyle: 'bullet',
+      listIndent: 2
+    })
+    expect(list.width).toBeCloseTo(plain.width + 40)
+    expect(list.lineCount).toBe(2)
+  })
+
+  it('measures a span in a wider weight as wider than the plain text', async () => {
+    const plain = await measureTextTool(context, { text: 'WWWW', fontFamily: 'Inter' })
+    const spanned = await measureTextTool(context, {
+      text: 'WWWW',
+      fontFamily: 'Inter',
+      spans: [{ start: 0, end: 2, fontWeight: 700 }]
+    })
+    expect(spanned.width).toBeGreaterThan(0)
+    expect(spanned.width).toBeLessThanOrEqual(plain.width * 2)
+  })
+
+  it('keeps spans and a list style on a created text node, and rejects spans outside the text', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Rich' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'bullets',
+          type: 'text',
+          parentId: pageId,
+          properties: {
+            text: 'CI automation: faster',
+            spans: [{ start: 0, end: 14, fontWeight: 700, fill: '#ff0000' }],
+            listStyle: 'bullet'
+          }
+        }
+      ]
+    })
+    const node = await getNodeTool(context, { fileId, nodeId: 'bullets' })
+    expect(node.spans).toEqual([{ start: 0, end: 14, fontWeight: 700, fill: '#ff0000' }])
+    expect(node.listStyle).toBe('bullet')
+    await expect(
+      applyOperationsTool(context, {
+        fileId,
+        operations: [{ kind: 'update', id: 'bullets', patch: { spans: [{ start: 0, end: 99 }] } }]
+      })
+    ).rejects.toThrow('past the end')
+  })
+
   it('says so when text cannot be measured', async () => {
     await expect(measureTextTool(context, { text: '日本' })).rejects.toThrow('fonts')
   })

@@ -16,5 +16,8 @@ export const toTextLayoutRequest = (node: DesignNode): TextLayoutRequest => ({
   fontSize: node.fontSize,
   lineHeight: node.lineHeight,
   alignment: node.textAlign,
-  wrapWidth: node.textWrap ? node.width : undefined
+  wrapWidth: node.textWrap ? node.width : undefined,
+  spans: node.spans,
+  listStyle: node.listStyle,
+  listIndent: node.listIndent
 })
