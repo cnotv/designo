@@ -38,6 +38,7 @@ const MAX_TREE_DEPTH = 50
 const MAX_MEASURED_TEXT_LENGTH = 100_000
 const MAX_FONT_FAMILY_LENGTH = 200
 // A 20 MB picture is about 28 million characters of base64.
+const MAX_LOCATION_LENGTH = 4096
 const MAX_IMAGE_BASE64_LENGTH = 28_000_000
 
 const toToolResult = async (work: () => Promise<unknown>): Promise<CallToolResult> => {
@@ -198,11 +199,14 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'add_image',
     {
       description:
-        'Store a picture (PNG, JPEG, WebP or GIF, at most 20 MB, sent as base64) and place it as an image node under a page, frame or group. It is stretched to the node box by default, so give the width or the height alone to keep its proportions; with neither it takes its own size in pixels. Set the imageFit property to fit (all of it, in proportion, inside the box) or fill (covers the box in proportion, cropped) with update_node. Coordinates are absolute on the page. Returns assetId, which another image node can use as its imageAsset, the new nodeId, and its size. Screenshots, SVG and PDF include the picture.',
+        'Store a picture (PNG, JPEG, WebP or GIF, at most 20 MB) and place it as an image node under a page, frame or group. Give the picture as exactly one of: data (base64), path (a file the server can read), url (http or https), or assetId (a picture already stored, no bytes needed). Bytes that do not decode as a picture are refused. It is stretched to the node box by default, so give the width or the height alone to keep its proportions; with neither it takes its own size in pixels. Set the imageFit property to fit (all of it, in proportion, inside the box) or fill (covers the box in proportion, cropped) with update_node. Coordinates are absolute on the page. Returns assetId, which another image node can use as its imageAsset, the new nodeId, and its size. Screenshots, SVG and PDF include the picture.',
       inputSchema: {
         fileId: fileIdSchema,
         parentId: nodeIdSchema,
-        data: z.string().min(1).max(MAX_IMAGE_BASE64_LENGTH),
+        data: z.string().min(1).max(MAX_IMAGE_BASE64_LENGTH).optional(),
+        path: z.string().min(1).max(MAX_LOCATION_LENGTH).optional(),
+        url: z.string().min(1).max(MAX_LOCATION_LENGTH).optional(),
+        assetId: z.string().min(1).max(200).optional(),
         name: z.string().max(200).optional(),
         x: z.number().optional(),
         y: z.number().optional(),
