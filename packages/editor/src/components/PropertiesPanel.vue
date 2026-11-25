@@ -10,7 +10,7 @@ import {
   Plus,
   Trash2
 } from 'lucide-vue-next'
-import { computed, useTemplateRef, watch, type Component } from 'vue'
+import { computed, ref, useTemplateRef, watch, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -41,6 +41,7 @@ import {
   sizingOptionsFor
 } from '../editing/autoLayout.ts'
 import { IMAGE_FIT_OPTIONS, readImageFit } from '../editing/images.ts'
+import { canHaveLink, readLinkInput } from '../editing/links.ts'
 import { readPdfPageInput } from '../editing/pdfPage.ts'
 import {
   getFontWeightOptions,
@@ -223,6 +224,21 @@ const updatePdfPage = (event: Event): void => {
   if (pdfPage !== undefined) update({ pdfPage })
 }
 
+// What was typed stays in the field until it is a link; this says why it was not kept.
+const linkRefused = ref(false)
+watch(
+  () => node.value?.id,
+  () => {
+    linkRefused.value = false
+  }
+)
+
+const updateLink = (event: Event): void => {
+  const link = readLinkInput(inputValue(event))
+  linkRefused.value = link === undefined
+  if (link !== undefined) update({ link })
+}
+
 const updateOpacity = (event: Event): void => {
   const percent = Number(inputValue(event))
   if (Number.isFinite(percent)) update({ opacity: Math.min(1, Math.max(0, percent / PERCENT)) })
@@ -234,6 +250,7 @@ const updateColor = (key: 'fill' | 'stroke', event: Event): void => {
   if (HEX_COLOR.test(color)) update({ [key]: color.toLowerCase() })
 }
 
+const showsLink = computed(() => (node.value ? canHaveLink(node.value.type) : false))
 const showsCornerRadius = computed(
   () => node.value?.type === 'rectangle' || node.value?.type === 'frame'
 )
@@ -253,6 +270,22 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
           class="h-7 text-xs"
           @change="update({ name: inputValue($event) })"
         />
+      </div>
+      <div v-if="showsLink" class="flex flex-col gap-1.5">
+        <Label for="property-link">Link</Label>
+        <Input
+          id="property-link"
+          type="url"
+          placeholder="Web, email or phone address"
+          :model-value="node.link ?? ''"
+          :aria-invalid="linkRefused"
+          :aria-describedby="linkRefused ? 'property-link-error' : undefined"
+          class="h-7 text-xs"
+          @change="updateLink"
+        />
+        <p v-if="linkRefused" id="property-link-error" class="text-destructive text-xs">
+          Use an https:, mailto: or tel: address.
+        </p>
       </div>
       <div class="grid grid-cols-2 gap-2">
         <div v-for="field in geometryFields" :key="field.key" class="flex flex-col gap-1.5">

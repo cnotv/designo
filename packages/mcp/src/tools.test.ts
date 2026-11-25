@@ -695,6 +695,57 @@ describe('text properties on the node tools', () => {
     expect(Object.keys((await readDocument(context.dataDirectory, fileId)).nodes)).toEqual([pageId])
   })
 
+  it('create_node, update_node and apply_ops take a link and save it, and refuse an unsafe one', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Links' })
+    const client = await connectClient()
+    const created = await client.callTool({
+      name: 'create_node',
+      arguments: {
+        fileId,
+        type: 'text',
+        parentId: pageId,
+        properties: { text: 'Mail me', link: 'mailto:me@example.com' }
+      }
+    })
+    expect(created.isError).toBeFalsy()
+    const batched = await client.callTool({
+      name: 'apply_ops',
+      arguments: {
+        fileId,
+        operations: [
+          {
+            kind: 'create',
+            id: 'button',
+            type: 'rectangle',
+            parentId: pageId,
+            properties: { link: 'https://example.com/cv' }
+          }
+        ]
+      }
+    })
+    expect(batched.isError).toBeFalsy()
+    const updated = await client.callTool({
+      name: 'update_node',
+      arguments: { fileId, nodeId: 'button', patch: { link: 'tel:+49 170 1234567' } }
+    })
+    expect(updated.isError).toBeFalsy()
+    const { nodes } = await readDocument(context.dataDirectory, fileId)
+    expect(nodes.button?.link).toBe('tel:+49 170 1234567')
+    expect(Object.values(nodes).find((node) => node.type === 'text')?.link).toBe(
+      'mailto:me@example.com'
+    )
+    const refused = await client.callTool({
+      name: 'update_node',
+      arguments: { fileId, nodeId: 'button', patch: { link: 'javascript:alert(1)' } }
+    })
+    expect(refused.isError).toBe(true)
+    const cleared = await client.callTool({
+      name: 'update_node',
+      arguments: { fileId, nodeId: 'button', patch: { link: null } }
+    })
+    expect(cleared.isError).toBeFalsy()
+  })
+
   it('describes the properties to the agent in the tool schema', async () => {
     const client = await connectClient()
     const { tools } = await client.listTools()

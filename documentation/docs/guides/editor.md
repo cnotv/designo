@@ -202,6 +202,18 @@ many layers use it. Pictures need the server: the static demo has no store, so i
 SVG and PDF export and `get_screenshot` include pictures. The PDF embeds a stretched PNG or JPEG as
 it is and draws WebP and GIF, and any picture set to fit or fill, as images through the same rasteriser that draws a blurred layer.
 
+## Links
+
+A text, rectangle or frame can open an address when it is clicked in the exported PDF, so an email
+address, a phone number, a profile or a button can be a link. Select the node and type the address
+in the **Link** field of the properties panel: an `https://` address, `mailto:` or `tel:`. Anything
+else, such as `javascript:` or `http://`, is refused, and the field stays as it was. Empty the field
+to remove the link.
+
+In the PDF the link covers the node's box; a wrapped text is clickable along each of its lines. A
+link has no style of its own, so underline or colour the text as you like. Resting the pointer on a
+linked node on the canvas shows its address. A link on part of a text is not possible yet.
+
 ## Pages, units and guides
 
 Select a frame and the properties panel gains a **Page** section that makes it a printed page.

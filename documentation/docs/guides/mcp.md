@@ -262,6 +262,13 @@ one line height (1.2 times `fontSize`), and an empty line leaves a gap of one.
 Colours are `#rrggbb` or `#rrggbbaa`. Coordinates are absolute on the page, and `rotation` (in
 degrees) turns a node around its centre.
 
+### Links
+
+`create_node`, `update_node` and `apply_ops` take `link` on a text, rectangle or frame node: an
+`https:`, `mailto:` or `tel:` address, or `null` (the default) for none. Any other scheme is
+refused. `export_pdf` writes it as a clickable link over the node's box, or over each line of a
+wrapped text. A link has no style of its own; underline or colour the text yourself.
+
 ### Text properties
 
 `create_node`, `update_node` and `apply_ops` take these on a text node, besides `text`,
