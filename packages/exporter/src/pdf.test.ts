@@ -147,6 +147,13 @@ describe('exportDocumentToPdf', () => {
     ])
   })
 
+  it('defines the graphics state on every page that selects it', async () => {
+    const document = twoPageDocument()
+    const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))
+    // Both pages paint a fill, which selects a graphics state with `gs` in the (compressed) content.
+    expect(countMatches(pdf, /\/ExtGState <</g)).toBe(2)
+  })
+
   it('embeds the font a text uses and keeps it selectable', async () => {
     const document = build(createDocument('file', 'Text', 'page'), [
       {
