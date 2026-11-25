@@ -262,6 +262,30 @@ describe('MCP tools', () => {
     )
   })
 
+  it('refits an auto-width text when its letter spacing changes', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Spacing' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'label',
+          type: 'text',
+          parentId: pageId,
+          properties: { text: 'one two', fontFamily: 'Inter', fontSize: 20 }
+        }
+      ]
+    })
+    const before = await getNodeTool(context, { fileId, nodeId: 'label' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [{ kind: 'update', id: 'label', patch: { letterSpacing: 2 } }]
+    })
+    expect((await getNodeTool(context, { fileId, nodeId: 'label' })).width).toBeGreaterThan(
+      before.width
+    )
+  })
+
   it('warns when a text cannot be fitted because its fonts are not available', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Unfit' })
     const result = await applyOperationsTool(context, {

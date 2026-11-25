@@ -8,6 +8,9 @@ const BOX_PROPERTIES = [
   'text',
   'fontFamily',
   'fontSize',
+  'fontWeight',
+  'fontStyle',
+  'letterSpacing',
   'lineHeight',
   'textWrap',
   'width'

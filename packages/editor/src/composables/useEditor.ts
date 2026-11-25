@@ -90,18 +90,32 @@ const useViewport = (document: Readonly<Ref<DesignDocument | undefined>>) => {
   return { viewport, canvasSize, zoomToFit, zoomTo }
 }
 
+/**
+ * Applies operations to the open document and saves them, without recording a history step.
+ * @param document - The open document, replaced on success.
+ * @param files - Where the operations are saved.
+ * @param operations - The operations to apply.
+ * @returns Whether they applied.
+ */
+export const applyAndSaveOperations = (
+  document: Ref<DesignDocument | undefined>,
+  files: DesignoFiles,
+  operations: readonly DesignOperation[]
+): boolean => {
+  const current = document.value
+  if (!current || operations.length === 0) return false
+  const result = applyOperations(current, operations)
+  if (!result.ok) return false
+  document.value = result.document
+  files.saveOperations(operations)
+  return true
+}
+
 const useHistory = (document: Ref<DesignDocument | undefined>, files: DesignoFiles) => {
   const history = ref<HistoryState>(EMPTY_HISTORY)
 
-  const applyAndSave = (operations: readonly DesignOperation[]): boolean => {
-    const current = document.value
-    if (!current || operations.length === 0) return false
-    const result = applyOperations(current, operations)
-    if (!result.ok) return false
-    document.value = result.document
-    files.saveOperations(operations)
-    return true
-  }
+  const applyAndSave = (operations: readonly DesignOperation[]): boolean =>
+    applyAndSaveOperations(document, files, operations)
 
   const commit = (operations: readonly DesignOperation[]): boolean => {
     const before = document.value
