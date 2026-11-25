@@ -149,7 +149,11 @@ which also still works with sign-in on (set `DESIGNO_ACCOUNT`, as above).
 A file starts with one page. A `createPage` operation (`id` optional, `order` to place it between
 others, `properties` such as `name`) adds another, and a `create` operation whose `parentId` is
 that page's id puts a node on it. `reorderPage` (`id`, `order`) moves a page in the print order, and
-`delete` removes a page with its nodes, any but the last. Each page is its own coordinate space and its own page of the PDF.
+`delete` removes a page with its nodes, any but the last.
+
+A `move` operation's `order` puts the node in front of a sibling that holds the same order, and that
+sibling and the ones above it shift up by one. So `0` inserts at the front of a parent whose first
+child has order 0, and a number past the end puts the node last. Each page is its own coordinate space and its own page of the PDF.
 
 `export_pdf` takes a `fileId` and returns the whole file as one PDF, in an embedded resource of
 type `application/pdf`. Frames with a `pdfPage` (a whole number from 1) are its pages, in that order,

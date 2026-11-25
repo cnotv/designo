@@ -160,6 +160,34 @@ describe('applyOperation', () => {
     expect(Object.keys(updated.nodes)).toEqual(['page-2'])
   })
 
+  it('moves a node to the given index among its new siblings, even when orders tie', () => {
+    const withSecond = unwrap(
+      applyOperation(documentWithFrame, {
+        kind: 'create',
+        id: 'rect-2',
+        type: 'rectangle',
+        parentId: 'frame-1',
+        order: 0
+      })
+    )
+    const moved = unwrap(
+      applyOperation(withSecond, { kind: 'move', id: 'rect-2', parentId: 'frame-1', order: 0 })
+    )
+    expect(getChildren(moved, 'frame-1').map((child) => child.id)).toEqual([
+      'rect-2',
+      'rect-1',
+      'text-1'
+    ])
+    const toEnd = unwrap(
+      applyOperation(moved, { kind: 'move', id: 'rect-2', parentId: 'frame-1', order: 9 })
+    )
+    expect(getChildren(toEnd, 'frame-1').map((child) => child.id)).toEqual([
+      'rect-1',
+      'text-1',
+      'rect-2'
+    ])
+  })
+
   it('refuses to move a node inside itself', () => {
     const withGroup = unwrap(
       applyOperation(documentWithFrame, {
