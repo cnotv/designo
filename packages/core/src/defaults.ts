@@ -21,6 +21,13 @@ export const PAGE_FACINGS = ['single', 'left', 'right', 'spread'] as const
 
 export const FONT_STYLES = ['normal', 'italic'] as const
 
+/** Whether a text's paragraphs are plain, bulleted or numbered. */
+export const LIST_STYLES = ['none', 'bullet', 'number'] as const
+
+/** The range of a list's hanging indent, as a multiple of the font size. */
+export const MIN_LIST_INDENT = 0
+export const MAX_LIST_INDENT = 10
+
 export const LAYOUT_MODES = ['none', 'horizontal', 'vertical'] as const
 export const LAYOUT_ALIGNMENTS = ['start', 'center', 'end', 'space-between'] as const
 export const LAYOUT_CROSS_ALIGNMENTS = ['start', 'center', 'end'] as const
@@ -59,6 +66,9 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   textAlign: 'left',
   lineHeight: 1.2,
   textWrap: false,
+  spans: [],
+  listStyle: 'none',
+  listIndent: 1.5,
   pdfPage: null,
   link: null,
   layoutMode: 'none',

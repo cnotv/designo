@@ -1,6 +1,12 @@
 import type { DesignNode } from '@designo/core'
 import { isCodePointCovered, splitIntoFontRuns } from './fontRegistry.ts'
 import { layoutText } from './textLayout.ts'
+import {
+  getBaseFaceText,
+  getSpanFaces,
+  loadRequestFamilies,
+  loadRequestFontFiles
+} from './requestFaces.ts'
 import { createTextShaper } from './textShaper.ts'
 import { toTextLayoutRequest } from './textLayoutRequest.ts'
 import type {
@@ -27,7 +33,10 @@ const layoutKey = (request: TextLayoutRequest): string =>
     request.fontSize,
     request.lineHeight,
     request.alignment,
-    request.wrapWidth ?? null
+    request.wrapWidth ?? null,
+    request.spans,
+    request.listStyle,
+    request.listIndent
   ])
 
 const neededFontIds = (registry: FontRegistry, text: string): string[] => [
@@ -44,6 +53,24 @@ const hasUncoveredCharacter = (registry: FontRegistry, text: string): boolean =>
       !isCodePointCovered(registry.catalog, character.codePointAt(0) ?? 0, registry.getFont)
     )
   })
+
+// The node's font and each span's must all have loaded the files their part of the text draws with.
+const areFontsLoaded = (
+  request: TextLayoutRequest,
+  registry: FontRegistry,
+  spanRegistries: readonly (FontRegistry | undefined)[]
+): boolean =>
+  [
+    { registry, text: getBaseFaceText(request) },
+    ...spanRegistries.map((spanRegistry, index) => ({
+      registry: spanRegistry,
+      text: request.text.slice(request.spans[index]?.start, request.spans[index]?.end)
+    }))
+  ].every(
+    (need) =>
+      need.registry &&
+      neededFontIds(need.registry, need.text).every((fontId) => need.registry?.getFont(fontId))
+  )
 
 const isWebAssemblyDefined = (): boolean => typeof WebAssembly === 'object'
 
@@ -80,11 +107,11 @@ export const createTextEngine = ({
   const notify = (): void => listeners.forEach((listener) => listener())
 
   const loadFonts = async (request: TextLayoutRequest): Promise<boolean> => {
-    await library.loadFamilies(request)
+    await loadRequestFamilies(library, request)
     const registry = library.getRegistry(request)
     // A character none of the fonts draws stays with the browser, which may have a font for it.
-    if (!registry || hasUncoveredCharacter(registry, request.text)) return false
-    await registry.loadFontsForText(request.text)
+    if (!registry || hasUncoveredCharacter(registry, getBaseFaceText(request))) return false
+    await loadRequestFontFiles(library, request)
     return true
   }
 
@@ -115,11 +142,15 @@ export const createTextEngine = ({
 
   const computeLayout = (request: TextLayoutRequest, key: string): TextLayout | undefined => {
     const registry = library.getRegistry(request)
-    if (!registry || hasUncoveredCharacter(registry, request.text)) return undefined
-    if (!neededFontIds(registry, request.text).every((fontId) => registry.getFont(fontId))) {
-      return undefined
-    }
-    const layout = layoutText(request, getShaper(registry))
+    const baseText = getBaseFaceText(request)
+    if (!registry || hasUncoveredCharacter(registry, baseText)) return undefined
+    const spanRegistries = getSpanFaces(request).map((face) => library.getRegistry(face))
+    if (!areFontsLoaded(request, registry, spanRegistries)) return undefined
+    const layout = layoutText(
+      request,
+      getShaper(registry),
+      spanRegistries.flatMap((spanRegistry) => (spanRegistry ? [getShaper(spanRegistry)] : []))
+    )
     remember(key, layout)
     return layout
   }

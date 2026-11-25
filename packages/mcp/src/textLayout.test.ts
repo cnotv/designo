@@ -52,7 +52,10 @@ describe('createNodeLayoutText', () => {
       fontSize: 20,
       lineHeight: 1.2,
       alignment: 'left' as const,
-      wrapWidth: 80
+      wrapWidth: 80,
+      spans: [],
+      listStyle: 'none' as const,
+      listIndent: 1.5
     }
     expect((await layoutText(request))?.lines.length).toBeGreaterThan(1)
     expect((await layoutText({ ...request, text: 'again' }))?.lines).toHaveLength(1)

@@ -23,13 +23,14 @@ const item = (overrides: Partial<DesignNode> = {}): SceneItem => ({
   clipFrames: []
 })
 
-const glyph = (glyphId: number, x: number, y = 12) => ({
+const glyph = (glyphId: number, x: number, y = 12, fill?: string) => ({
   fontId: 'inter',
   glyphId,
   x,
   y,
   cluster: 0,
-  scale: 0.01
+  scale: 0.01,
+  ...(fill === undefined ? {} : { fill })
 })
 
 const layoutOf = (...glyphs: ReturnType<typeof glyph>[]): TextLayout => ({
@@ -148,6 +149,14 @@ describe('buildTextDrawList', () => {
     expect(
       quad?.every(({ color }) => color[0] === alpha && color[1] === 0 && color[3] === alpha)
     ).toBe(true)
+  })
+
+  it('draws a glyph in the colour of its span and the others in the node fill', () => {
+    const fixture = createFixture(layoutOf(glyph(7, 0), glyph(8, 12, 12, '#00ff00')))
+    const quads = readQuads(run(fixture, [item({ fill: '#ff0000', opacity: 0.5 })]))
+    const half = Math.round(0.5 * 255)
+    expect(quads[0]?.[0]?.color).toEqual([half, 0, 0, half])
+    expect(quads[1]?.[0]?.color).toEqual([0, half, 0, half])
   })
 
   it('draws a node with no fill black, as the Canvas 2D path does', () => {

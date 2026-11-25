@@ -48,6 +48,9 @@ const request = (overrides: Partial<TextLayoutRequest> = {}): TextLayoutRequest 
   lineHeight: 1.2,
   alignment: 'left',
   wrapWidth: undefined,
+  spans: [],
+  listStyle: 'none' as const,
+  listIndent: 1.5,
   ...overrides
 })
 

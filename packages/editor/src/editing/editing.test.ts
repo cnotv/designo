@@ -347,7 +347,10 @@ describe('estimateTextBox', () => {
         fontSize: 10,
         lineHeight: 1.25,
         textAlign: 'left',
-        wrapWidth: undefined
+        wrapWidth: undefined,
+        spans: [],
+        listStyle: 'none',
+        listIndent: 1.5
       })
     ).toEqual(estimateTextSize('ab\nabcd', 10, 1.25))
   })
@@ -363,7 +366,10 @@ describe('estimateTextBox', () => {
       fontSize: 10,
       lineHeight: 1.2,
       textAlign: 'left',
-      wrapWidth: 30
+      wrapWidth: 30,
+      spans: [],
+      listStyle: 'none',
+      listIndent: 1.5
     })
     expect(size).toEqual({ width: 30, height: 36 })
   })

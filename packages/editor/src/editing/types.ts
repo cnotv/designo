@@ -1,4 +1,12 @@
-import type { DesignNode, DesignOperation, FontStyle, TextAlign, TextFace } from '@designo/core'
+import type {
+  DesignNode,
+  DesignOperation,
+  FontStyle,
+  ListStyle,
+  TextAlign,
+  TextFace,
+  TextSpan
+} from '@designo/core'
 
 export interface Point {
   x: number
@@ -167,6 +175,9 @@ export interface TextBoxRequest extends TextFace {
   textAlign: TextAlign
   /** The width a fixed-width box wraps at; undefined for an auto-width one. */
   wrapWidth: number | undefined
+  spans: readonly TextSpan[]
+  listStyle: ListStyle
+  listIndent: number
 }
 
 export interface TextBoxSize {

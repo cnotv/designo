@@ -1,4 +1,4 @@
-import type { DesignNode, FontStyle, TextAlign, TextFace } from '@designo/core'
+import type { DesignNode, FontStyle, ListStyle, TextAlign, TextFace, TextSpan } from '@designo/core'
 import type { CodePointRange, ResolveFontFamily } from '@designo/fonts'
 
 export type TextDirection = 'ltr' | 'rtl'
@@ -175,6 +175,12 @@ export interface TextLayoutInput {
   lineHeight: number
   /** The width of a fixed-width box to wrap in; undefined lets each line run as long as it is. */
   wrapWidth: number | undefined
+  /** Stretches of the text drawn in their own weight, style or colour. */
+  spans: readonly TextSpan[]
+  /** Gives each paragraph a bullet or number, with its lines indented past the marker. */
+  listStyle: ListStyle
+  /** The indent past the marker, as a multiple of the font size. */
+  listIndent: number
 }
 
 /** One glyph to draw, placed in world units from the top left corner of the text box. */
@@ -188,6 +194,10 @@ export interface PlacedGlyph {
   cluster: number
   /** World units per font unit, to scale the glyph's outline. */
   scale: number
+  /** The colour of the span the glyph is in; undefined follows the node's fill. */
+  fill?: string
+  /** Set on the glyphs of a list marker, which stand for no character of the text: the one they draw. */
+  markerText?: string
 }
 
 export interface LaidOutLine {

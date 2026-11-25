@@ -1,3 +1,4 @@
+import { clampTextSpans } from '@designo/core'
 import type { DesignDocument, DesignNode, DesignOperation } from '@designo/core'
 import { createDeleteOperations, createPropertyOperations } from './operations.ts'
 import type { TextBoxMeasurer, TextEditSession, TextOverlayLayout, Viewport } from './types.ts'
@@ -29,7 +30,11 @@ export const getTextOverlayLayout = (
     fontSize: node.fontSize,
     lineHeight: node.lineHeight,
     textAlign: node.textAlign,
-    wrapWidth: node.textWrap ? node.width : undefined
+    wrapWidth: node.textWrap ? node.width : undefined,
+    // The draft is not committed yet, so spans past its end are cut as committing will cut them.
+    spans: clampTextSpans(node.spans, draftText.length),
+    listStyle: node.listStyle,
+    listIndent: node.listIndent
   })
   return {
     left: origin.x,

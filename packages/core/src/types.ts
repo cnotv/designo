@@ -1,5 +1,18 @@
-import type { BLEND_MODES, CURRENT_FORMAT_VERSION, IMAGE_FITS } from './defaults.ts'
+import type { BLEND_MODES, CURRENT_FORMAT_VERSION, IMAGE_FITS, LIST_STYLES } from './defaults.ts'
 export type ImageFit = (typeof IMAGE_FITS)[number]
+export type ListStyle = (typeof LIST_STYLES)[number]
+
+/**
+ * A stretch of a text node's `text`, as UTF-16 offsets, drawn with its own weight, style or colour.
+ * A property a span leaves out follows the node. Spans never overlap and are kept in order.
+ */
+export interface TextSpan {
+  start: number
+  end: number
+  fontWeight?: number
+  fontStyle?: FontStyle
+  fill?: string
+}
 export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text' | 'image'
 
 /** Which edge a text node's lines sit against, inside the node's width. */
@@ -183,6 +196,12 @@ export interface DesignNodeProperties {
    * to its text, so the width follows the words and never wraps them.
    */
   textWrap: boolean
+  /** Text only: stretches of `text` drawn in their own weight, style or colour. */
+  spans: readonly TextSpan[]
+  /** Text only: gives every paragraph a bullet or a number, with its lines indented past the marker. */
+  listStyle: ListStyle
+  /** Text only: how far a list's lines are indented past the marker, as a multiple of the font size. */
+  listIndent: number
   /**
    * Frames only: a whole number from 1 makes the frame a page of the exported PDF, in that order;
    * null leaves it out. A document with no such frame exports a page for each design page.

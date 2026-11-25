@@ -14,7 +14,10 @@ const request = {
   fontSize: 20,
   lineHeight: 1.2,
   alignment: 'left' as const,
-  wrapWidth: undefined
+  wrapWidth: undefined,
+  spans: [],
+  listStyle: 'none' as const,
+  listIndent: 1.5
 }
 
 describe('loadTextLayout', () => {

@@ -131,6 +131,7 @@ interface NodePlacement {
   sine: number
   /** The premultiplied fill with the node's opacity folded into its alpha, packed as four bytes. */
   packedColor: number
+  opacity: number
   /** Where the screen's pixel grid is, for a node that is not turned; undefined for one that is. */
   pixelGrid: PixelGrid | undefined
 }
@@ -213,7 +214,18 @@ const placeGlyph = (
   })
   if (!atlasGlyph) return false
   if (atlasGlyph.isEmpty) return true
-  writeGlyphQuad(builder.reserveGlyph(atlasGlyph.pageIndex), placement, glyph, atlasGlyph, atlas)
+  // A span with a colour of its own overrides the node's fill for its glyphs.
+  const glyphPlacement =
+    glyph.fill === undefined
+      ? placement
+      : { ...placement, packedColor: packColor(glyph.fill, placement.opacity) }
+  writeGlyphQuad(
+    builder.reserveGlyph(atlasGlyph.pageIndex),
+    glyphPlacement,
+    glyph,
+    atlasGlyph,
+    atlas
+  )
   return true
 }
 
@@ -238,6 +250,7 @@ const placeNode = (
     cosine: Math.cos(rotation),
     sine: Math.sin(rotation),
     packedColor: packColor(node.fill, node.opacity),
+    opacity: node.opacity,
     pixelGrid:
       node.rotation === 0
         ? { devicePixelsPerUnit, offsetX: view.deviceOffsetX, offsetY: view.deviceOffsetY }

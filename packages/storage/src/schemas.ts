@@ -1,6 +1,7 @@
 import {
   BLEND_MODES,
   CURRENT_FORMAT_VERSION,
+  DEFAULT_NODE_PROPERTIES,
   isValidLink,
   FONT_STYLES,
   IMAGE_FITS,
@@ -8,11 +9,14 @@ import {
   LAYOUT_CROSS_ALIGNMENTS,
   LAYOUT_MODES,
   LAYOUT_SIZINGS,
+  LIST_STYLES,
+  MAX_LIST_INDENT,
   MAX_FONT_WEIGHT,
   MAX_LETTER_SPACING,
   MAX_LINE_HEIGHT,
   MIN_FONT_WEIGHT,
   MIN_LETTER_SPACING,
+  MIN_LIST_INDENT,
   MIN_LINE_HEIGHT,
   PAGE_FACINGS,
   PAGE_UNITS,
@@ -34,6 +38,25 @@ export const nodeIdSchema = z.string().regex(/^[\w:-]{1,64}$/, 'Letters, digits,
 const hexColorSchema = z.string().regex(HEX_COLOR, 'A hex colour: #rrggbb or #rrggbbaa')
 
 const colorSchema = hexColorSchema.nullable()
+
+const MAX_TEXT_SPANS = 500
+
+const textSpanSchema = z
+  .object({
+    start: z.number().int().min(0),
+    end: z.number().int().min(1),
+    fontWeight: z.number().min(MIN_FONT_WEIGHT).max(MAX_FONT_WEIGHT).optional(),
+    fontStyle: z.enum(FONT_STYLES).optional(),
+    fill: hexColorSchema.optional()
+  })
+  .strict()
+
+export const textSpansSchema = z
+  .array(textSpanSchema)
+  .max(MAX_TEXT_SPANS)
+  .describe(
+    'Text only: stretches of text, as UTF-16 offsets start (inclusive) to end (exclusive), drawn in their own fontWeight, fontStyle or fill; what a span leaves out follows the node. In order, never overlapping, inside the text. Replace the whole list to change it; editing text alone cuts spans to the new length. Default none.'
+  )
 
 const MAX_GRADIENT_STOPS = 16
 
@@ -152,6 +175,19 @@ export const nodePatchSchema = z
       .describe(
         'Text only: true makes the node a fixed-width box whose lines wrap at its width; false (the default) sizes the box to its text.'
       ),
+    spans: textSpansSchema,
+    listStyle: z
+      .enum(LIST_STYLES)
+      .describe(
+        'Text only: bullet or number puts a marker before every paragraph (each line break starts one) and indents its lines past it as a hanging indent, in one text node. Default none.'
+      ),
+    listIndent: z
+      .number()
+      .min(MIN_LIST_INDENT)
+      .max(MAX_LIST_INDENT)
+      .describe(
+        'Text only: how far a list is indented past its marker, as a multiple of fontSize. Default 1.5.'
+      ),
     pdfPage: z
       .number()
       .int()
@@ -250,8 +286,18 @@ const componentLinksSchema = z.object({
 /** A patch that may also make a frame or group a component, or stop it being one. */
 const nodeUpdateSchema = nodePatchSchema.extend({ isComponent: z.boolean().optional() })
 
+// Files from before these properties existed have none, and read as a text with no spans and no list.
 const storedNodeSchema = nodePatchSchema
   .required()
+  .extend({
+    spans: textSpansSchema.default([]),
+    listStyle: z.enum(LIST_STYLES).default(DEFAULT_NODE_PROPERTIES.listStyle),
+    listIndent: z
+      .number()
+      .min(MIN_LIST_INDENT)
+      .max(MAX_LIST_INDENT)
+      .default(DEFAULT_NODE_PROPERTIES.listIndent)
+  })
   .extend(componentLinksSchema.shape)
   .extend({
     id: nodeIdSchema,
