@@ -183,7 +183,9 @@ text, when a text's fonts cannot be found, rather than leaving the text out.
 an agent read files from, or make requests as, the machine the server runs on. Give `width` or
 `height` alone to keep the picture's proportions; with neither it takes its own size in pixels.
 It returns `assetId`, which an image node's `imageAsset` property holds, so a picture added once
-can be placed again with `create_node` or `apply_ops`. The server decides the type from the
+can be placed again with `create_node` or `apply_ops`. The node's `imageFit` property is `stretch` (the default), `fit` (all of the picture, in
+proportion, inside the box) or `fill` (covers the box in proportion and crops the overflow); set it
+with `update_node`. The server decides the type from the
 file's first bytes, never from a name, and refuses anything that is not one of the four.
 
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in

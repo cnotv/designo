@@ -2,6 +2,7 @@
 import {
   Circle,
   Frame,
+  Github,
   ImagePlus,
   Maximize,
   MousePointer2,
@@ -28,6 +29,7 @@ const { editor, files } = useEditorContext()
 const { isDemo, saveError } = files
 
 const PERCENT = 100
+const REPOSITORY_URL = 'https://github.com/cnotv/designo'
 const IMAGE_TYPES = 'image/png,image/jpeg,image/webp,image/gif'
 
 const { insertImageFile } = useImageInsertion(editor, files)
@@ -139,6 +141,21 @@ const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PER
           </Button>
         </TooltipTrigger>
         <TooltipContent>Zoom to fit <Kbd>Shift 1</Kbd></TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <Button variant="ghost" size="icon-sm" as-child>
+            <a
+              :href="REPOSITORY_URL"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Designo on GitHub"
+            >
+              <Github />
+            </a>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Designo on GitHub</TooltipContent>
       </Tooltip>
       <AccountMenu
         v-if="account"

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
 import { useEditorContext } from '../composables/editorContext.ts'
+import { useImageInsertion } from '../composables/useImageInsertion.ts'
+import { isPictureType } from '../editing/images.ts'
 import { indexDocument } from '../editing/spatialIndex.ts'
 import { createCanvas2dRenderer } from '../rendering/canvas2dRenderer.ts'
 import { drawOverlay } from '../rendering/drawOverlay.ts'
@@ -12,7 +14,23 @@ import type { SceneRenderer } from '../rendering/types.ts'
 import { createWebglRenderer } from '../rendering/webgl/webglRenderer.ts'
 import EditorContextMenu from './EditorContextMenu.vue'
 
-const { editor, interaction } = useEditorContext()
+const { editor, interaction, files } = useEditorContext()
+const { insertImageFile } = useImageInsertion(editor, files)
+
+// Dropping a picture on the canvas places it under the pointer; the demo has no picture store.
+const onDragOver = (event: DragEvent): void => {
+  if (!files.isDemo.value) event.preventDefault()
+}
+const onDrop = (event: DragEvent): void => {
+  if (files.isDemo.value) return
+  event.preventDefault()
+  const box = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const point = { x: event.clientX - box.left, y: event.clientY - box.top }
+  const dropped = [...(event.dataTransfer?.files ?? [])]
+  dropped
+    .filter((file) => isPictureType(file.type))
+    .forEach((file) => void insertImageFile(file, point))
+}
 
 const sceneCanvas = ref<HTMLCanvasElement>()
 const overlayCanvas = ref<HTMLCanvasElement>()
@@ -142,7 +160,7 @@ watchEffect(drawMarks)
 
 <template>
   <EditorContextMenu>
-    <div class="bg-canvas relative size-full">
+    <div class="bg-canvas relative size-full" @dragover="onDragOver" @drop="onDrop">
       <canvas
         ref="sceneCanvas"
         class="pointer-events-none absolute inset-0 block size-full"

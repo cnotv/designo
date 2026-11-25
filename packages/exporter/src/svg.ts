@@ -10,6 +10,7 @@ import {
   type DesignDocument,
   type DesignNode,
   type Gradient,
+  type ImageFit,
   type TextAlign
 } from '@designo/core'
 import type { Bounds, SvgExportOptions } from './types.ts'
@@ -306,6 +307,13 @@ const renderText = (node: DesignNode, options: SvgExportOptions): string => {
   ])}>${renderTextContent(node, options)}</text>`
 }
 
+// An svg image is clipped to its own box, which is what fill needs.
+const IMAGE_ASPECT_RATIO: Record<ImageFit, string> = {
+  stretch: 'none',
+  fit: 'xMidYMid meet',
+  fill: 'xMidYMid slice'
+}
+
 const renderImage = (node: DesignNode, options: SvgExportOptions): string => {
   const href = node.imageAsset === null ? undefined : options.getImageHref?.(node.imageAsset)
   if (href === undefined) {
@@ -316,7 +324,7 @@ const renderImage = (node: DesignNode, options: SvgExportOptions): string => {
     `y="${formatNumber(node.y)}"`,
     `width="${formatNumber(node.width)}"`,
     `height="${formatNumber(node.height)}"`,
-    'preserveAspectRatio="none"',
+    `preserveAspectRatio="${IMAGE_ASPECT_RATIO[node.imageFit]}"`,
     `href="${escapeXml(href)}"`,
     ...presentationAttributes(node)
   ])}/>`

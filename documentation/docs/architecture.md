@@ -335,6 +335,7 @@ test in `migrations.test.ts` with a sample of the old file.
 | 3       | Every node carries `textAlign`, `lineHeight` and `textWrap`; old files get the defaults, which draw text as before | `migrateTextProperties.ts` |
 | 8       | Every node carries `pageUnit`, `bleed`, `facing` and `guides`; old files get no bleed and no guides                | `migratePageSetup.ts`      |
 | 9       | Every node carries `imageAsset`, for the image node; old files get none, so they draw as before                    | `migrateImages.ts`         |
+| 10      | Every node carries `imageFit` (`stretch`, `fit` or `fill`); old files get `stretch`, so they draw as before        | `migrateImageFit.ts`       |
 
 A new property every node carries needs a version, even with a default: the stored schema requires
 every property, so version 3 added `textAlign` (`left`), `lineHeight` (`1.2`) and `textWrap`
@@ -355,7 +356,10 @@ type (`<64 hex>.png`), so the same picture is kept once. `writeAsset` in `@desig
 the type from the file's first bytes, caps the size at 20 MB and refuses everything but PNG, JPEG,
 WebP and GIF, so no script can be stored as a picture. The editor server reaches the store at
 `/api/files/assets` (POST an image, GET `assets/<id>`), and the MCP `add_image` tool writes to it
-directly. A renderer that cannot read the picture draws the node's fill. The SVG exporter takes
+directly. `imageFit` says how the picture meets the node's box, worked out once by `getImagePlacement` in
+`@designo/core` for the editor's renderers; SVG maps it to `preserveAspectRatio`, and the PDF draws
+a picture that is not stretched through the rasteriser. A renderer that cannot read the picture
+draws the node's fill. The SVG exporter takes
 a `getImageHref` option and the PDF exporter a `getImageBytes` one; the MCP server fills both from
 the store, and the editor draws from `/api/files/assets` through an in-memory cache.
 

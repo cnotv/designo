@@ -40,6 +40,7 @@ import {
   readLayoutSizing,
   sizingOptionsFor
 } from '../editing/autoLayout.ts'
+import { IMAGE_FIT_OPTIONS, readImageFit } from '../editing/images.ts'
 import { readPdfPageInput } from '../editing/pdfPage.ts'
 import {
   getFontWeightOptions,
@@ -157,6 +158,11 @@ const sizingFields = computed(() =>
 const updateSizing = (key: 'widthSizing' | 'heightSizing', raw: unknown): void => {
   const sizing = readLayoutSizing(raw)
   if (sizing) update({ [key]: sizing })
+}
+
+const updateImageFit = (raw: unknown): void => {
+  const imageFit = readImageFit(raw)
+  if (imageFit) update({ imageFit })
 }
 
 const updateLayoutMode = (raw: unknown): void => {
@@ -419,6 +425,21 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             aria-label="Replacement image file"
             @change="onReplacementChosen"
           />
+          <Label for="property-image-fit">Fit</Label>
+          <Select :model-value="node.imageFit" @update:model-value="updateImageFit">
+            <SelectTrigger id="property-image-fit" class="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="option in IMAGE_FIT_OPTIONS"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </template>
 
