@@ -1,5 +1,6 @@
 import { inflateSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import {
   applyOperations,
   getPageNodes,
@@ -122,6 +123,14 @@ const extractPdfText = (bytes: Uint8Array): { runs: string[]; text: string } => 
     return (hex.match(/.{4}/g) ?? []).map((glyph) => map?.get(glyph) ?? '?').join('')
   })
   return { runs, text: runs.join('') }
+}
+
+// What a reader built on pdf.js sees: the strings of its text items, page by page.
+const readTextItems = async (bytes: Uint8Array): Promise<string[]> => {
+  const pdf = await getDocument({ data: Uint8Array.from(bytes), useSystemFonts: false }).promise
+  const page = await pdf.getPage(1)
+  const content = await page.getTextContent()
+  return content.items.flatMap((item) => ('str' in item ? [item.str] : []))
 }
 
 const twoPageDocument = (): DesignDocument =>
@@ -252,6 +261,37 @@ describe('exportDocumentToPdf', () => {
     )
     expect(text).toBe(sentence)
     expect(runs).toHaveLength(sentence.split(' ').length)
+  })
+
+  it('keeps each space inside the run of its word, and ends a wrapped line on a letter', async () => {
+    const document = build(createDocument('file', 'Text', 'page'), [
+      {
+        kind: 'create',
+        id: 'paragraph',
+        type: 'text',
+        parentId: 'page',
+        properties: {
+          text: 'Senior Frontend Engineer with 15 years of experience building design tools',
+          fontFamily: 'Inter',
+          fontSize: 24,
+          fill: '#000000',
+          width: 200,
+          textWrap: true
+        }
+      }
+    ])
+    const options = await optionsFor(document)
+    const lineCount = options.getTextLayout(document.nodes['paragraph']!)?.lines.length
+    const { runs } = extractPdfText(await exportDocumentToPdf(document, options))
+    const items = await readTextItems(await exportDocumentToPdf(document, options))
+    expect(lineCount).toBeGreaterThan(1)
+    expect(runs.some((run) => run.trim() === '')).toBe(false)
+    // A reader built on pdf.js keeps the words apart and sees no space at a line end.
+    expect(items.some((item) => item.trim() === '')).toBe(false)
+    expect(items.every((item) => item === item.trimEnd())).toBe(true)
+    expect(items.join(' ')).toContain('Senior Frontend Engineer with 15 years of')
+    // Only the last word of each line is without its trailing space.
+    expect(runs.filter((run) => !run.endsWith(' '))).toHaveLength(lineCount ?? 0)
   })
 
   it('paints a span in its own colour and the rest in the fill of the node', async () => {
