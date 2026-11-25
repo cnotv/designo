@@ -1,4 +1,4 @@
-import type { DesignOperation } from '@designo/core'
+import { IMAGE_FITS, type DesignOperation, type ImageFit } from '@designo/core'
 import type { Point } from './types.ts'
 
 /** The longest side a picture takes when it is first placed, in world units. */
@@ -59,3 +59,27 @@ export const createImageInsertOperation = ({
     height: size.height
   }
 })
+
+/** The fit choices in the properties panel, in the order they are listed. */
+export const IMAGE_FIT_OPTIONS: readonly { value: ImageFit; label: string }[] = [
+  { value: 'stretch', label: 'Stretch' },
+  { value: 'fit', label: 'Fit inside' },
+  { value: 'fill', label: 'Fill and crop' }
+]
+
+/**
+ * Reads a select's value as a fit, so nothing else reaches the node.
+ * @param raw - The value the select reported.
+ * @returns The fit, or undefined for anything that is not one.
+ */
+export const readImageFit = (raw: unknown): ImageFit | undefined =>
+  IMAGE_FITS.find((fit) => fit === raw)
+
+/**
+ * Tells whether a dragged item or file is a picture the store accepts, by its claimed type; the
+ * server checks the bytes.
+ * @param type - The file's MIME type.
+ * @returns True for PNG, JPEG, WebP and GIF.
+ */
+export const isPictureType = (type: string): boolean =>
+  ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(type)

@@ -2,6 +2,7 @@ import {
   BLEND_MODES,
   CURRENT_FORMAT_VERSION,
   FONT_STYLES,
+  IMAGE_FITS,
   LAYOUT_ALIGNMENTS,
   LAYOUT_CROSS_ALIGNMENTS,
   LAYOUT_MODES,
@@ -112,7 +113,12 @@ export const nodePatchSchema = z
     imageAsset: assetIdSchema
       .nullable()
       .describe(
-        'Images only: the id add_image returned for a stored picture. The picture is stretched to the width and height. null shows the fill as a placeholder.'
+        'Images only: the id add_image returned for a stored picture. How it meets the width and height is imageFit. null shows the fill as a placeholder.'
+      ),
+    imageFit: z
+      .enum(IMAGE_FITS)
+      .describe(
+        'Images only: stretch (default) distorts the picture to the box, fit shows all of it inside the box in proportion, fill covers the box in proportion and crops the overflow.'
       ),
     text: z.string().max(MAX_TEXT_LENGTH),
     fontSize: z.number().positive(),

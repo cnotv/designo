@@ -232,11 +232,12 @@ const drawRaster = (context: ExportContext, node: DesignNode, image: Uint8Array)
   })
 }
 
-// PNG and JPEG are embedded as they are; the PDF library reads no other type.
+// PNG and JPEG are embedded as they are; the PDF library reads no other type. A picture that is
+// not stretched is drawn to a PNG too, because the PDF knows the box but not the picture's size.
 const EMBEDDABLE_IMAGE = /\.(?:png|jpg)$/
 
 const isEmbeddableImage = (node: DesignNode): boolean =>
-  node.imageAsset !== null && EMBEDDABLE_IMAGE.test(node.imageAsset)
+  node.imageAsset !== null && node.imageFit === 'stretch' && EMBEDDABLE_IMAGE.test(node.imageAsset)
 
 const drawImage = (context: ExportContext, node: DesignNode, opacity: number): void => {
   const bytes =

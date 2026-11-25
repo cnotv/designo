@@ -192,13 +192,15 @@ on a design page, as the next section describes.
 The picture is sent to the server's picture store and placed in the middle of the view, inside
 the frame there if there is one, at its own size or smaller so its longer side is at most 400
 units. It is an ordinary layer: move, resize, rotate, fade and reorder it. The picture is
-stretched to the layer's box, so hold the proportions yourself when you resize. **Replace image**
-in its properties swaps the picture. A picture that has not loaded yet shows the layer's fill.
+stretched to the layer's box by default; the **Fit** choice in its properties changes that to
+**Fit inside** (all of it, in proportion, with the fill showing around it) or **Fill and crop**
+(covers the box in proportion and cuts off the overflow). You can also drop a PNG, JPEG, WebP or
+GIF on the canvas to place it under the pointer. **Replace image** in its properties swaps the picture. A picture that has not loaded yet shows the layer's fill.
 
 The file is kept once under the hash of its bytes in `assets/` in the data directory, however
 many layers use it. Pictures need the server: the static demo has no store, so its button is off.
-SVG and PDF export and `get_screenshot` include pictures. The PDF embeds PNG and JPEG as they
-are and draws WebP and GIF as images through the same rasteriser that draws a blurred layer.
+SVG and PDF export and `get_screenshot` include pictures. The PDF embeds a stretched PNG or JPEG as
+it is and draws WebP and GIF, and any picture set to fit or fill, as images through the same rasteriser that draws a blurred layer.
 
 ## Pages, units and guides
 

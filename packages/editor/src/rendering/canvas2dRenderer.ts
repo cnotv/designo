@@ -1,4 +1,10 @@
-import { getFillGradient, getGradientLine, hasLayerEffects, type DesignNode } from '@designo/core'
+import {
+  getFillGradient,
+  getGradientLine,
+  getImagePlacement,
+  hasLayerEffects,
+  type DesignNode
+} from '@designo/core'
 import { getBoundsCenter } from '../editing/rotation.ts'
 import { paintText } from './fallbackText.ts'
 import { getLoadedImage } from './imageCache.ts'
@@ -104,8 +110,18 @@ const paintImage = (
   devicePixelsPerUnit: number
 ): void => {
   const picture = node.imageAsset ? getLoadedImage(node.imageAsset) : undefined
-  if (picture) context.drawImage(picture, 0, 0, node.width, node.height)
-  else paintShape(context, node, devicePixelsPerUnit)
+  if (!picture) {
+    paintShape(context, node, devicePixelsPerUnit)
+    return
+  }
+  const placement = getImagePlacement(node, picture, node.imageFit)
+  // A fill picture runs past the box, which the clip cuts off.
+  context.save()
+  context.beginPath()
+  context.rect(0, 0, node.width, node.height)
+  context.clip()
+  context.drawImage(picture, placement.x, placement.y, placement.width, placement.height)
+  context.restore()
 }
 
 // Rotation turns a node around its centre, so its box stays where it is while the node spins.

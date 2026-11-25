@@ -1,7 +1,7 @@
 import type { DesignNodeProperties } from './types.ts'
 
 /** The file format version this code writes. Bumping it needs one migration step in the storage package. */
-export const CURRENT_FORMAT_VERSION = 9
+export const CURRENT_FORMAT_VERSION = 10
 
 /** The range a text node's `lineHeight` may take, as a multiple of the font size. */
 export const MIN_LINE_HEIGHT = 0.5
@@ -26,6 +26,9 @@ export const LAYOUT_ALIGNMENTS = ['start', 'center', 'end', 'space-between'] as 
 export const LAYOUT_CROSS_ALIGNMENTS = ['start', 'center', 'end'] as const
 export const LAYOUT_SIZINGS = ['fixed', 'hug', 'fill'] as const
 
+/** How an image node's picture meets its box: stretched to it, or scaled in proportion inside or over it. */
+export const IMAGE_FITS = ['stretch', 'fit', 'fill'] as const
+
 export const BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten'] as const
 
 export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
@@ -46,6 +49,7 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   strokeWidth: 1,
   cornerRadius: 0,
   imageAsset: null,
+  imageFit: 'stretch',
   text: '',
   fontSize: 16,
   fontFamily: 'Inter, system-ui, sans-serif',

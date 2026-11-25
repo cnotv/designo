@@ -1,4 +1,5 @@
-import type { BLEND_MODES, CURRENT_FORMAT_VERSION } from './defaults.ts'
+import type { BLEND_MODES, CURRENT_FORMAT_VERSION, IMAGE_FITS } from './defaults.ts'
+export type ImageFit = (typeof IMAGE_FITS)[number]
 export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text' | 'image'
 
 /** Which edge a text node's lines sit against, inside the node's width. */
@@ -160,10 +161,12 @@ export interface DesignNodeProperties {
   strokeWidth: number
   cornerRadius: number
   /**
-   * Images only: the id of the stored picture, drawn stretched to the node's box; null draws the
+   * Images only: the id of the stored picture, drawn in the node's box as `imageFit` says; null draws the
    * node's `fill` as a placeholder.
    */
   imageAsset: string | null
+  /** Images only: stretch distorts the picture to the box, fit shows all of it, fill covers the box and crops. */
+  imageFit: ImageFit
   text: string
   fontSize: number
   fontFamily: string

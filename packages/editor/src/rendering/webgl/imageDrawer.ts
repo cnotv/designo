@@ -1,4 +1,4 @@
-import type { DesignNode } from '@designo/core'
+import { getImagePlacement, type DesignNode } from '@designo/core'
 import { getLoadedImage } from '../imageCache.ts'
 import type { ViewUniformTarget } from '../types.ts'
 import { linkProgram, readUniforms } from './glPrograms.ts'
@@ -13,12 +13,14 @@ const IMAGE_UNIFORMS = [
   'u_center',
   'u_nodeHalfSize',
   'u_textureSize',
+  'u_textureOffset',
+  'u_uvCrop',
   'u_rotation',
   'u_opacity',
   'u_texture'
 ] as const
 
-/** Draws image nodes as textured quads, stretched to their boxes. */
+/** Draws image nodes as textured quads, placed in their boxes as their `imageFit` says. */
 export interface ImageDrawer {
   viewTarget: ViewUniformTarget
   /** Draws the node's picture; false when it has none to draw yet, so the caller draws its fill. */
@@ -73,8 +75,17 @@ export const createImageDrawer = (
   return {
     viewTarget: { program, uniforms },
     draw: (node) => {
+      const bitmap = node.imageAsset ? getLoadedImage(node.imageAsset) : undefined
       const texture = node.imageAsset ? textureFor(node.imageAsset) : undefined
-      if (!texture) return false
+      if (!bitmap || !texture) return false
+      const placement = getImagePlacement(node, bitmap, node.imageFit)
+      // A fill picture is larger than the box, so the quad stays the box and the texture is cropped.
+      const visible = {
+        x: Math.max(0, placement.x),
+        y: Math.max(0, placement.y),
+        width: Math.min(node.width, placement.width),
+        height: Math.min(node.height, placement.height)
+      }
       gl.useProgram(program)
       gl.bindVertexArray(vertexArray)
       gl.activeTexture(gl.TEXTURE0)
@@ -82,7 +93,13 @@ export const createImageDrawer = (
       gl.uniform1i(uniforms.u_texture, 0)
       gl.uniform2f(uniforms.u_center, node.x + node.width / 2, node.y + node.height / 2)
       gl.uniform2f(uniforms.u_nodeHalfSize, node.width / 2, node.height / 2)
-      gl.uniform2f(uniforms.u_textureSize, node.width, node.height)
+      gl.uniform2f(uniforms.u_textureSize, visible.width, visible.height)
+      gl.uniform2f(uniforms.u_textureOffset, visible.x, visible.y)
+      gl.uniform2f(
+        uniforms.u_uvCrop,
+        1 - visible.width / placement.width,
+        1 - visible.height / placement.height
+      )
       gl.uniform1f(uniforms.u_rotation, (node.rotation * Math.PI) / HALF_TURN_DEGREES)
       gl.uniform1f(uniforms.u_opacity, node.opacity)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, QUAD_VERTEX_COUNT)

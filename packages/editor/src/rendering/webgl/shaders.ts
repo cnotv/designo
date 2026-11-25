@@ -193,13 +193,18 @@ ${PLACE_IN_VIEW}
 uniform vec2 u_center;
 uniform vec2 u_nodeHalfSize;
 uniform vec2 u_textureSize;
+// Where the quad starts inside the node's box; zero for text, which starts at the corner.
+uniform vec2 u_textureOffset;
+// The share of the texture cut off on each axis, split between its two edges; zero shows it whole.
+uniform vec2 u_uvCrop;
 uniform float u_rotation;
 out vec2 v_uv;
 
 void main() {
-  v_uv = a_corner * 0.5 + 0.5;
+  vec2 corner = a_corner * 0.5 + 0.5;
+  v_uv = (corner - 0.5) * (1.0 - u_uvCrop) + 0.5;
   // The texture starts at the node's top-left corner and may run past its box, as text can.
-  vec2 local = -u_nodeHalfSize + v_uv * u_textureSize;
+  vec2 local = -u_nodeHalfSize + u_textureOffset + corner * u_textureSize;
   gl_Position = placeInView(u_center, local, u_rotation);
 }
 `

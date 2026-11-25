@@ -198,7 +198,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'add_image',
     {
       description:
-        'Store a picture (PNG, JPEG, WebP or GIF, at most 20 MB, sent as base64) and place it as an image node under a page, frame or group. It is stretched to the node box, so give the width or the height alone to keep its proportions; with neither it takes its own size in pixels. Coordinates are absolute on the page. Returns assetId, which another image node can use as its imageAsset, the new nodeId, and its size. Screenshots, SVG and PDF include the picture.',
+        'Store a picture (PNG, JPEG, WebP or GIF, at most 20 MB, sent as base64) and place it as an image node under a page, frame or group. It is stretched to the node box by default, so give the width or the height alone to keep its proportions; with neither it takes its own size in pixels. Set the imageFit property to fit (all of it, in proportion, inside the box) or fill (covers the box in proportion, cropped) with update_node. Coordinates are absolute on the page. Returns assetId, which another image node can use as its imageAsset, the new nodeId, and its size. Screenshots, SVG and PDF include the picture.',
       inputSchema: {
         fileId: fileIdSchema,
         parentId: nodeIdSchema,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createImageInsertOperation, fitImageSize } from './images.ts'
+import { createImageInsertOperation, fitImageSize, isPictureType, readImageFit } from './images.ts'
 
 describe('fitImageSize', () => {
   it('keeps a picture that already fits', () => {
@@ -39,5 +39,19 @@ describe('createImageInsertOperation', () => {
     expect(operation).toMatchObject({
       properties: { x: 400, y: 250, width: 200, height: 100 }
     })
+  })
+})
+
+describe('readImageFit', () => {
+  it('reads the three fits and nothing else', () => {
+    expect(readImageFit('fill')).toBe('fill')
+    expect(readImageFit('cover')).toBeUndefined()
+  })
+})
+
+describe('isPictureType', () => {
+  it('accepts the picture types the store keeps', () => {
+    expect(isPictureType('image/webp')).toBe(true)
+    expect(isPictureType('image/svg+xml')).toBe(false)
   })
 })
