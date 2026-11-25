@@ -202,6 +202,55 @@ const useFont = ({ pdf, options }: ExportContext, fontId: string): string => {
   return name
 }
 
+interface TextRun {
+  fontId: string
+  /** Where the first glyph sits, from the text box's corner. */
+  x: number
+  y: number
+  /** The characters of the word, then the spaces after it, so the text layer keeps them. */
+  text: string
+  /** Characters before the word's last glyph, and how far that glyph sits from the first. */
+  prefixText: string
+  lastGlyphOffset: number
+}
+
+const isSpace = (text: string): boolean => text.trim() === ''
+
+// A word is a run of glyphs in one font, moving forward; the spaces after it join it as text only.
+// One text object per word lets extractors read real spaces and costs far less than one per glyph.
+const getLineRuns = (text: string, line: LaidOutLine): TextRun[] =>
+  line.glyphs.reduce<TextRun[]>((runs, glyph) => {
+    const glyphText = getGlyphText(text, line, glyph.cluster)
+    const last = runs.at(-1)
+    if (glyphText === '') return runs
+    if (isSpace(glyphText)) {
+      if (last) last.text += glyphText
+      return runs
+    }
+    const continues =
+      last !== undefined &&
+      last.fontId === glyph.fontId &&
+      !isSpace(last.text.slice(-1)) &&
+      glyph.x > last.x + last.lastGlyphOffset
+    if (continues) {
+      last.prefixText = last.text
+      last.lastGlyphOffset = glyph.x - last.x
+      last.text += glyphText
+      return runs
+    }
+    return [
+      ...runs,
+      {
+        fontId: glyph.fontId,
+        x: glyph.x,
+        y: glyph.y,
+        text: glyphText,
+        prefixText: '',
+        lastGlyphOffset: 0
+      }
+    ]
+  }, [])
+
 const drawLayoutText = (
   context: ExportContext,
   node: DesignNode,
@@ -209,16 +258,19 @@ const drawLayoutText = (
 ): void => {
   const { pdf } = context
   lines.forEach((line) =>
-    line.glyphs.forEach((glyph) => {
-      const text = getGlyphText(node.text, line, glyph.cluster)
-      if (text.trim() === '') return
-      pdf
-        .font(useFont(context, glyph.fontId))
-        .fontSize(node.fontSize)
-        .text(text, node.x + glyph.x, node.y + glyph.y, {
-          baseline: 'alphabetic',
-          lineBreak: false
-        })
+    getLineRuns(node.text, line).forEach((run) => {
+      pdf.font(useFont(context, run.fontId)).fontSize(node.fontSize)
+      // The layout places each glyph, kerning included; pdfkit advances by the font's own widths, so
+      // the difference is spread over the word's characters to land its last glyph where the layout did.
+      const characterSpacing =
+        run.prefixText === ''
+          ? 0
+          : (run.lastGlyphOffset - pdf.widthOfString(run.prefixText)) / run.prefixText.length
+      pdf.text(run.text, node.x + run.x, node.y + run.y, {
+        baseline: 'alphabetic',
+        lineBreak: false,
+        characterSpacing
+      })
     })
   )
 }

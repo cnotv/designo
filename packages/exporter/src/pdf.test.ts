@@ -1,3 +1,4 @@
+import { inflateSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 import {
   applyOperations,
@@ -56,6 +57,57 @@ const optionsFor = async (document: DesignDocument): Promise<PdfExportOptions> =
 
 const asText = (bytes: Uint8Array): string => new TextDecoder('latin1').decode(bytes)
 const countMatches = (source: string, pattern: RegExp): number => source.match(pattern)?.length ?? 0
+
+// Reads the text layer back the way a parser does: each text object's glyph ids through the
+// ToUnicode map of its font, joined in drawing order.
+const decodeStreams = (source: string): Map<number, string> =>
+  new Map(
+    [...source.matchAll(/(\d+) 0 obj\s*<<\s*\/Length (\d+)([^>]*)>>\s*stream\r?\n/g)].flatMap(
+      (match) => {
+        const [header, id, length, rest] = match
+        const start = (match.index ?? 0) + (header?.length ?? 0)
+        const data = Buffer.from(source.slice(start, start + Number(length)), 'latin1')
+        const body = rest?.includes('FlateDecode') ? inflateSync(data).toString('latin1') : ''
+        return [[Number(id), body] as const]
+      }
+    )
+  )
+
+const parseToUnicode = (cmap: string): Map<string, string> => {
+  const hexToText = (hex: string): string => String.fromCodePoint(Number.parseInt(hex, 16))
+  const ranges = [...cmap.matchAll(/<(\w+)>\s*<(\w+)>\s*\[([^\]]*)]/g)].flatMap(
+    ([, from, , list]) =>
+      [...(list ?? '').matchAll(/<(\w+)>/g)].map(
+        ([, target], index) =>
+          [
+            (Number.parseInt(from ?? '0', 16) + index).toString(16).padStart(4, '0'),
+            hexToText(target ?? '0')
+          ] as const
+      )
+  )
+  const chars = [...cmap.matchAll(/<(\w{4})>\s*<(\w+)>(?!\s*[<[])/g)].map(
+    ([, from, target]) => [from ?? '', hexToText(target ?? '0')] as const
+  )
+  return new Map([...ranges, ...chars])
+}
+
+const extractPdfText = (bytes: Uint8Array): { runs: string[]; text: string } => {
+  const source = Buffer.from(bytes).toString('latin1')
+  const streams = decodeStreams(source)
+  const fonts = new Map(
+    [...source.matchAll(/\/(F\d+) (\d+) 0 R/g)].map(([, name, id]) => {
+      const font = source.match(new RegExp(`${id} 0 obj[^]*?/ToUnicode (\\d+) 0 R`))
+      return [name ?? '', parseToUnicode(streams.get(Number(font?.[1])) ?? '')] as const
+    })
+  )
+  const content = [...streams.values()].filter((body) => body.includes('BT')).join('\n')
+  const runs = [...content.matchAll(/BT([^]*?)ET/g)].map(([, block = '']) => {
+    const map = fonts.get(block.match(/\/(F\d+) /)?.[1] ?? '')
+    const hex = [...block.matchAll(/<(\w+)>/g)].map(([, glyphs = '']) => glyphs).join('')
+    return (hex.match(/.{4}/g) ?? []).map((glyph) => map?.get(glyph) ?? '?').join('')
+  })
+  return { runs, text: runs.join('') }
+}
 
 const twoPageDocument = (): DesignDocument =>
   build(createDocument('file', 'Book', 'page'), [
@@ -167,6 +219,24 @@ describe('exportDocumentToPdf', () => {
     const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))
     expect(countMatches(pdf, /\/FontFile2/g)).toBe(1)
     expect(pdf).toContain('/ToUnicode')
+  })
+
+  it('writes a sentence as words with real spaces, so the extracted text is the node text', async () => {
+    const sentence = 'Senior Frontend Engineer with 15 years of experience'
+    const document = build(createDocument('file', 'Text', 'page'), [
+      {
+        kind: 'create',
+        id: 'title',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: sentence, fontFamily: 'Inter', fontSize: 24, fill: '#000000' }
+      }
+    ])
+    const { runs, text } = extractPdfText(
+      await exportDocumentToPdf(document, await optionsFor(document))
+    )
+    expect(text).toBe(sentence)
+    expect(runs).toHaveLength(sentence.split(' ').length)
   })
 
   it('embeds each font of a line that mixes fallback fonts', async () => {
