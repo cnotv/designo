@@ -5,6 +5,7 @@ import {
   MIN_LINE_HEIGHT,
   type DesignNode,
   type FontStyle,
+  type ListStyle,
   type TextAlign
 } from '@designo/core'
 import type { TextWidthMode } from './types.ts'
@@ -62,6 +63,12 @@ export const isItalicAvailable = (
 export const TEXT_WIDTH_MODE_OPTIONS: readonly { value: TextWidthMode; label: string }[] = [
   { value: 'auto', label: 'Auto width' },
   { value: 'fixed', label: 'Fixed width' }
+]
+
+export const LIST_STYLE_OPTIONS: readonly { value: ListStyle; label: string }[] = [
+  { value: 'none', label: 'No list' },
+  { value: 'bullet', label: 'Bulleted list' },
+  { value: 'number', label: 'Numbered list' }
 ]
 
 // A toggle group sends an empty string when the pressed item is pressed again, which must not
@@ -128,3 +135,11 @@ export const readLetterSpacingInput = (raw: string): number | undefined => {
     ? Math.min(MAX_LETTER_SPACING, Math.max(MIN_LETTER_SPACING, percent / PERCENT))
     : undefined
 }
+
+/**
+ * Reads the value a toggle group sends as a list style.
+ * @param raw - What the control sent.
+ * @returns The style, or undefined for anything else, including a deselect.
+ */
+export const readListStyle = (raw: unknown): ListStyle | undefined =>
+  readOption(LIST_STYLE_OPTIONS, raw)

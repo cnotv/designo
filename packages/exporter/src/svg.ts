@@ -13,7 +13,7 @@ import {
   type ImageFit,
   type TextAlign
 } from '@designo/core'
-import type { Bounds, SvgExportOptions } from './types.ts'
+import type { Bounds, SvgExportOptions, TextLineRange } from './types.ts'
 import { boundsOverlap, getPaintReach, intersectBounds, toNodeSpace } from './visibleRegion.ts'
 
 // Where a line is anchored across the node's width. Left sets no attribute, so a left-aligned
@@ -226,8 +226,14 @@ const renderEllipse = (node: DesignNode): string => {
   ])}/>`
 }
 
+// A list's lines sit past the marker, so the box they align in starts there.
+const getListIndent = (node: DesignNode): number =>
+  node.listStyle === 'none' ? 0 : node.listIndent * node.fontSize
+
 const getTextAnchorX = (node: DesignNode): number =>
-  node.x + node.width * TEXT_ANCHORS[node.textAlign].widthShare
+  node.x +
+  getListIndent(node) +
+  (node.width - getListIndent(node)) * TEXT_ANCHORS[node.textAlign].widthShare
 
 // The editor centres a line's glyphs in its line box, so a taller line box moves the first line
 // down by half of the extra. SVG has no line box, so the same move is made to the baseline.
@@ -257,9 +263,74 @@ const splitIntoLines = (node: DesignNode, options: SvgExportOptions): string[] =
     : node.text.split('\n')
 }
 
+const toLineRanges = (node: DesignNode, options: SvgExportOptions): TextLineRange[] => {
+  const ranges = node.textWrap ? options.getTextLines?.(node) : undefined
+  if (ranges) return [...ranges]
+  return node.text.split('\n').map((line, index, lines) => {
+    const start = lines.slice(0, index).reduce((total, previous) => total + previous.length + 1, 0)
+    return { start, end: start + line.length }
+  })
+}
+
+// A line is cut where a span starts or ends, and each part carries the span's own style.
+const renderLineSegments = (node: DesignNode, range: TextLineRange): string => {
+  const cuts = [
+    ...new Set([range.start, range.end, ...node.spans.flatMap((span) => [span.start, span.end])])
+  ]
+    .filter((cut) => cut >= range.start && cut <= range.end)
+    .toSorted((first, second) => first - second)
+  return cuts
+    .slice(1)
+    .map((end, index) => {
+      const start = cuts[index] ?? range.start
+      const span = node.spans.find((candidate) => candidate.start <= start && end <= candidate.end)
+      const attributes = [
+        ...(span?.fontWeight === undefined
+          ? []
+          : [`font-weight="${formatNumber(span.fontWeight)}"`]),
+        ...(span?.fontStyle === undefined ? [] : [`font-style="${span.fontStyle}"`]),
+        ...(span?.fill === undefined ? [] : [`fill="${escapeXml(span.fill)}"`])
+      ]
+      const text = escapeXml(node.text.slice(start, end))
+      return attributes.length === 0 ? text : `<tspan ${attributes.join(' ')}>${text}</tspan>`
+    })
+    .join('')
+}
+
+const getListMarker = (node: DesignNode, range: TextLineRange): string | undefined => {
+  const startsParagraph = range.start === 0 || node.text[range.start - 1] === '\n'
+  if (node.listStyle === 'none' || !startsParagraph) return undefined
+  const paragraphNumber = node.text.slice(0, range.start).split('\n').length
+  return node.listStyle === 'bullet' ? '\u2022' : `${paragraphNumber}.`
+}
+
+// Rich text places every line itself, because a marker needs a position of its own.
+const renderRichTextContent = (node: DesignNode, options: SvgExportOptions): string => {
+  const lineHeight = node.fontSize * node.lineHeight
+  const { firstLine } = lineOffsets(node, options)
+  return toLineRanges(node, options)
+    .map((range, index) => {
+      const y = formatNumber(node.y + firstLine + index * lineHeight)
+      const marker = getListMarker(node, range)
+      const markerTspan =
+        marker === undefined
+          ? ''
+          : `<tspan x="${formatNumber(node.x)}" y="${y}" text-anchor="start">${marker}</tspan>`
+      const line =
+        range.start === range.end
+          ? ''
+          : `<tspan x="${formatNumber(getTextAnchorX(node))}" y="${y}">${renderLineSegments(node, range)}</tspan>`
+      return markerTspan + line
+    })
+    .join('')
+}
+
 // Each line sets its own y instead of a dy from the line before: an empty tspan contributes
 // nothing, so a blank line carried by dy would vanish and the paragraphs would close up.
 const renderTextContent = (node: DesignNode, options: SvgExportOptions): string => {
+  if (node.spans.length > 0 || node.listStyle !== 'none') {
+    return renderRichTextContent(node, options)
+  }
   const lines = splitIntoLines(node, options)
   if (lines.length === 1) return escapeXml(lines[0] ?? '')
   const lineHeight = node.fontSize * node.lineHeight
