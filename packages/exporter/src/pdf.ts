@@ -35,7 +35,12 @@ interface ExportContext {
   document: DesignDocument
   /** Nodes with blur or a shadow, drawn to images ahead of the page. */
   rasters: ReadonlyMap<string, Uint8Array>
-  graphicsStates: Map<string, string>
+  graphicsStates: Map<string, GraphicsState>
+}
+
+interface GraphicsState {
+  name: string
+  dictionary: ReturnType<Pdf['ref']>
 }
 
 interface Paint {
@@ -52,6 +57,22 @@ const parsePaint = (hex: string): Paint => ({
       : 1
 })
 
+const createGraphicsState = (
+  pdf: Pdf,
+  name: string,
+  opacity: number,
+  blendMode: DesignNode['blendMode']
+): GraphicsState => {
+  const dictionary = pdf.ref({
+    Type: 'ExtGState',
+    ca: opacity,
+    CA: opacity,
+    BM: PDF_BLEND_MODES[blendMode]
+  })
+  dictionary.end(undefined)
+  return { name, dictionary }
+}
+
 /**
  * Sets how the next marks combine with what is beneath: how opaque they are and which blend mode.
  * pdfkit only writes opacity, so the dictionary that also carries `BM` is written here.
@@ -66,19 +87,12 @@ const setGraphicsState = (
 ): void => {
   const key = `${opacity}|${blendMode}`
   const known = graphicsStates.get(key)
-  const name = known ?? `DesignoGs${graphicsStates.size}`
-  if (!known) {
-    const dictionary = pdf.ref({
-      Type: 'ExtGState',
-      ca: opacity,
-      CA: opacity,
-      BM: PDF_BLEND_MODES[blendMode]
-    })
-    dictionary.end(undefined)
-    graphicsStates.set(key, name)
-    pdf.page.ext_gstates[name] = dictionary
-  }
-  pdf.addContent(`/${name} gs`)
+  const state =
+    known ?? createGraphicsState(pdf, `DesignoGs${graphicsStates.size}`, opacity, blendMode)
+  graphicsStates.set(key, state)
+  // A page's resources are its own, so a state made on an earlier page is listed on this one too.
+  pdf.page.ext_gstates[state.name] = state.dictionary
+  pdf.addContent(`/${state.name} gs`)
 }
 
 const applyRotation = ({ pdf }: ExportContext, node: DesignNode): void => {
