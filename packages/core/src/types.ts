@@ -188,6 +188,11 @@ export interface DesignNodeProperties {
    * null leaves it out. A document with no such frame exports a page for each design page.
    */
   pdfPage: number | null
+  /**
+   * Text, rectangles and frames: an `https:`, `mailto:` or `tel:` address the node opens when
+   * clicked in the exported PDF; null is no link.
+   */
+  link: string | null
   /** Frames only: lays the children out, overwriting their position and any `fill` size. */
   layoutMode: LayoutMode
   /** The space between children of a layout frame. */

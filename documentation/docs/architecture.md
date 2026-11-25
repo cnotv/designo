@@ -336,6 +336,7 @@ test in `migrations.test.ts` with a sample of the old file.
 | 8       | Every node carries `pageUnit`, `bleed`, `facing` and `guides`; old files get no bleed and no guides                | `migratePageSetup.ts`      |
 | 9       | Every node carries `imageAsset`, for the image node; old files get none, so they draw as before                    | `migrateImages.ts`         |
 | 10      | Every node carries `imageFit` (`stretch`, `fit` or `fill`); old files get `stretch`, so they draw as before        | `migrateImageFit.ts`       |
+| 11      | Every node carries `link`; old files get none, so they export as before                                            | `migrateLinks.ts`          |
 
 A new property every node carries needs a version, even with a default: the stored schema requires
 every property, so version 3 added `textAlign` (`left`), `lineHeight` (`1.2`) and `textWrap`

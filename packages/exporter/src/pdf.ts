@@ -267,6 +267,62 @@ const drawImage = (context: ExportContext, node: DesignNode, opacity: number): v
   })
 }
 
+interface LinkBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+// Where the node's own rotation puts the box: the smallest upright box around its turned corners.
+// pdfkit's rectangle conversion goes wrong under rotation, so a link is written outside it.
+// ponytail: an ancestor's rotation still skews the box; the corners would need the full matrix.
+const getTurnedBox = (node: DesignNode, box: LinkBox): LinkBox => {
+  if (node.rotation === 0) return box
+  const centerX = node.x + node.width / 2
+  const centerY = node.y + node.height / 2
+  const angle = (node.rotation * Math.PI) / 180
+  const corners = [
+    [box.x, box.y],
+    [box.x + box.width, box.y],
+    [box.x, box.y + box.height],
+    [box.x + box.width, box.y + box.height]
+  ].map(([x = 0, y = 0]) => ({
+    x: centerX + (x - centerX) * Math.cos(angle) - (y - centerY) * Math.sin(angle),
+    y: centerY + (x - centerX) * Math.sin(angle) + (y - centerY) * Math.cos(angle)
+  }))
+  const xs = corners.map((corner) => corner.x)
+  const ys = corners.map((corner) => corner.y)
+  return {
+    x: Math.min(...xs),
+    y: Math.min(...ys),
+    width: Math.max(...xs) - Math.min(...xs),
+    height: Math.max(...ys) - Math.min(...ys)
+  }
+}
+
+// A wrapped text is clickable along each of its lines, not over the empty corners of its box.
+const getLinkBoxes = (context: ExportContext, node: DesignNode): LinkBox[] => {
+  const layout = node.type === 'text' ? context.options.getTextLayout(node) : undefined
+  if (!layout || layout.lines.length === 0) return [node]
+  return layout.lines.map((line) => ({
+    x: node.x + line.x,
+    y: node.y + line.top,
+    width: line.width,
+    height: layout.lineHeight
+  }))
+}
+
+const LINKABLE_TYPES: readonly DesignNode['type'][] = ['text', 'rectangle', 'frame']
+
+const writeLinks = (context: ExportContext, node: DesignNode): void => {
+  if (node.link === null || !LINKABLE_TYPES.includes(node.type)) return
+  const { link } = node
+  getLinkBoxes(context, node)
+    .map((box) => getTurnedBox(node, box))
+    .forEach((box) => context.pdf.link(box.x, box.y, box.width, box.height, link))
+}
+
 const drawChildren = (context: ExportContext, node: DesignNode, opacity: number): void =>
   getChildren(context.document, node.id).forEach((child) => drawNode(context, child, opacity))
 
@@ -300,6 +356,7 @@ const drawNode = (context: ExportContext, node: DesignNode, inheritedOpacity: nu
     }
   }
   pdf.restore()
+  writeLinks(context, node)
 }
 
 // Frames marked as pages are the PDF's pages, in their order; a document with none prints a page
@@ -363,7 +420,9 @@ const collectBytes = (pdf: Pdf): Promise<Uint8Array<ArrayBuffer>> =>
  * as large as its visible content. A design unit is a point. Shapes, frames that clip,
  * gradients, opacity and blend modes are PDF drawing; text is set in the fonts its layout used,
  * embedded and selectable; a node with blur or a shadow is an image, since a PDF has no blur.
- * Layout guides are not part of a document's nodes, so none is drawn.
+ * A text, rectangle or frame with a `link` is clickable in the PDF: an annotation over its box,
+ * or over each line of a wrapped text. Layout guides are not part of a document's nodes, so none
+ * is drawn.
  * @param document - The document to write.
  * @param options - How text is laid out, where its fonts are, and how blurred nodes are drawn.
  * @returns The bytes of the PDF.
