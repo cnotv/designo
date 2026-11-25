@@ -271,12 +271,37 @@ const applyMove = (
   if (getSubtreeIds(document, operation.id).includes(operation.parentId)) {
     return failure(`Node ${operation.id} cannot move inside itself`)
   }
-  const movedNode: DesignNode = {
-    ...node,
-    parentId: operation.parentId,
-    order: operation.order ?? nextSiblingOrder(document, operation.parentId)
+  const movedNode: DesignNode = { ...node, parentId: operation.parentId }
+  if (operation.order === undefined) {
+    return withNodes(document, {
+      ...document.nodes,
+      [operation.id]: { ...movedNode, order: nextSiblingOrder(document, operation.parentId) }
+    })
   }
-  return withNodes(document, { ...document.nodes, [operation.id]: movedNode })
+  return withNodes(document, insertAtOrder(document, movedNode, operation.order))
+}
+
+// A move to an order a sibling already holds would tie with it and land behind it, so the node
+// goes in front: that sibling and every one above it shift up by one. With no tie nothing else
+// changes, which keeps undo exact and leaves the editor's fractional orders alone.
+const insertAtOrder = (
+  document: DesignDocument,
+  movedNode: DesignNode,
+  order: number
+): Record<string, DesignNode> => {
+  const siblings = getChildren(document, movedNode.parentId ?? '').filter(
+    (sibling) => sibling.id !== movedNode.id
+  )
+  const shifted = siblings.some((sibling) => sibling.order === order)
+    ? siblings
+        .filter((sibling) => sibling.order >= order)
+        .map((sibling) => [sibling.id, { ...sibling, order: sibling.order + 1 }] as const)
+    : []
+  return {
+    ...document.nodes,
+    ...Object.fromEntries(shifted),
+    [movedNode.id]: { ...movedNode, order }
+  }
 }
 
 const applyReorderPage = (
