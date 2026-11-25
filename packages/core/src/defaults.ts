@@ -1,7 +1,7 @@
 import type { DesignNodeProperties } from './types.ts'
 
 /** The file format version this code writes. Bumping it needs one migration step in the storage package. */
-export const CURRENT_FORMAT_VERSION = 10
+export const CURRENT_FORMAT_VERSION = 11
 
 /** The range a text node's `lineHeight` may take, as a multiple of the font size. */
 export const MIN_LINE_HEIGHT = 0.5
@@ -60,6 +60,7 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   lineHeight: 1.2,
   textWrap: false,
   pdfPage: null,
+  link: null,
   layoutMode: 'none',
   layoutGap: 0,
   layoutPadding: 0,

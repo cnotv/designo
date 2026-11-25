@@ -50,3 +50,19 @@ describe('text properties in a patch', () => {
     expect(result.success).toBe(true)
   })
 })
+
+describe('link in a patch', () => {
+  it.each(['https://example.com/cv', 'mailto:me@example.com', 'tel:+49 170 1234567', null])(
+    'accepts %s',
+    (link) => {
+      expect(nodePatchSchema.safeParse({ link }).success).toBe(true)
+    }
+  )
+
+  it.each(['javascript:alert(1)', 'http://example.com', 'file:///etc/passwd', 'example.com', ''])(
+    'rejects %s',
+    (link) => {
+      expect(nodePatchSchema.safeParse({ link }).success).toBe(false)
+    }
+  )
+})

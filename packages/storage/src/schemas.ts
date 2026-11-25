@@ -1,6 +1,7 @@
 import {
   BLEND_MODES,
   CURRENT_FORMAT_VERSION,
+  isValidLink,
   FONT_STYLES,
   IMAGE_FITS,
   LAYOUT_ALIGNMENTS,
@@ -158,6 +159,13 @@ export const nodePatchSchema = z
       .nullable()
       .describe(
         'Frames only: a whole number from 1 makes the frame a page of the exported PDF, at its own size, in that order; null (the default) leaves it out. Once any frame has a number, only numbered frames are printed.'
+      ),
+    link: z
+      .string()
+      .refine(isValidLink, 'An https:, mailto: or tel: address')
+      .nullable()
+      .describe(
+        'Text, rectangles and frames: an https:, mailto: or tel: address the node opens when clicked in the exported PDF (each line of wrapped text is clickable); null (the default) is no link.'
       ),
     layoutMode: z
       .enum(LAYOUT_MODES)

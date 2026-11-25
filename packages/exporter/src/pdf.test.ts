@@ -297,4 +297,82 @@ describe('exportDocumentToPdf', () => {
       expect(pdf).not.toContain('/Subtype /Image')
     })
   })
+  describe('links', () => {
+    const linked = (
+      type: 'text' | 'rectangle' | 'frame' | 'ellipse',
+      properties: Record<string, unknown>
+    ): DesignDocument =>
+      build(createDocument('file', 'Links', 'page'), [
+        { kind: 'create', id: 'node', type, parentId: 'page', properties }
+      ])
+
+    const exportOf = async (document: DesignDocument): Promise<string> =>
+      asText(await exportDocumentToPdf(document, await optionsFor(document)))
+
+    it('writes a link annotation with a URI action over a rectangle', async () => {
+      const pdf = await exportOf(
+        linked('rectangle', { x: 10, y: 20, width: 30, height: 40, link: 'https://example.com/cv' })
+      )
+      expect(countMatches(pdf, /\/Subtype \/Link/g)).toBe(1)
+      expect(pdf).toContain('/S /URI')
+      expect(pdf).toContain('/URI (https://example.com/cv)')
+      // The page starts at the content, so the box sits at its corner.
+      expect(pdf).toContain('/Rect [0 0 30 40]')
+    })
+
+    it('links a frame and a mailto address', async () => {
+      const pdf = await exportOf(linked('frame', { link: 'mailto:me@example.com' }))
+      expect(pdf).toContain('/URI (mailto:me@example.com)')
+    })
+
+    it('writes no annotation for a node without a link', async () => {
+      expect(await exportOf(linked('rectangle', {}))).not.toContain('/Subtype /Link')
+    })
+
+    it('leaves an ellipse alone, as it cannot carry a link', async () => {
+      const document = linked('ellipse', {})
+      const withLink = {
+        ...document,
+        nodes: { ...document.nodes, node: { ...document.nodes.node!, link: 'https://example.com' } }
+      }
+      expect(await exportOf(withLink)).not.toContain('/Subtype /Link')
+    })
+
+    it('writes a link annotation over each line of a wrapped text', async () => {
+      const document = linked('text', {
+        text: 'one two three four five six seven eight nine ten',
+        fontFamily: 'Inter',
+        fontSize: 24,
+        fill: '#000000',
+        textWrap: true,
+        width: 120,
+        link: 'tel:+49 170 1234567'
+      })
+      const options = await optionsFor(document)
+      const lines = options.getTextLayout(document.nodes.node!)?.lines.length ?? 0
+      expect(lines).toBeGreaterThan(1)
+      const pdf = asText(await exportDocumentToPdf(document, options))
+      expect(countMatches(pdf, /\/Subtype \/Link/g)).toBe(lines)
+    })
+
+    it('escapes a parenthesis in the address', async () => {
+      const pdf = await exportOf(linked('rectangle', { link: 'https://example.com/a_(b)' }))
+      expect(pdf).toContain('/URI (https://example.com/a_\\(b\\))')
+    })
+
+    it('keeps the link over the box a rotation gives', async () => {
+      const pdf = await exportOf(
+        linked('rectangle', {
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 20,
+          rotation: 90,
+          link: 'https://example.com'
+        })
+      )
+      // 100 by 20 turned a quarter: the box is 20 wide and 100 tall.
+      expect(pdf).toContain('/Rect [0 0 20 100]')
+    })
+  })
 })

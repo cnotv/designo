@@ -105,6 +105,12 @@ const drawMarks = (): void => {
   })
 }
 
+// The browser's own tooltip shows where a linked node leads when the pointer rests on it.
+const hoveredLink = computed(() => {
+  const { hoveredId } = interaction
+  return hoveredId.value ? interaction.shownDocument.value?.nodes[hoveredId.value]?.link : undefined
+})
+
 const resizeObserver = new ResizeObserver(([entry]) => {
   if (!entry) return
   editor.setCanvasSize({
@@ -173,6 +179,7 @@ watchEffect(drawMarks)
         ref="overlayCanvas"
         class="absolute inset-0 block size-full touch-none select-none"
         :style="{ cursor: interaction.cursor.value }"
+        :title="hoveredLink ?? undefined"
         data-testid="design-canvas"
         @pointerdown="interaction.onPointerDown"
         @pointermove="interaction.onPointerMove"
