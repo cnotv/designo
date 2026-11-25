@@ -486,6 +486,32 @@ describe('export tools', () => {
     ])
   })
 
+  it('export_pdf carries the metadata and the tags apply_ops saved', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Résumé' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        { kind: 'updateMetadata', patch: { title: 'Jane Doe, CV', author: 'Jane Doe' } },
+        {
+          kind: 'create',
+          id: 'name',
+          type: 'text',
+          parentId: pageId,
+          properties: { text: 'Jane', fontFamily: 'Inter', fill: '#000000', pdfTag: 'h1' }
+        }
+      ]
+    })
+    const pdf = await exportPdfTool(
+      { ...context, getFontBytes: (fontId) => fixtureFontBytes.get(fontId) },
+      { fileId }
+    )
+    const source = Buffer.from(pdf.data, 'base64').toString('latin1')
+    expect(source).toContain('(Jane Doe, CV)')
+    expect(source).toContain('(Jane Doe)')
+    expect(source).toContain('/S /H1')
+    expect((await readDocument(context.dataDirectory, fileId)).nodes['name']?.pdfTag).toBe('h1')
+  })
+
   it('export_pdf returns a PDF with the fonts its text uses embedded', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Print' })
     await applyOperationsTool(context, {

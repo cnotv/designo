@@ -1,5 +1,11 @@
 import { applyOperation, getChildren, getSubtreeIds } from './document.ts'
-import type { DesignDocument, DesignNode, DesignNodePatch, DesignOperation } from './types.ts'
+import type {
+  DesignDocument,
+  DocumentMetadata,
+  DesignNode,
+  DesignNodePatch,
+  DesignOperation
+} from './types.ts'
 
 const pickPreviousValues = (node: DesignNode, patch: DesignNodePatch): DesignNodePatch =>
   Object.fromEntries(
@@ -62,6 +68,19 @@ export const invertOperation = (
   document: DesignDocument,
   operation: DesignOperation
 ): DesignOperation[] => {
+  if (operation.kind === 'updateMetadata') {
+    return [
+      {
+        kind: 'updateMetadata',
+        patch: Object.fromEntries(
+          Object.keys(operation.patch).map((key) => [
+            key,
+            document.metadata?.[key as keyof DocumentMetadata] ?? ''
+          ])
+        )
+      }
+    ]
+  }
   if (CREATING_KINDS.includes(operation.kind)) return [{ kind: 'delete', id: operation.id }]
   const node = document.nodes[operation.id]
   if (!node) return []

@@ -40,6 +40,8 @@ Yjs arrives. Coordinates are absolute on the page.
 A document can hold several pages. The root is the first; a `createPage` operation adds more, each
 a `page` node with no parent and an `order` among the pages, and the nodes on it hang from it like
 any other. `getPageNodes` lists them in order, and the PDF exporter prints one PDF page for each, unless frames carry a `pdfPage`, in which case those frames are its pages.
+
+A document may carry `metadata` (`title`, `author`, `subject`), changed by the `updateMetadata` operation and written to the PDF's info dictionary and XMP. A text node may carry a `pdfTag` (`h1` to `h6`, `p`, `li`); when any exported text has one, the PDF is tagged and its reading order follows the order of the nodes as they are drawn.
 The editor does not show more than the first page yet.
 
 A frame can also be a printed page. `pageUnit` (`pt` or `mm`), `bleed`, `facing` (`single`, `left`,

@@ -44,6 +44,7 @@ import {
 } from '../editing/autoLayout.ts'
 import { IMAGE_FIT_OPTIONS, readImageFit } from '../editing/images.ts'
 import { canHaveLink, readLinkInput } from '../editing/links.ts'
+import { NO_PDF_TAG, readPdfTag } from '../editing/pdfMetadata.ts'
 import { readPdfPageInput } from '../editing/pdfPage.ts'
 import {
   getFontWeightOptions,
@@ -179,6 +180,19 @@ const updateImageFit = (raw: unknown): void => {
 const updateLayoutMode = (raw: unknown): void => {
   const layoutMode = readLayoutMode(raw)
   if (layoutMode) update({ layoutMode })
+}
+
+const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const
+const PDF_TAG_OPTIONS: { value: string; label: string }[] = [
+  { value: NO_PDF_TAG, label: 'Not tagged' },
+  ...HEADING_LEVELS.map((level) => ({ value: `h${level}`, label: `Heading ${level}` })),
+  { value: 'p', label: 'Paragraph' },
+  { value: 'li', label: 'List item' }
+]
+
+const updatePdfTag = (raw: unknown): void => {
+  const pdfTag = readPdfTag(raw)
+  if (pdfTag !== undefined) update({ pdfTag })
 }
 
 const updateLayoutAlign = (raw: unknown): void => {
@@ -501,6 +515,23 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             class="min-h-14 text-xs"
             @change="update({ text: inputValue($event) })"
           />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="property-pdf-tag">PDF tag</Label>
+          <Select :model-value="node.pdfTag ?? NO_PDF_TAG" @update:model-value="updatePdfTag">
+            <SelectTrigger id="property-pdf-tag" class="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="option in PDF_TAG_OPTIONS"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="property-font-family">Font</Label>

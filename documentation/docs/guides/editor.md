@@ -270,6 +270,13 @@ The Export section sits at the bottom of the properties panel.
   the fonts the editor lays it out with, embedded and selectable, with every line breaking where
   it does on the canvas. A layer with blur or a shadow becomes an image, because a PDF has no
   blur. Layout guides are never drawn. Bleed, trim marks and CMYK are not part of this export yet.
+- **Metadata and tags:** with PDF chosen, **Title**, **Author** and **Subject** fields appear in the
+  export section; they are written to the PDF's info dictionary and XMP, and the title falls back to
+  the document name. A text layer has a **PDF tag** select in the properties panel (heading 1 to 6,
+  paragraph or list item). When any exported text is tagged, the PDF is a tagged PDF: each tagged
+  text becomes a structure element, and consecutive list items share one list. Reading order is the
+  order of the layers in the tree, which is their paint order, so move a layer in the layers panel
+  to change it. Text without a tag is not part of the structure tree.
 - **A file to try it on:** `pnpm sample:book` writes `book-sample` to the data directory: twelve
   numbered page frames laid out on one canvas, and an art direction board with no number. Its
   PDF has twelve pages and no board. It is rewritten each time it runs, so edit a copy.

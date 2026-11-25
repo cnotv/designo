@@ -164,24 +164,31 @@ content. One design unit is a point. Text is selectable and set in its embedded 
 lines where the editor breaks it; a node with blur or a shadow is an image. It fails, naming the
 text, when a text's fonts cannot be found, rather than leaving the text out.
 
+The PDF's title, author and subject come from an `updateMetadata` operation in `apply_ops`
+(`patch` with any of `title`, `author` and `subject`; an empty string clears a field), written to
+the info dictionary and the XMP. The title falls back to the file name. A text node with a `pdfTag`
+(`h1` to `h6`, `p` or `li`, set with `create_node`, `update_node` or `apply_ops`) is written as a
+structure element of a tagged PDF; consecutive `li` texts share one list, and reading order is the
+order of the frame's children. A PDF with no tagged text is not tagged.
+
 ## Tools
 
-| Tool                | Does                                                                                                              |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `list_files`        | Lists files with their ids and names                                                                              |
-| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                                |
-| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                                |
-| `get_node`          | Reads one node with every property                                                                                |
-| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                       |
-| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                             |
-| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts        |
-| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                     |
-| `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                                  |
-| `add_image`         | Stores a PNG, JPEG, WebP or GIF from base64, a file path, a URL or a stored `assetId`; places it as an image node |
-| `update_node`       | Changes some properties of one node                                                                               |
-| `delete_node`       | Deletes a node and everything inside it                                                                           |
-| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                   |
-| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, delete, move and component operations as one change    |
+| Tool                | Does                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `list_files`        | Lists files with their ids and names                                                                                           |
+| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                                             |
+| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                                             |
+| `get_node`          | Reads one node with every property                                                                                             |
+| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                    |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                                          |
+| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                     |
+| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                  |
+| `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                                               |
+| `add_image`         | Stores a PNG, JPEG, WebP or GIF from base64, a file path, a URL or a stored `assetId`; places it as an image node              |
+| `update_node`       | Changes some properties of one node                                                                                            |
+| `delete_node`       | Deletes a node and everything inside it                                                                                        |
+| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                                |
+| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, updateMetadata, delete, move and component operations as one change |
 
 `add_image` takes the picture from exactly one of `data` (base64, at most 20 MB), `path` (a file
 the server can read), `url` (`http` or `https`) or `assetId` (a picture already stored, so no bytes

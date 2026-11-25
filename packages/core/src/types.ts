@@ -1,6 +1,15 @@
-import type { BLEND_MODES, CURRENT_FORMAT_VERSION, IMAGE_FITS, LIST_STYLES } from './defaults.ts'
+import type {
+  BLEND_MODES,
+  CURRENT_FORMAT_VERSION,
+  IMAGE_FITS,
+  LIST_STYLES,
+  PDF_TAGS
+} from './defaults.ts'
 export type ImageFit = (typeof IMAGE_FITS)[number]
 export type ListStyle = (typeof LIST_STYLES)[number]
+
+/** What a text is in the tagged structure of an exported PDF: a heading level, a paragraph or a list item. */
+export type PdfTag = (typeof PDF_TAGS)[number]
 
 /**
  * A stretch of a text node's `text`, as UTF-16 offsets, drawn with its own weight, style or colour.
@@ -243,7 +252,16 @@ export interface DesignNodeComponentLinks {
   overrides?: readonly string[]
 }
 
-export interface DesignNode extends DesignNodeProperties, DesignNodeComponentLinks {
+/**
+ * Text only: how a tagged PDF names the text. Absent or null leaves it untagged; a PDF with no
+ * tagged text is not tagged at all.
+ */
+export interface DesignNodeTagging {
+  pdfTag?: PdfTag | null
+}
+
+export interface DesignNode
+  extends DesignNodeProperties, DesignNodeComponentLinks, DesignNodeTagging {
   id: string
   type: DesignNodeType
   parentId: string | null
@@ -251,15 +269,26 @@ export interface DesignNode extends DesignNodeProperties, DesignNodeComponentLin
   order: number
 }
 
+/** What a PDF's info dictionary and XMP say about the file. An empty or absent field is left out. */
+export interface DocumentMetadata {
+  title?: string
+  author?: string
+  subject?: string
+}
+
 export interface DesignDocument {
   formatVersion: typeof CURRENT_FORMAT_VERSION
   id: string
   name: string
+  /** Written to the exported PDF; the title falls back to `name`. */
+  metadata?: DocumentMetadata
   rootId: string
   nodes: Readonly<Record<string, DesignNode>>
 }
 
-export type DesignNodePatch = Partial<DesignNodeProperties> & Partial<DesignNodeComponentLinks>
+export type DesignNodePatch = Partial<DesignNodeProperties> &
+  Partial<DesignNodeComponentLinks> &
+  Partial<DesignNodeTagging>
 
 export type DesignOperation =
   | {
@@ -291,6 +320,8 @@ export type DesignOperation =
   | { kind: 'resetOverrides'; id: string }
   /** Puts a page elsewhere in the print order; a page has no parent to move to. */
   | { kind: 'reorderPage'; id: string; order: number }
+  /** Changes the document's metadata; a field set to an empty string is cleared. */
+  | { kind: 'updateMetadata'; patch: DocumentMetadata }
 
 export type OperationResult = { ok: true; document: DesignDocument } | { ok: false; error: string }
 
