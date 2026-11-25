@@ -1,4 +1,6 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -72,6 +74,85 @@ describe('addImageTool', () => {
         data: Buffer.from('<svg onload="alert(1)">').toString('base64')
       })
     ).rejects.toThrow(/PNG, JPEG, WebP or GIF/)
+  })
+})
+
+describe('addImageTool sources', () => {
+  it('refuses bytes whose header does not decode as a picture', async () => {
+    const { fileId, pageId } = await newFile()
+    const cutShort = Buffer.from(pngHeader().subarray(0, 12)).toString('base64')
+    await expect(
+      addImageTool(context, { fileId, parentId: pageId, data: cutShort })
+    ).rejects.toThrow(/does not decode/)
+  })
+
+  it('reads a file path instead of data', async () => {
+    const { fileId, pageId } = await newFile()
+    const picturePath = path.join(context.dataDirectory, 'photo.png')
+    await writeFile(picturePath, pngHeader())
+    const added = await addImageTool(context, { fileId, parentId: pageId, path: picturePath })
+    expect(added).toMatchObject({ width: 400, height: 200 })
+  })
+
+  it('refuses a path that is not a picture', async () => {
+    const { fileId, pageId } = await newFile()
+    const textPath = path.join(context.dataDirectory, 'notes.txt')
+    await writeFile(textPath, 'secret')
+    await expect(
+      addImageTool(context, { fileId, parentId: pageId, path: textPath })
+    ).rejects.toThrow(/PNG, JPEG, WebP or GIF/)
+  })
+
+  it('downloads a url instead of data', async () => {
+    const { fileId, pageId } = await newFile()
+    const server = createServer((_request, response) => response.end(Buffer.from(pngHeader())))
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const { port } = server.address() as AddressInfo
+    try {
+      const added = await addImageTool(context, {
+        fileId,
+        parentId: pageId,
+        url: `http://127.0.0.1:${port}/photo.png`
+      })
+      expect(added).toMatchObject({ width: 400, height: 200 })
+    } finally {
+      server.close()
+    }
+  })
+
+  it('refuses a url that is not http or https', async () => {
+    const { fileId, pageId } = await newFile()
+    await expect(
+      addImageTool(context, { fileId, parentId: pageId, url: 'file:///etc/passwd' })
+    ).rejects.toThrow(/http or https/)
+  })
+
+  it('reuses a stored asset by id without bytes', async () => {
+    const { fileId, pageId } = await newFile()
+    const first = await addImageTool(context, { fileId, parentId: pageId, data: PICTURE })
+    const again = await addImageTool(context, {
+      fileId,
+      parentId: pageId,
+      assetId: first.assetId,
+      width: 100
+    })
+    expect(again).toMatchObject({ assetId: first.assetId, width: 100, height: 50 })
+    expect(again.nodeId).not.toBe(first.nodeId)
+  })
+
+  it('refuses an unknown asset id', async () => {
+    const { fileId, pageId } = await newFile()
+    await expect(
+      addImageTool(context, { fileId, parentId: pageId, assetId: `${'a'.repeat(64)}.png` })
+    ).rejects.toThrow(/No stored picture/)
+  })
+
+  it('needs exactly one of data, path, url and assetId', async () => {
+    const { fileId, pageId } = await newFile()
+    await expect(addImageTool(context, { fileId, parentId: pageId })).rejects.toThrow(/exactly one/)
+    await expect(
+      addImageTool(context, { fileId, parentId: pageId, data: PICTURE, path: '/x.png' })
+    ).rejects.toThrow(/exactly one/)
   })
 })
 

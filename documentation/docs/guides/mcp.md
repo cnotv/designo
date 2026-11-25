@@ -166,25 +166,30 @@ text, when a text's fonts cannot be found, rather than leaving the text out.
 
 ## Tools
 
-| Tool                | Does                                                                                                           |
-| ------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `list_files`        | Lists files with their ids and names                                                                           |
-| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                             |
-| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                             |
-| `get_node`          | Reads one node with every property                                                                             |
-| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                    |
-| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                          |
-| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts     |
-| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                  |
-| `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                               |
-| `add_image`         | Stores a PNG, JPEG, WebP or GIF sent as base64 and places it as an image node; returns `assetId`               |
-| `update_node`       | Changes some properties of one node                                                                            |
-| `delete_node`       | Deletes a node and everything inside it                                                                        |
-| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                |
-| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, delete, move and component operations as one change |
+| Tool                | Does                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `list_files`        | Lists files with their ids and names                                                                              |
+| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                                |
+| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                                |
+| `get_node`          | Reads one node with every property                                                                                |
+| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                       |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                             |
+| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts        |
+| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                     |
+| `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                                  |
+| `add_image`         | Stores a PNG, JPEG, WebP or GIF from base64, a file path, a URL or a stored `assetId`; places it as an image node |
+| `update_node`       | Changes some properties of one node                                                                               |
+| `delete_node`       | Deletes a node and everything inside it                                                                           |
+| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                   |
+| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, delete, move and component operations as one change    |
 
-`add_image` takes the picture as base64 `data` (at most 20 MB), because a path or a URL would let
-an agent read files from, or make requests as, the machine the server runs on. Give `width` or
+`add_image` takes the picture from exactly one of `data` (base64, at most 20 MB), `path` (a file
+the server can read), `url` (`http` or `https`) or `assetId` (a picture already stored, so no bytes
+are sent again). A `path` or `url` keeps a long picture out of the model, where one wrong
+character would corrupt it. The server reads and fetches as the machine it runs on, so use these
+only with an agent you trust; whatever they return is stored only if its first bytes are a picture.
+Bytes whose header does not decode as a picture, such as a cut-off file, are refused with an error
+instead of stored. Give `width` or
 `height` alone to keep the picture's proportions; with neither it takes its own size in pixels.
 It returns `assetId`, which an image node's `imageAsset` property holds, so a picture added once
 can be placed again with `create_node` or `apply_ops`. The node's `imageFit` property is `stretch` (the default), `fit` (all of the picture, in
