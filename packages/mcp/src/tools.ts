@@ -135,16 +135,11 @@ export const applyOperationsTool = async (
     operations,
     context.generateId
   )
-  const { updates: fits, warnings: fitWarnings } = await findTextBoxFits(
-    applied.document,
-    operations,
-    applied.createdNodeIds,
-    context.layoutText ?? layoutTextWithFontsourceFonts
+  const { document, warnings: fitWarnings } = await fitTextBoxesUntilSettled(
+    context,
+    input.fileId,
+    { before, applied, operations }
   )
-  const { document } =
-    fits.length === 0
-      ? applied
-      : await applyOperationsToFile(context.dataDirectory, input.fileId, fits, context.generateId)
   return {
     createdNodeIds: applied.createdNodeIds,
     warnings: [
@@ -152,6 +147,49 @@ export const applyOperationsTool = async (
       ...findOutsideParentWarnings(document, operations, applied.createdNodeIds)
     ]
   }
+}
+
+// Fitting a text can move its siblings (an auto-width text shrinks, its row hands the room to a
+// text that fills), which changes the width another text wraps at, so fitting repeats until no
+// width moves. The depth bounds a layout that never settles.
+const MAX_FIT_ROUNDS = 5
+
+const fitTextBoxesUntilSettled = async (
+  context: DesignoToolContext,
+  fileId: string,
+  start: {
+    before: DesignDocument
+    applied: { document: DesignDocument; createdNodeIds: string[] }
+    operations: readonly OperationInput[]
+  },
+  round = 0,
+  seenWarnings: readonly string[] = []
+): Promise<{ document: DesignDocument; warnings: string[] }> => {
+  const { before, applied, operations } = start
+  const { updates, warnings } = await findTextBoxFits(
+    applied.document,
+    before,
+    operations,
+    applied.createdNodeIds,
+    context.layoutText ?? layoutTextWithFontsourceFonts
+  )
+  const allWarnings = [...new Set([...seenWarnings, ...warnings])]
+  if (updates.length === 0 || round >= MAX_FIT_ROUNDS) {
+    return { document: applied.document, warnings: allWarnings }
+  }
+  const fitted = await applyOperationsToFile(
+    context.dataDirectory,
+    fileId,
+    updates,
+    context.generateId
+  )
+  return fitTextBoxesUntilSettled(
+    context,
+    fileId,
+    { before: applied.document, applied: { ...fitted, createdNodeIds: [] }, operations: [] },
+    round + 1,
+    allWarnings
+  )
 }
 
 // Only a fixed-width text wraps, so only those need the layout engine.

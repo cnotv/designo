@@ -759,6 +759,85 @@ describe('auto-layout on the node tools', () => {
     expect(await getNodeTool(context, { fileId, nodeId: 'b' })).toMatchObject({ x: 78 })
   })
 
+  describe('a wrapped text that fills a row', () => {
+    const COPY = 'one two three four five six seven eight nine ten eleven twelve'
+
+    const heightAt = async (width: number): Promise<number> =>
+      Math.ceil(
+        (
+          await measureTextTool(context, {
+            text: COPY,
+            fontFamily: 'Inter',
+            fontSize: 20,
+            lineHeight: 1.45,
+            width
+          })
+        ).height
+      )
+
+    const createRow = async (rowWidth: number): Promise<string> => {
+      const { fileId, pageId } = await createFileTool(context, { name: 'Row' })
+      await applyOperationsTool(context, {
+        fileId,
+        operations: [
+          {
+            kind: 'create',
+            id: 'row',
+            type: 'frame',
+            parentId: pageId,
+            properties: {
+              layoutMode: 'horizontal',
+              layoutGap: 5,
+              width: rowWidth,
+              heightSizing: 'hug'
+            }
+          },
+          {
+            kind: 'create',
+            id: 'dot',
+            type: 'text',
+            parentId: 'row',
+            properties: { text: '•', fontFamily: 'Inter', fontSize: 20 }
+          },
+          {
+            kind: 'create',
+            id: 'copy',
+            type: 'text',
+            parentId: 'row',
+            properties: {
+              text: COPY,
+              fontFamily: 'Inter',
+              fontSize: 20,
+              lineHeight: 1.45,
+              textWrap: true,
+              widthSizing: 'fill',
+              heightSizing: 'hug'
+            }
+          }
+        ]
+      })
+      return fileId
+    }
+
+    it('is as tall as its lines at the width the row gives it', async () => {
+      const fileId = await createRow(300)
+      const copy = await getNodeTool(context, { fileId, nodeId: 'copy' })
+      expect(copy.height).toBe(await heightAt(copy.width))
+    })
+
+    it('is measured again when the row around it is resized', async () => {
+      const fileId = await createRow(300)
+      await applyOperationsTool(context, {
+        fileId,
+        operations: [{ kind: 'update', id: 'row', patch: { width: 600 } }]
+      })
+      const copy = await getNodeTool(context, { fileId, nodeId: 'copy' })
+      const row = await getNodeTool(context, { fileId, nodeId: 'row' })
+      expect(copy.height).toBe(await heightAt(copy.width))
+      expect(row.height).toBe(copy.height)
+    })
+  })
+
   it('refuses auto-layout on a rectangle and nothing is saved', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Refuse' })
     await expect(

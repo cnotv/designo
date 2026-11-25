@@ -47,8 +47,18 @@ export const inferFixedWidth = (
       : operation
   })
 
+// Layout can move a wrapped text's width (a row resized, a sibling that shrank) without any
+// operation naming the text, and its height follows the width.
+const reflowedTextIds = (document: DesignDocument, before: DesignDocument): string[] =>
+  Object.values(document.nodes).flatMap((node) =>
+    node.type === 'text' && node.textWrap && before.nodes[node.id]?.width !== node.width
+      ? [node.id]
+      : []
+  )
+
 const touchedTextIds = (
   document: DesignDocument,
+  before: DesignDocument,
   operations: readonly OperationInput[],
   createdNodeIds: readonly string[]
 ): string[] =>
@@ -57,7 +67,8 @@ const touchedTextIds = (
       ...createdNodeIds,
       ...operations.flatMap((operation) =>
         operation.kind === 'update' && changesBox(operation.patch) ? [operation.id] : []
-      )
+      ),
+      ...reflowedTextIds(document, before)
     ])
   ].filter((id) => document.nodes[id]?.type === 'text')
 
@@ -80,6 +91,8 @@ const fitNode = async (node: DesignNode, layoutText: LayoutText): Promise<TextBo
  * to. A text whose fonts are not available keeps the box it was given, and is reported so the
  * caller knows it may clip.
  * @param document - The document after the batch.
+ * @param before - The document the batch started from; a wrapped text whose width differs from
+ *   it is fitted again, because its lines wrap differently.
  * @param operations - The batch that was applied.
  * @param createdNodeIds - The ids the batch created.
  * @param layoutText - Lays a text out.
@@ -88,11 +101,12 @@ const fitNode = async (node: DesignNode, layoutText: LayoutText): Promise<TextBo
  */
 export const findTextBoxFits = async (
   document: DesignDocument,
+  before: DesignDocument,
   operations: readonly OperationInput[],
   createdNodeIds: readonly string[],
   layoutText: LayoutText
 ): Promise<{ updates: OperationInput[]; warnings: string[] }> => {
-  const nodes = touchedTextIds(document, operations, createdNodeIds).flatMap((id) =>
+  const nodes = touchedTextIds(document, before, operations, createdNodeIds).flatMap((id) =>
     document.nodes[id] ? [document.nodes[id]] : []
   )
   const fits = await Promise.all(nodes.map((node) => fitNode(node, layoutText)))
