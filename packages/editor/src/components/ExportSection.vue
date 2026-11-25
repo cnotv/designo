@@ -3,6 +3,7 @@ import { Download } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
 import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -13,7 +14,9 @@ import {
 } from '@/components/ui/select'
 import { useEditorContext } from '../composables/editorContext.ts'
 import { clampExportScale, EXPORT_SCALES, getExportTargetIds } from '../editing/export.ts'
+import { createMetadataOperations } from '../editing/pdfMetadata.ts'
 import type { ExportFormat } from '../editing/types.ts'
+import type { DocumentMetadata } from '@designo/core'
 
 const { editor, exporter } = useEditorContext()
 const { settings, isExporting, error } = exporter
@@ -36,6 +39,23 @@ const targetLabel = computed(() => {
     ? 'Exports the selected layer.'
     : `Exports ${targetCount.value} layers, one file each.`
 })
+
+const METADATA_FIELDS: { field: keyof DocumentMetadata; label: string }[] = [
+  { field: 'title', label: 'Title' },
+  { field: 'author', label: 'Author' },
+  { field: 'subject', label: 'Subject' }
+]
+
+const setMetadata = (field: keyof DocumentMetadata, event: Event): void => {
+  if (editor.document.value)
+    editor.commit(
+      createMetadataOperations(
+        editor.document.value,
+        field,
+        (event.target as HTMLInputElement).value
+      )
+    )
+}
 
 const setFormat = (value: AcceptableValue): void => {
   if (value === 'svg' || value === 'png' || value === 'pdf')
@@ -80,6 +100,22 @@ const setScale = (value: AcceptableValue): void => {
           </SelectContent>
         </Select>
       </div>
+    </div>
+    <div v-if="settings.format === 'pdf' && editor.document.value" class="flex flex-col gap-2">
+      <div v-for="item in METADATA_FIELDS" :key="item.field" class="flex flex-col gap-1.5">
+        <Label :for="`pdf-${item.field}`">{{ item.label }}</Label>
+        <Input
+          :id="`pdf-${item.field}`"
+          :model-value="editor.document.value.metadata?.[item.field] ?? ''"
+          :placeholder="item.field === 'title' ? editor.document.value.name : ''"
+          class="h-7 text-xs"
+          @change="setMetadata(item.field, $event)"
+        />
+      </div>
+      <p class="text-muted-foreground">
+        Text set as a heading, paragraph or list item is tagged for screen readers, in the order of
+        its frame's layers.
+      </p>
     </div>
     <Button size="sm" :disabled="isExporting || !editor.document.value" @click="exporter.run">
       <Download /> Export {{ settings.format.toUpperCase() }}

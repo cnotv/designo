@@ -84,6 +84,8 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   guides: null
 }
 
+export const PDF_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li'] as const
+
 export const CONTAINER_NODE_TYPES = ['page', 'frame', 'group'] as const
 
 export const DATA_DIRECTORY_ENVIRONMENT_VARIABLE = 'DESIGNO_DATA_DIR'

@@ -317,6 +317,21 @@ const applyReorderPage = (
   })
 }
 
+const applyUpdateMetadata = (
+  document: DesignDocument,
+  operation: Extract<DesignOperation, { kind: 'updateMetadata' }>
+): OperationResult => {
+  const merged = { ...document.metadata, ...operation.patch }
+  const kept = Object.fromEntries(Object.entries(merged).filter(([, value]) => value !== ''))
+  const { metadata: _previous, ...withoutMetadata } = document
+  // An emptied metadata leaves no key behind, so undo gives back the document it came from.
+  return {
+    ok: true,
+    document:
+      Object.keys(kept).length > 0 ? { ...withoutMetadata, metadata: kept } : withoutMetadata
+  }
+}
+
 const applyCreateInstance = (
   document: DesignDocument,
   operation: Extract<DesignOperation, { kind: 'createInstance' }>
@@ -379,6 +394,7 @@ const applyWithoutLayout = (
   if (operation.kind === 'update') return applyUpdate(document, operation)
   if (operation.kind === 'delete') return applyDelete(document, operation)
   if (operation.kind === 'reorderPage') return applyReorderPage(document, operation)
+  if (operation.kind === 'updateMetadata') return applyUpdateMetadata(document, operation)
   if (operation.kind === 'createInstance') return applyCreateInstance(document, operation)
   if (operation.kind === 'detachInstance') return applyDetachInstance(document, operation)
   if (operation.kind === 'resetOverrides') return applyResetOverrides(document, operation)

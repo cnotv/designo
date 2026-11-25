@@ -71,3 +71,19 @@ describe('invertOperations', () => {
     ])
   })
 })
+
+describe('document metadata', () => {
+  it('sets and clears fields, and undo restores them', () => {
+    const titled = unwrap(
+      applyOperations(startingDocument, [
+        { kind: 'updateMetadata', patch: { title: 'CV', author: 'Jane' } }
+      ])
+    )
+    expect(titled.metadata).toEqual({ title: 'CV', author: 'Jane' })
+    const cleared = unwrap(
+      applyOperations(titled, [{ kind: 'updateMetadata', patch: { author: '' } }])
+    )
+    expect(cleared.metadata).toEqual({ title: 'CV' })
+    expectUndoRestores([{ kind: 'updateMetadata', patch: { title: 'CV', subject: 'Job' } }])
+  })
+})

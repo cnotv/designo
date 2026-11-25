@@ -1,5 +1,6 @@
 import {
   BLEND_MODES,
+  PDF_TAGS,
   CURRENT_FORMAT_VERSION,
   DEFAULT_NODE_PROPERTIES,
   isValidLink,
@@ -115,6 +116,13 @@ const guidesSchema = z
 export const assetIdSchema = z
   .string()
   .regex(/^[\da-f]{64}\.(?:png|jpg|webp|gif)$/, 'An asset id, as add_image returns it')
+
+const pdfTagSchema = z
+  .enum(PDF_TAGS)
+  .nullable()
+  .describe(
+    "Text only: h1 to h6, p or li writes the text as that element of a tagged PDF, so screen readers and parsers read the structure; reading order is the order of the frame's children. null (the default) leaves it untagged."
+  )
 
 export const nodePatchSchema = z
   .object({
@@ -245,7 +253,8 @@ export const nodePatchSchema = z
       .describe(
         'Frames only: single, left or right (one of a facing pair; the inner margin lies along the spine), or spread (two facing pages in one frame).'
       ),
-    guides: guidesSchema
+    guides: guidesSchema,
+    pdfTag: pdfTagSchema
   })
   .partial()
   .strict()
@@ -303,13 +312,26 @@ const storedNodeSchema = nodePatchSchema
     id: nodeIdSchema,
     type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'text', 'image']),
     parentId: nodeIdSchema.nullable(),
-    order: z.number()
+    order: z.number(),
+    pdfTag: pdfTagSchema.optional()
   })
+
+const MAX_METADATA_LENGTH = 500
+
+export const documentMetadataSchema = z
+  .object({
+    title: z.string().max(MAX_METADATA_LENGTH),
+    author: z.string().max(MAX_METADATA_LENGTH),
+    subject: z.string().max(MAX_METADATA_LENGTH)
+  })
+  .partial()
+  .strict()
 
 export const storedDocumentSchema = z.object({
   formatVersion: z.literal(CURRENT_FORMAT_VERSION),
   id: fileIdSchema,
   name: z.string(),
+  metadata: documentMetadataSchema.optional(),
   rootId: nodeIdSchema,
   nodes: z.record(z.string(), storedNodeSchema)
 })
@@ -361,7 +383,13 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
     parentId: nodeIdSchema,
     order: z.number().optional()
   }),
-  z.object({ kind: z.literal('reorderPage'), id: nodeIdSchema, order: z.number() })
+  z.object({ kind: z.literal('reorderPage'), id: nodeIdSchema, order: z.number() }),
+  z.object({
+    kind: z.literal('updateMetadata'),
+    patch: documentMetadataSchema.describe(
+      'The PDF title, author and subject; an empty string clears a field.'
+    )
+  })
 ])
 
 export const MAX_OPERATIONS_PER_BATCH = 500

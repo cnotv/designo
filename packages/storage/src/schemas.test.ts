@@ -101,3 +101,22 @@ describe('text spans and lists in a patch', () => {
     expect(parsed.nodes['page-a']).toMatchObject({ spans: [], listStyle: 'none', listIndent: 1.5 })
   })
 })
+
+describe('PDF metadata and tags', () => {
+  it('takes a title, author and subject operation and refuses other fields', () => {
+    expect(
+      operationBatchSchema.safeParse([
+        { kind: 'updateMetadata', patch: { title: 'CV', author: 'Jane', subject: '' } }
+      ]).success
+    ).toBe(true)
+    expect(
+      operationBatchSchema.safeParse([{ kind: 'updateMetadata', patch: { keywords: 'x' } }]).success
+    ).toBe(false)
+  })
+
+  it('takes a heading level, paragraph or list item as pdfTag, and nothing else', () => {
+    expect(nodePatchSchema.safeParse({ pdfTag: 'h3' }).success).toBe(true)
+    expect(nodePatchSchema.safeParse({ pdfTag: null }).success).toBe(true)
+    expect(nodePatchSchema.safeParse({ pdfTag: 'h7' }).success).toBe(false)
+  })
+})

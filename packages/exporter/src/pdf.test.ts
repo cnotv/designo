@@ -503,4 +503,89 @@ describe('exportDocumentToPdf', () => {
       expect(pdf).toContain('/Rect [0 0 20 100]')
     })
   })
+
+  describe('document metadata', () => {
+    const exportWith = async (document: DesignDocument): Promise<string> =>
+      asText(await exportDocumentToPdf(document, await optionsFor(document)))
+
+    it('titles the PDF with the file name when no title is set', async () => {
+      expect(await exportWith(twoPageDocument())).toContain('(Book)')
+    })
+
+    it('writes the title, author and subject to the info dictionary and the XMP', async () => {
+      const document = build(twoPageDocument(), [
+        {
+          kind: 'updateMetadata',
+          patch: { title: 'Jane Doe, CV', author: 'Jane Doe', subject: 'Application' }
+        }
+      ])
+      const pdf = await exportWith(document)
+      expect(pdf).toContain('(Jane Doe, CV)')
+      expect(pdf).toContain('(Jane Doe)')
+      expect(pdf).toContain('(Application)')
+      expect(pdf).toContain('<dc:title>')
+      expect(pdf).toContain('<rdf:li>Jane Doe</rdf:li>')
+    })
+
+    it('escapes markup characters in the XMP only', async () => {
+      const document = build(twoPageDocument(), [
+        { kind: 'updateMetadata', patch: { title: 'Fish & <Chips>' } }
+      ])
+      const pdf = await exportWith(document)
+      expect(pdf).toContain('(Fish & <Chips>)')
+      expect(pdf).toContain('Fish &amp; &lt;Chips&gt;')
+    })
+  })
+
+  describe('tagged structure', () => {
+    const taggedDocument = (): DesignDocument =>
+      build(createDocument('file', 'Doc', 'page'), [
+        {
+          kind: 'create',
+          id: 'frame',
+          type: 'frame',
+          parentId: 'page',
+          properties: { width: 300, height: 300 }
+        },
+        ...['heading', 'intro', 'first', 'second'].map((id, index): DesignOperation => ({
+          kind: 'create',
+          id,
+          type: 'text',
+          parentId: 'frame',
+          properties: {
+            text: id,
+            x: 10,
+            y: 10 + index * 30,
+            fill: '#000000',
+            pdfTag: (['h2', 'p', 'li', 'li'] as const)[index]
+          }
+        }))
+      ])
+
+    it('is not tagged when no text has a tag', async () => {
+      const document = twoPageDocument()
+      const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))
+      expect(pdf).not.toContain('/StructTreeRoot')
+      expect(pdf).not.toContain('/MarkInfo')
+    })
+
+    it('marks the PDF as tagged and writes a structure element for each tagged text', async () => {
+      const document = taggedDocument()
+      const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))
+      expect(pdf).toContain('/Marked true')
+      expect(pdf).toContain('/StructTreeRoot')
+      expect(countMatches(pdf, /\/S \/H2\b/g)).toBe(1)
+      expect(countMatches(pdf, /\/S \/P\b/g)).toBe(1)
+    })
+
+    it('groups list items into one list, in the order of the frame', async () => {
+      const document = taggedDocument()
+      const pdf = asText(await exportDocumentToPdf(document, await optionsFor(document)))
+      expect(countMatches(pdf, /\/S \/L\b/g)).toBe(1)
+      expect(countMatches(pdf, /\/S \/LI\b/g)).toBe(2)
+      expect(countMatches(pdf, /\/S \/LBody\b/g)).toBe(2)
+      const order = [...pdf.matchAll(/\/S \/(H2|P|L)\b/g)].map((match) => match[1])
+      expect(order).toEqual(['H2', 'P', 'L'])
+    })
+  })
 })

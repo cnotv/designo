@@ -295,7 +295,7 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
   // The first operation of a page batch creates the page, which is the one to show.
   const addPageAndShow = (operations: readonly DesignOperation[]): void => {
     const [pageOperation] = operations
-    if (pageOperation && commit(operations)) showPageById(pageOperation.id)
+    if (pageOperation && 'id' in pageOperation && commit(operations)) showPageById(pageOperation.id)
   }
 
   const showPageById = (pageId: string): void => {

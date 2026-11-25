@@ -7,7 +7,8 @@ import {
   getSubtreeIds,
   hasLayerEffects,
   type DesignDocument,
-  type DesignNode
+  type DesignNode,
+  type PdfTag
 } from '@designo/core'
 import type { LaidOutLine, PlacedGlyph } from '@designo/text'
 import { getExportBounds, hasFilter } from './svg.ts'
@@ -24,6 +25,17 @@ const PDF_BLEND_MODES: Record<DesignNode['blendMode'], string> = {
   darken: 'Darken',
   lighten: 'Lighten'
 }
+// The structure types a PDF names a tag with.
+const PDF_STRUCTURE_TYPES: Record<PdfTag, string> = {
+  h1: 'H1',
+  h2: 'H2',
+  h3: 'H3',
+  h4: 'H4',
+  h5: 'H5',
+  h6: 'H6',
+  p: 'P',
+  li: 'LI'
+}
 const ALPHA_DIVISOR = 255
 const RADIAL_UNIT_RADIUS = 0.5
 const HEX_COLOR_LENGTH = 7
@@ -36,6 +48,13 @@ interface ExportContext {
   /** Nodes with blur or a shadow, drawn to images ahead of the page. */
   rasters: ReadonlyMap<string, Uint8Array>
   graphicsStates: Map<string, GraphicsState>
+  /** Tagged text in the order it was drawn, which is the reading order of the PDF. */
+  tagged: TaggedText[]
+}
+
+interface TaggedText {
+  tag: PdfTag
+  content: ReturnType<Pdf['markStructureContent']>
 }
 
 interface GraphicsState {
@@ -94,6 +113,32 @@ const setGraphicsState = (
   pdf.page.ext_gstates[state.name] = state.dictionary
   pdf.addContent(`/${state.name} gs`)
 }
+
+const XML_ESCAPES: Readonly<Record<string, string>> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;'
+}
+
+const escapeXml = (text: string): string =>
+  text.replaceAll(/[&<>]/g, (character) => XML_ESCAPES[character] ?? character)
+
+// pdfkit copies the info fields into the XMP as they are, so a title with `&` or `<` would make
+// the XMP invalid XML. The info dictionary keeps the raw text; only the XMP gets the escaped one.
+const escapeInfoInXmp = (pdf: Pdf, fields: readonly string[]): void => {
+  const append = pdf.appendXML.bind(pdf)
+  pdf.appendXML = (xml, newline) =>
+    append(
+      fields.reduce((escaped, field) => escaped.replaceAll(field, escapeXml(field)), xml),
+      newline
+    )
+}
+
+const getPdfInfo = (document: DesignDocument): Record<string, string> => ({
+  Title: document.metadata?.title || document.name,
+  ...(document.metadata?.author ? { Author: document.metadata.author } : {}),
+  ...(document.metadata?.subject ? { Subject: document.metadata.subject } : {})
+})
 
 const applyRotation = ({ pdf }: ExportContext, node: DesignNode): void => {
   if (node.rotation === 0) return
@@ -303,6 +348,44 @@ const drawLayoutText = (
     getLineRuns(node.text, line).forEach((run) => drawRun(context, node, run, opacity))
   )
 
+// A heading, paragraph or list item is marked content of its own, which the structure tree points
+// to once the whole document is drawn.
+const drawTaggedText = (context: ExportContext, node: DesignNode, opacity: number): void => {
+  const { pdf } = context
+  if (!node.pdfTag || node.fill === null || node.text === '') {
+    drawText(context, node, opacity)
+    return
+  }
+  const content = pdf.markStructureContent(PDF_STRUCTURE_TYPES[node.pdfTag])
+  drawText(context, node, opacity)
+  pdf.endMarkedContent()
+  context.tagged.push({ tag: node.pdfTag, content })
+}
+
+// Consecutive list items share one list; each item holds its text in a list body, as PDF/UA asks.
+const addStructureTree = ({ pdf, tagged }: ExportContext): void => {
+  const groups = tagged.reduce<TaggedText[][]>((runs, entry) => {
+    const last = runs.at(-1)
+    return entry.tag === 'li' && last?.[0]?.tag === 'li'
+      ? [...runs.slice(0, -1), [...last, entry]]
+      : [...runs, [entry]]
+  }, [])
+  groups.forEach((run) => {
+    const [first] = run
+    if (first?.tag === 'li') {
+      pdf.addStructure(
+        pdf.struct(
+          'L',
+          {},
+          run.map((item) => pdf.struct('LI', {}, [pdf.struct('LBody', {}, [item.content])]))
+        )
+      )
+    } else if (first) {
+      pdf.addStructure(pdf.struct(PDF_STRUCTURE_TYPES[first.tag], {}, [first.content]))
+    }
+  })
+}
+
 const drawText = (context: ExportContext, node: DesignNode, opacity: number): void => {
   if (node.fill === null || node.text === '') return
   setPaint(context, node.fill, opacity)
@@ -418,7 +501,7 @@ const drawNode = (context: ExportContext, node: DesignNode, inheritedOpacity: nu
     drawRaster(context, node, raster)
   } else {
     applyRotation(context, node)
-    if (node.type === 'text') drawText(context, node, opacity)
+    if (node.type === 'text') drawTaggedText(context, node, opacity)
     else if (node.type === 'image') drawImage(context, node, opacity)
     else if (node.type === 'page' || node.type === 'group') drawChildren(context, node, opacity)
     else {
@@ -445,6 +528,12 @@ const getPdfPages = (document: DesignDocument): DesignNode[] => {
     .toSorted((first, second) => (first.pdfPage ?? 0) - (second.pdfPage ?? 0))
   return marked.length > 0 ? marked : getPageNodes(document)
 }
+
+const hasTaggedText = (document: DesignDocument, page: DesignNode): boolean =>
+  getSubtreeIds(document, page.id).some((id) => {
+    const node = document.nodes[id]
+    return node?.type === 'text' && node.visible && Boolean(node.pdfTag) && node.text !== ''
+  })
 
 // A WebP or a GIF is drawn to a PNG with the other nodes that need an image.
 const isRasterImage = (node: DesignNode): boolean =>
@@ -509,21 +598,28 @@ export const exportDocumentToPdf = async (
   document: DesignDocument,
   options: PdfExportOptions
 ): Promise<Uint8Array<ArrayBuffer>> => {
+  const pages = getPdfPages(document)
+  const info = getPdfInfo(document)
   const pdf = new PDFDocument({
     autoFirstPage: false,
     // The PDF's own fonts are not bundled for the browser, and every text is set in an embedded one.
     font: '',
-    info: { Title: document.name }
+    // The default 1.3 writes no XMP, and a tagged structure needs 1.4 or later.
+    pdfVersion: '1.7',
+    info,
+    tagged: pages.some((page) => hasTaggedText(document, page))
   })
+  escapeInfoInXmp(pdf, Object.values(info))
   const bytes = collectBytes(pdf)
   const context: ExportContext = {
     pdf,
     options,
     document,
     rasters: await rasterizeEffects(document, options),
-    graphicsStates: new Map()
+    graphicsStates: new Map(),
+    tagged: []
   }
-  getPdfPages(document).forEach((page) => {
+  pages.forEach((page) => {
     const bounds = getExportBounds(document, page)
     pdf.addPage({
       size: [Math.max(bounds.width, MIN_PAGE_SIZE), Math.max(bounds.height, MIN_PAGE_SIZE)],
@@ -534,6 +630,7 @@ export const exportDocumentToPdf = async (
     drawNode(context, page, 1)
     pdf.restore()
   })
+  addStructureTree(context)
   pdf.end()
   return bytes
 }
