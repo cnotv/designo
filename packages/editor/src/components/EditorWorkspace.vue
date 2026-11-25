@@ -17,6 +17,7 @@ import { useEditor } from '../composables/useEditor.ts'
 import { measureFallbackTextBox } from '../rendering/fallbackText.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 import { createTextBoxMeasurer } from '../rendering/text/textBoxMeasurer.ts'
+import { useTextBoxFitting } from '../composables/useTextBoxFitting.ts'
 import { useExport } from '../composables/useExport.ts'
 import { useEditorShortcuts } from '../composables/useEditorShortcuts.ts'
 import type { SignedInAccount } from '../editing/types.ts'
@@ -31,6 +32,7 @@ const editor = useEditor(
   files,
   createTextBoxMeasurer(getSharedTextRuntime().engine, measureFallbackTextBox)
 )
+useTextBoxFitting(files, getSharedTextRuntime().engine)
 const interaction = useCanvasInteraction(editor)
 const exporter = useExport(editor)
 useEditorShortcuts(editor, interaction.spaceHeld, exporter.run)
