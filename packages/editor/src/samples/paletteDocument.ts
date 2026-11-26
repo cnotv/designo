@@ -1,12 +1,14 @@
 import {
   applyOperations,
   createDocument,
+  millimetresToPoints,
   type DesignDocument,
   type DesignOperation
 } from '@designo/core'
 
 const SWATCH_COLORS = ['#1b4332', '#2d6a4f', '#52b788', '#d8f3dc', '#f4a261']
 const SWATCH_STEP = 120
+const PAGE_BLEED_MILLIMETRES = 3
 const SWATCH_LEFT = 32
 
 const swatchOperations = (color: string, position: number): DesignOperation[] => [
@@ -116,7 +118,8 @@ const PAGE_FRAME_SIZE = 380
 const PAGE_FRAME_LEFT = 700
 const PAGE_FRAME_GAP = 40
 
-// Two frames to select and export: each is a page of the PDF, and the palette frame is not.
+// Two frames to select and export: each is a page of the PDF, and the palette frame is not. The
+// second has 3 mm of bleed, so its PDF page is larger than the frame, with a bleed and a trim box.
 const pageFrameOperations = (position: number): DesignOperation[] => {
   const id = `page-${position + 1}`
   const left = PAGE_FRAME_LEFT + position * (PAGE_FRAME_SIZE + PAGE_FRAME_GAP)
@@ -133,7 +136,8 @@ const pageFrameOperations = (position: number): DesignOperation[] => {
         width: PAGE_FRAME_SIZE,
         height: PAGE_FRAME_SIZE,
         fill: SWATCH_COLORS[position + 3] ?? '#ffffff',
-        pdfPage: position + 1
+        pdfPage: position + 1,
+        bleed: position === 1 ? millimetresToPoints(PAGE_BLEED_MILLIMETRES) : 0
       }
     },
     {

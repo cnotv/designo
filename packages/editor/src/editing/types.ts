@@ -149,6 +149,8 @@ export interface ExportSettings {
   format: ExportFormat
   /** Pixel density of a PNG; an SVG or a PDF is vector and ignores it. */
   scale: number
+  /** PDF only: crop marks at the corners of each page's trim box. */
+  trimMarks: boolean
 }
 
 export interface PixelSize {

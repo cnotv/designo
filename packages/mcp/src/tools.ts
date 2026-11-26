@@ -245,7 +245,7 @@ const PDF_RASTER_SCALE = 3
  */
 export const exportPdfTool = async (
   context: DesignoToolContext,
-  input: { fileId: string }
+  input: { fileId: string; trimMarks?: boolean }
 ): Promise<PdfFile> => {
   const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
   const layoutText = context.layoutText ?? layoutTextWithFontsourceFonts
@@ -259,6 +259,7 @@ export const exportPdfTool = async (
   const lookups = toImageLookups(await loadDocumentImages(context.dataDirectory, document))
   const bytes = await exportDocumentToPdf(document, {
     ...lookups,
+    trimMarks: input.trimMarks,
     getTextLayout: (node) => layouts.get(node.id),
     getFontBytes: context.getFontBytes ?? layoutTextWithFontsourceFonts.getFontBytes,
     rasterizeNode: async (nodeId) => {

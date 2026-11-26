@@ -448,6 +448,30 @@ describe('export tools', () => {
     ])
   })
 
+  it('export_pdf grows a page by its bleed, and trimMarks adds room for crop marks', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Print' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          type: 'frame',
+          parentId: pageId,
+          properties: { width: 200, height: 100, pdfPage: 1, bleed: 9 }
+        }
+      ]
+    })
+    const readBoxes = async (trimMarks?: boolean): Promise<string> =>
+      Buffer.from((await exportPdfTool(context, { fileId, trimMarks })).data, 'base64').toString(
+        'latin1'
+      )
+    const plain = await readBoxes()
+    expect(plain).toContain('/MediaBox [0 0 218 118]')
+    expect(plain).toContain('/TrimBox [9 9 209 109]')
+    expect(plain).toContain('/BleedBox [0 0 218 118]')
+    expect(await readBoxes(true)).toContain('/MediaBox [0 0 254 154]')
+  })
+
   it('export_pdf makes a page of each frame given a pdfPage, in that order', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Spreads' })
     await applyOperationsTool(context, {

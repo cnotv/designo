@@ -291,7 +291,9 @@ The Export section sits at the bottom of the properties panel.
   as its visible content. One design unit is a point. Shapes, clipping frames, gradients, opacity and blend modes are vector; text is set in
   the fonts the editor lays it out with, embedded and selectable, with every line breaking where
   it does on the canvas. A layer with blur or a shadow becomes an image, because a PDF has no
-  blur. Layout guides are never drawn. Bleed, trim marks and CMYK are not part of this export yet.
+  blur. Layout guides are never drawn. A page frame with bleed exports a page grown by the bleed on every
+  side, with a BleedBox and a TrimBox, and its fill and clipping reach the bleed edge; the **Trim
+  marks** checkbox adds crop marks in a slug beyond the bleed. CMYK is not part of this export yet.
 - **Metadata and tags:** with PDF chosen, **Title**, **Author** and **Subject** fields appear in the
   export section; they are written to the PDF's info dictionary and XMP, and the title falls back to
   the document name. A text layer has a **PDF tag** select in the properties panel (heading 1 to 6,
