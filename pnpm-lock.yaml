@@ -57,6 +57,22 @@ importers:
         specifier: ^10.4.2
         version: 10.4.2(eslint@9.39.5(jiti@2.7.0))
 
+  packages/ats:
+    dependencies:
+      '@designo/core':
+        specifier: workspace:*
+        version: link:../core
+      pdfjs-dist:
+        specifier: ^6.5.438
+        version: 6.5.438
+    devDependencies:
+      '@designo/exporter':
+        specifier: workspace:*
+        version: link:../exporter
+      '@designo/text':
+        specifier: workspace:*
+        version: link:../text
+
   packages/auth:
     dependencies:
       jose:
