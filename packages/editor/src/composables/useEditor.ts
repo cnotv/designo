@@ -52,7 +52,12 @@ import type {
   Tool,
   Viewport
 } from '../editing/types.ts'
-import { fitViewportToContent, getContentBounds, zoomAt } from '../editing/viewport.ts'
+import {
+  fitViewportToContent,
+  getContentBounds,
+  keepCenterOnResize,
+  zoomAt
+} from '../editing/viewport.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
 import type { DesignoFiles, Editor } from './types.ts'
 import { useTextEditing } from './useTextEditing.ts'
@@ -85,6 +90,12 @@ const useViewport = (document: Readonly<Ref<DesignDocument | undefined>>) => {
     if (!fileId || fittedFileId.value === fileId || canvasSize.value.width === 0) return
     fittedFileId.value = fileId
     zoomToFit()
+  })
+
+  // A panel shown or hidden resizes the canvas; the content keeps its place in the middle.
+  watch(canvasSize, (next, previous) => {
+    if (previous.width === 0 || fittedFileId.value === undefined) return
+    viewport.value = keepCenterOnResize(viewport.value, previous, next)
   })
 
   return { viewport, canvasSize, zoomToFit, zoomTo }

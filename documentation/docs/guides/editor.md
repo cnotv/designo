@@ -35,8 +35,8 @@ and the right panel (properties). The canvas takes the room they leave. Each pan
 its own, and both come back as they were.
 
 Hover a file in the **Files** list to show its trash button. It asks for confirmation, then
-removes the file from the server; this cannot be undone. The sample shown without a server has no
-delete button.
+removes the file from the server; this cannot be undone. The demo without a server has two sample
+files to switch between and delete; they come back when the page reloads.
 
 ## Tools
 

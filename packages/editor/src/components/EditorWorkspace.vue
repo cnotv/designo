@@ -118,7 +118,6 @@ const confirmDelete = (): void => {
               <span class="truncate">{{ summary.name }}</span>
             </Button>
             <Button
-              v-if="!isDemo"
               variant="ghost"
               size="icon-sm"
               class="h-7 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
