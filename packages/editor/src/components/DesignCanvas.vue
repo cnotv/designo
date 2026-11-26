@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { resolveMasters } from '@designo/core'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
 import { useEditorContext } from '../composables/editorContext.ts'
 import { useImageInsertion } from '../composables/useImageInsertion.ts'
@@ -58,7 +59,9 @@ const atlasStats = ref<{ pages: number; glyphs: number }>()
 
 // The index and paint order are rebuilt only when the document changes, not on pan or zoom.
 const sceneSource = computed(() => {
-  const document = interaction.shownDocument.value
+  const shown = interaction.shownDocument.value
+  // Masters are drawn from a resolved copy; picking and selection still use the stored nodes.
+  const document = shown ? resolveMasters(shown) : undefined
   return document ? createSceneSource(document, indexDocument(document)) : undefined
 })
 

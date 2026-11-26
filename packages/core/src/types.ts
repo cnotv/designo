@@ -253,6 +253,17 @@ export interface DesignNodeComponentLinks {
 }
 
 /**
+ * How a frame takes part in master pages. A master frame (`isMaster`) holds what pages share. A page
+ * frame names it in `masterId`, and `masterHidden` lists ids of the master's direct children that
+ * this page leaves out, so it can draw its own in their place.
+ */
+export interface DesignNodeMasterLinks {
+  isMaster?: boolean
+  masterId?: string | null
+  masterHidden?: readonly string[]
+}
+
+/**
  * Text only: how a tagged PDF names the text. Absent or null leaves it untagged; a PDF with no
  * tagged text is not tagged at all.
  */
@@ -261,7 +272,7 @@ export interface DesignNodeTagging {
 }
 
 export interface DesignNode
-  extends DesignNodeProperties, DesignNodeComponentLinks, DesignNodeTagging {
+  extends DesignNodeProperties, DesignNodeComponentLinks, DesignNodeMasterLinks, DesignNodeTagging {
   id: string
   type: DesignNodeType
   parentId: string | null
@@ -288,6 +299,7 @@ export interface DesignDocument {
 
 export type DesignNodePatch = Partial<DesignNodeProperties> &
   Partial<DesignNodeComponentLinks> &
+  Partial<DesignNodeMasterLinks> &
   Partial<DesignNodeTagging>
 
 export type DesignOperation =

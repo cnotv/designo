@@ -248,6 +248,28 @@ Select a frame and the properties panel gains a **Page** section that makes it a
 
 Agents set the same through the MCP `set_page_setup` tool, in either unit.
 
+## Master pages
+
+Content that repeats on many pages, such as a running footer or a page number, is drawn once on a
+master.
+
+- **Make a master:** select a frame and press **Use as a master** under **Master page** in the
+  properties panel. Put the shared nodes inside it.
+- **Use it:** select a page frame and pick the master in the **Master page** select. The master's
+  nodes are drawn behind the page's own nodes, on the canvas, in screenshots and in every export.
+  Changing the master changes every page that uses it. The copies are not selectable; edit the
+  master.
+- **Page number:** a text containing `{page}` shows the number of the page it is drawn on. A page's
+  number is its **PDF page**, or, without one, its place among the pages that use a master. The
+  master's own text keeps showing `{page}`. A page number is best a fixed-width text, centred, so it
+  keeps its place at any digit count; spans in a text with `{page}` are dropped.
+  ![A master with a rule and a page number, and two pages that each show their own number](/img/master-pages.png)
+
+![Moving the master's rule moves it on both pages](/img/master-pages.gif)
+
+- **Override:** an agent lists master nodes a page leaves out in `masterHidden` and draws its own
+  node in their place. The editor has no control for that yet.
+
 ## Export
 
 ![The Export section of the properties panel](/img/export.png)

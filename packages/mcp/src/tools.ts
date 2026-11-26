@@ -4,6 +4,7 @@ import {
   DEFAULT_NODE_PROPERTIES,
   createDocument,
   getNodeTree,
+  resolveMasters,
   getSubtreeIds,
   type DesignDocument,
   type DesignNode,
@@ -223,7 +224,7 @@ export const exportSvgTool = async (
   context: DesignoToolContext,
   input: { fileId: string; nodeId?: string }
 ): Promise<string> => {
-  const document = await readDocument(context.dataDirectory, input.fileId)
+  const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
   const nodeId = input.nodeId ?? document.rootId
   return exportNodeToSvg(document, nodeId, {
     getTextLines: await findTextLines(context, document, nodeId),
@@ -246,7 +247,7 @@ export const exportPdfTool = async (
   context: DesignoToolContext,
   input: { fileId: string }
 ): Promise<PdfFile> => {
-  const document = await readDocument(context.dataDirectory, input.fileId)
+  const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
   const layoutText = context.layoutText ?? layoutTextWithFontsourceFonts
   const layouts = new Map(
     await Promise.all(
@@ -297,7 +298,7 @@ export const getScreenshotTool = async (
   context: DesignoToolContext,
   input: { fileId: string; nodeId?: string; scale?: number }
 ): Promise<ScreenshotImage> => {
-  const document = await readDocument(context.dataDirectory, input.fileId)
+  const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
   const nodeId = input.nodeId ?? document.rootId
   const fonts = await (context.loadScreenshotFonts ?? loadScreenshotFonts)(
     collectTexts(document, nodeId)

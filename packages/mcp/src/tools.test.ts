@@ -543,6 +543,40 @@ describe('export tools', () => {
     expect(svg).toContain('fill="#ff0000"')
   })
 
+  it("export_svg draws a master on each page that uses it, with that page's number", async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Master' })
+    const frame = (id: string, x: number) => ({
+      kind: 'create' as const,
+      id,
+      type: 'frame' as const,
+      parentId: pageId,
+      properties: { x, y: 0, width: 100, height: 100 }
+    })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        frame('master', 500),
+        { kind: 'update', id: 'master', patch: { isMaster: true } },
+        {
+          kind: 'create',
+          id: 'number',
+          type: 'text',
+          parentId: 'master',
+          properties: { x: 510, y: 80, text: 'Page {page}', fontFamily: 'Inter' }
+        },
+        frame('one', 0),
+        frame('two', 200),
+        { kind: 'update', id: 'one', patch: { masterId: 'master', pdfPage: 1 } },
+        { kind: 'update', id: 'two', patch: { masterId: 'master', pdfPage: 2 } }
+      ]
+    })
+    const first = await exportSvgTool(context, { fileId, nodeId: 'one' })
+    const second = await exportSvgTool(context, { fileId, nodeId: 'two' })
+    expect(first).toContain('Page 1')
+    expect(second).toContain('Page 2')
+    expect(second).not.toContain('{page}')
+  })
+
   it('get_screenshot returns a png of the page by default', async () => {
     const { fileId } = await createSquareFile()
     const image = await getScreenshotTool(context, { fileId })
