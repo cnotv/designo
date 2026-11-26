@@ -7,5 +7,6 @@ jobs:
   preview:
     uses: cnotv/agent-base/.github/workflows/pr-preview.yml@main
     with:
-      start-command: pnpm dev --port 5320 --strictPort
+      # The built demo, which shows the bundled sample; the dev server has no files in CI and draws an empty canvas.
+      start-command: pnpm --filter @designo/editor build && pnpm --filter @designo/editor exec vite preview --port 5320 --strictPort
       port: 5320
