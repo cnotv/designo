@@ -67,4 +67,9 @@ export interface PdfExportOptions {
    * GIF go through `rasterizeNode`. Without them an image node is drawn as its fill.
    */
   getImageBytes?: (assetId: string) => Uint8Array | undefined
+  /**
+   * Draws crop marks at the corners of each page's trim box, in a slug the page grows by beyond its
+   * bleed. A page with bleed always gets a BleedBox and a TrimBox; the marks only add room.
+   */
+  trimMarks?: boolean
 }

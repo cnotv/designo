@@ -4,6 +4,7 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import {
   applyOperations,
   getPageNodes,
+  millimetresToPoints,
   createDocument,
   type DesignDocument,
   type DesignOperation
@@ -152,7 +153,97 @@ const twoPageDocument = (): DesignDocument =>
     }
   ])
 
+const BLEED = millimetresToPoints(3)
+
+const readBox = (pdf: string, name: string): number[] =>
+  (new RegExp(`/${name} \\[([^\\]]+)]`).exec(pdf)?.[1] ?? '').split(' ').map(Number)
+
 describe('exportDocumentToPdf', () => {
+  describe('bleed and trim marks', () => {
+    const bleedDocument = (bleed: number): DesignDocument =>
+      build(createDocument('file', 'Print', 'page'), [
+        {
+          kind: 'create',
+          id: 'sheet',
+          type: 'frame',
+          parentId: 'page',
+          properties: { x: 40, y: 60, width: 200, height: 100, pdfPage: 1, bleed, fill: '#ff0000' }
+        },
+        {
+          kind: 'create',
+          id: 'art',
+          type: 'rectangle',
+          parentId: 'sheet',
+          properties: { x: 40, y: 60, width: 200, height: 100, fill: '#00ff00' }
+        }
+      ])
+
+    const exportPdf = async (bleed: number, trimMarks?: boolean): Promise<string> => {
+      const document = bleedDocument(bleed)
+      return asText(
+        await exportDocumentToPdf(document, { ...(await optionsFor(document)), trimMarks })
+      )
+    }
+
+    it('grows the page by the bleed and writes a bleed box and a trim box', async () => {
+      const pdf = await exportPdf(BLEED)
+      const media = readBox(pdf, 'MediaBox')
+      const bleedBox = readBox(pdf, 'BleedBox')
+      const trim = readBox(pdf, 'TrimBox')
+      expect(media[2]).toBeCloseTo(200 + BLEED * 2, 3)
+      expect(media[3]).toBeCloseTo(100 + BLEED * 2, 3)
+      expect(bleedBox).toEqual(media)
+      expect(trim[0]).toBeCloseTo(BLEED, 3)
+      expect(trim[1]).toBeCloseTo(BLEED, 3)
+      expect(trim[2]).toBeCloseTo(BLEED + 200, 3)
+      expect(trim[3]).toBeCloseTo(BLEED + 100, 3)
+    })
+
+    it('writes no bleed or trim box for a page without bleed', async () => {
+      const pdf = await exportPdf(0)
+      expect(pdf).not.toContain('/BleedBox')
+      expect(pdf).not.toContain('/TrimBox')
+      expect(pdf).toContain('/MediaBox [0 0 200 100]')
+    })
+
+    it('fills and clips the page to the bleed edge, so the artwork reaches it', async () => {
+      const document = bleedDocument(BLEED)
+      const content = contentOf(await exportDocumentToPdf(document, await optionsFor(document)))
+      const rectangles = [
+        ...content.matchAll(/(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) re/g)
+      ].map((match) => match.slice(1).map(Number))
+      const [left = 0, top = 0, width = 0, height = 0] = rectangles[0] ?? []
+      expect(left).toBeCloseTo(40 - BLEED, 3)
+      expect(top).toBeCloseTo(60 - BLEED, 3)
+      expect(width).toBeCloseTo(200 + BLEED * 2, 3)
+      expect(height).toBeCloseTo(100 + BLEED * 2, 3)
+    })
+
+    it('draws trim marks outside the bleed box, in a larger media box, only when asked', async () => {
+      const plain = await exportPdf(BLEED)
+      const marked = await exportPdf(BLEED, true)
+      const [, , plainWidth = 0] = readBox(plain, 'MediaBox')
+      const [, , markedWidth = 0] = readBox(marked, 'MediaBox')
+      const [bleedLeft = 0, , bleedRight = 0] = readBox(marked, 'BleedBox')
+      const [trimLeft = 0] = readBox(marked, 'TrimBox')
+      expect(markedWidth).toBeGreaterThan(plainWidth)
+      expect(bleedLeft).toBeGreaterThan(0)
+      expect(bleedRight).toBeLessThan(markedWidth)
+      expect(trimLeft - bleedLeft).toBeCloseTo(BLEED, 3)
+    })
+
+    it('draws eight mark lines, two at each corner, and none without the option', async () => {
+      const document = bleedDocument(BLEED)
+      const options = await optionsFor(document)
+      const countStrokes = async (trimMarks: boolean): Promise<number> =>
+        countMatches(
+          contentOf(await exportDocumentToPdf(document, { ...options, trimMarks })),
+          /\bS\b/g
+        )
+      expect((await countStrokes(true)) - (await countStrokes(false))).toBe(8)
+    })
+  })
+
   describe('frames marked as pages', () => {
     const bookDocument = (): DesignDocument =>
       build(createDocument('file', 'Book', 'page'), [

@@ -40,6 +40,11 @@ const ALPHA_DIVISOR = 255
 const RADIAL_UNIT_RADIUS = 0.5
 const HEX_COLOR_LENGTH = 7
 const MIN_PAGE_SIZE = 1
+// Trim marks sit in a slug beyond the bleed: a gap that keeps them off the artwork, then the line.
+const TRIM_MARK_GAP = 3
+const TRIM_MARK_LENGTH = 15
+const TRIM_MARK_SLUG = TRIM_MARK_GAP + TRIM_MARK_LENGTH
+const TRIM_MARK_WIDTH = 0.25
 
 interface ExportContext {
   pdf: Pdf
@@ -48,6 +53,8 @@ interface ExportContext {
   /** Nodes with blur or a shadow, drawn to images ahead of the page. */
   rasters: ReadonlyMap<string, Uint8Array>
   graphicsStates: Map<string, GraphicsState>
+  /** The page frame being drawn and how far its fill and clip reach past its box; none without bleed. */
+  pageBleed: { frameId: string; amount: number } | undefined
   /** Tagged text in the order it was drawn, which is the reading order of the PDF. */
   tagged: TaggedText[]
 }
@@ -484,6 +491,19 @@ const writeLinks = (context: ExportContext, node: DesignNode): void => {
     .forEach((box) => context.pdf.link(box.x, box.y, box.width, box.height, link))
 }
 
+// The page frame's own box is the trim; its fill and what it clips to reach out to the bleed edge.
+const getBleedReach = ({ pageBleed }: ExportContext, node: DesignNode): DesignNode =>
+  pageBleed?.frameId === node.id
+    ? {
+        ...node,
+        x: node.x - pageBleed.amount,
+        y: node.y - pageBleed.amount,
+        width: node.width + pageBleed.amount * 2,
+        height: node.height + pageBleed.amount * 2,
+        cornerRadius: 0
+      }
+    : node
+
 const drawChildren = (context: ExportContext, node: DesignNode, opacity: number): void =>
   getChildren(context.document, node.id).forEach((child) => drawNode(context, child, opacity))
 
@@ -505,11 +525,12 @@ const drawNode = (context: ExportContext, node: DesignNode, inheritedOpacity: nu
     else if (node.type === 'image') drawImage(context, node, opacity)
     else if (node.type === 'page' || node.type === 'group') drawChildren(context, node, opacity)
     else {
-      paintFill(context, node, opacity)
+      const reach = getBleedReach(context, node)
+      paintFill(context, reach, opacity)
       paintStroke(context, node, opacity)
       if (node.type === 'frame') {
         pdf.save()
-        traceShape(context, node)
+        traceShape(context, reach)
         pdf.clip()
         drawChildren(context, node, opacity)
         pdf.restore()
@@ -581,6 +602,51 @@ const collectBytes = (pdf: Pdf): Promise<Uint8Array<ArrayBuffer>> =>
     pdf.on('error', reject)
   })
 
+interface PageGeometry {
+  /** The trim box's size. */
+  width: number
+  height: number
+  /** How far the print extends past the trim. */
+  bleed: number
+  /** How far the trim sits from the media box's edge: the bleed, and the slug when marks are drawn. */
+  inset: number
+}
+
+// A box is [left, bottom, right, top] from the page's bottom left, and the trim is centred, so the
+// flip from the editor's top-down axis changes nothing.
+const writePageBoxes = (pdf: Pdf, { width, height, bleed, inset }: PageGeometry): void => {
+  const slug = inset - bleed
+  // pdfkit types the page dictionary as its resources only, but writes whatever keys it holds.
+  Object.assign(pdf.page.dictionary.data, {
+    BleedBox: [slug, slug, slug + width + bleed * 2, slug + height + bleed * 2],
+    TrimBox: [inset, inset, inset + width, inset + height]
+  })
+}
+
+// Eight lines, two at each corner of the trim box, in the slug beyond the bleed so none lands on art.
+// Each runs along a trim edge's extension, from the page edge inwards by the mark length.
+const drawTrimMarks = (pdf: Pdf, { width, height, inset }: Omit<PageGeometry, 'bleed'>): void => {
+  const pageWidth = width + inset * 2
+  const pageHeight = height + inset * 2
+  const sides = [
+    { edge: 0, inward: TRIM_MARK_LENGTH },
+    { edge: pageWidth, inward: pageWidth - TRIM_MARK_LENGTH }
+  ]
+  const ends = [
+    { edge: 0, inward: TRIM_MARK_LENGTH },
+    { edge: pageHeight, inward: pageHeight - TRIM_MARK_LENGTH }
+  ]
+  pdf.save()
+  pdf.lineWidth(TRIM_MARK_WIDTH).strokeColor('#000000')
+  ;[inset, inset + height].forEach((y) =>
+    sides.forEach((side) => pdf.moveTo(side.edge, y).lineTo(side.inward, y).stroke())
+  )
+  ;[inset, inset + width].forEach((x) =>
+    ends.forEach((end) => pdf.moveTo(x, end.edge).lineTo(x, end.inward).stroke())
+  )
+  pdf.restore()
+}
+
 /**
  * Writes a document as one PDF. Its pages are the frames marked with a `pdfPage`, in that order,
  * each as large as the frame and clipped to it; with no such frame, a page for each design page,
@@ -588,7 +654,9 @@ const collectBytes = (pdf: Pdf): Promise<Uint8Array<ArrayBuffer>> =>
  * gradients, opacity and blend modes are PDF drawing; text is set in the fonts its layout used,
  * embedded and selectable; a node with blur or a shadow is an image, since a PDF has no blur.
  * A text, rectangle or frame with a `link` is clickable in the PDF: an annotation over its box,
- * or over each line of a wrapped text. Layout guides are not part of a document's nodes, so none
+ * or over each line of a wrapped text. A page frame with bleed makes a page grown by the bleed on
+ * every side, with a BleedBox and a TrimBox, and its fill and clip reach the bleed edge; `trimMarks`
+ * adds crop marks in a slug beyond it. Layout guides are not part of a document's nodes, so none
  * is drawn.
  * @param document - The document to write.
  * @param options - How text is laid out, where its fonts are, and how blurred nodes are drawn.
@@ -617,18 +685,26 @@ export const exportDocumentToPdf = async (
     document,
     rasters: await rasterizeEffects(document, options),
     graphicsStates: new Map(),
+    pageBleed: undefined,
     tagged: []
   }
   pages.forEach((page) => {
     const bounds = getExportBounds(document, page)
-    pdf.addPage({
-      size: [Math.max(bounds.width, MIN_PAGE_SIZE), Math.max(bounds.height, MIN_PAGE_SIZE)],
-      margin: 0
-    })
+    const bleed = page.type === 'frame' ? Math.max(page.bleed, 0) : 0
+    const inset = bleed + (options.trimMarks ? TRIM_MARK_SLUG : 0)
+    const width = Math.max(bounds.width, MIN_PAGE_SIZE)
+    const height = Math.max(bounds.height, MIN_PAGE_SIZE)
+    pdf.addPage({ size: [width + inset * 2, height + inset * 2], margin: 0 })
+    if (inset > 0) writePageBoxes(pdf, { width, height, bleed, inset })
     pdf.save()
-    pdf.translate(-bounds.x, -bounds.y)
-    drawNode(context, page, 1)
+    pdf.translate(inset - bounds.x, inset - bounds.y)
+    drawNode(
+      { ...context, pageBleed: bleed > 0 ? { frameId: page.id, amount: bleed } : undefined },
+      page,
+      1
+    )
     pdf.restore()
+    if (options.trimMarks) drawTrimMarks(pdf, { width, height, inset })
   })
   addStructureTree(context)
   pdf.end()

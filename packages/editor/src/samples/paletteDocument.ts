@@ -1,12 +1,15 @@
 import {
   applyOperations,
   createDocument,
+  millimetresToPoints,
   type DesignDocument,
-  type DesignOperation
+  type DesignOperation,
+  type TextSpan
 } from '@designo/core'
 
 const SWATCH_COLORS = ['#1b4332', '#2d6a4f', '#52b788', '#d8f3dc', '#f4a261']
 const SWATCH_STEP = 120
+const PAGE_BLEED_MILLIMETRES = 3
 const SWATCH_LEFT = 32
 
 const swatchOperations = (color: string, position: number): DesignOperation[] => [
@@ -116,7 +119,8 @@ const PAGE_FRAME_SIZE = 380
 const PAGE_FRAME_LEFT = 700
 const PAGE_FRAME_GAP = 40
 
-// Two frames to select and export: each is a page of the PDF, and the palette frame is not.
+// Two frames to select and export: each is a page of the PDF, and the palette frame is not. The
+// second has 3 mm of bleed, so its PDF page is larger than the frame, with a bleed and a trim box.
 const pageFrameOperations = (position: number): DesignOperation[] => {
   const id = `page-${position + 1}`
   const left = PAGE_FRAME_LEFT + position * (PAGE_FRAME_SIZE + PAGE_FRAME_GAP)
@@ -133,7 +137,8 @@ const pageFrameOperations = (position: number): DesignOperation[] => {
         width: PAGE_FRAME_SIZE,
         height: PAGE_FRAME_SIZE,
         fill: SWATCH_COLORS[position + 3] ?? '#ffffff',
-        pdfPage: position + 1
+        pdfPage: position + 1,
+        bleed: position === 1 ? millimetresToPoints(PAGE_BLEED_MILLIMETRES) : 0
       }
     },
     {
@@ -151,6 +156,41 @@ const pageFrameOperations = (position: number): DesignOperation[] => {
     }
   ]
 }
+
+const FORMATTED_TEXT = 'Print ready: bold, italic and coloured words share one line.'
+const FORMATTED_WORDS = [
+  { word: 'bold', fontWeight: 700 },
+  { word: 'italic', fontStyle: 'italic' as const },
+  { word: 'coloured', fill: '#d62828' }
+]
+
+// Spans found by their words, so editing the sentence cannot leave offsets pointing at the wrong place.
+const formattedSpans = (): TextSpan[] =>
+  FORMATTED_WORDS.map(({ word, ...format }) => ({
+    start: FORMATTED_TEXT.indexOf(word),
+    end: FORMATTED_TEXT.indexOf(word) + word.length,
+    ...format
+  })).toSorted((first, second) => first.start - second.start)
+
+// On the page with bleed: text with a weight, a slant and a colour of its own in the same line.
+const formattedTextOperations = (): DesignOperation[] => [
+  {
+    kind: 'create',
+    id: 'page-2-formatted',
+    type: 'text',
+    parentId: 'page-2',
+    properties: {
+      x: PAGE_FRAME_LEFT + (PAGE_FRAME_SIZE + PAGE_FRAME_GAP) + SWATCH_LEFT,
+      y: 96,
+      width: PAGE_FRAME_SIZE - SWATCH_LEFT * 2,
+      text: FORMATTED_TEXT,
+      textWrap: true,
+      fontSize: 18,
+      fill: '#111111',
+      spans: formattedSpans()
+    }
+  }
+]
 
 // A master holds a rule and a page number once; both page frames name it, so each shows its own number.
 const masterOperations = (): DesignOperation[] => {
@@ -227,6 +267,7 @@ export const createPaletteDocument = (): DesignDocument => {
     ...effectOperations(),
     ...pageFrameOperations(0),
     ...pageFrameOperations(1),
+    ...formattedTextOperations(),
     ...masterOperations(),
     { kind: 'update', id: 'page-1', patch: { masterId: 'master' } },
     { kind: 'update', id: 'page-2', patch: { masterId: 'master' } }

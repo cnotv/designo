@@ -164,6 +164,11 @@ content. One design unit is a point. Text is selectable and set in its embedded 
 lines where the editor breaks it; a node with blur or a shadow is an image. It fails, naming the
 text, when a text's fonts cannot be found, rather than leaving the text out.
 
+A page frame with a bleed (see `set_page_setup`) makes a PDF page that is the frame plus the bleed
+on every side. Its MediaBox and BleedBox are that larger box, its TrimBox is the frame's own box,
+and the frame's fill and clip reach the bleed edge so the artwork bleeds. `trimMarks: true` adds a
+slug of 18 points beyond the bleed with crop marks at the corners of the trim box.
+
 The PDF's title, author and subject come from an `updateMetadata` operation in `apply_ops`
 (`patch` with any of `title`, `author` and `subject`; an empty string clears a field), written to
 the info dictionary and the XMP. The title falls back to the file name. A text node with a `pdfTag`

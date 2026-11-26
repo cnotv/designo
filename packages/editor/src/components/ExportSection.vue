@@ -3,6 +3,7 @@ import { Download } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
 import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -112,6 +113,17 @@ const setScale = (value: AcceptableValue): void => {
           @change="setMetadata(item.field, $event)"
         />
       </div>
+      <div class="flex items-center gap-2">
+        <Checkbox
+          id="pdf-trim-marks"
+          :model-value="settings.trimMarks"
+          @update:model-value="settings.trimMarks = $event === true"
+        />
+        <Label for="pdf-trim-marks">Trim marks</Label>
+      </div>
+      <p class="text-muted-foreground">
+        A page with bleed gets a bleed box and a trim box. Trim marks add room beyond the bleed.
+      </p>
       <p class="text-muted-foreground">
         Text set as a heading, paragraph or list item is tagged for screen readers, in the order of
         its frame's layers.

@@ -7,7 +7,7 @@ import type { ExportSettings } from '../editing/types.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 import type { Editor, ExportController } from './types.ts'
 
-const DEFAULT_SETTINGS: ExportSettings = { format: 'svg', scale: 2 }
+const DEFAULT_SETTINGS: ExportSettings = { format: 'svg', scale: 2, trimMarks: false }
 
 const downloadBlob = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob)
@@ -62,7 +62,8 @@ const renderExport = (svg: string, settings: ExportSettings): Promise<Blob> =>
 const PDF_RASTER_SCALE = 3
 
 const exportPdf = async (
-  exportedDocument: NonNullable<Editor['document']['value']>
+  exportedDocument: NonNullable<Editor['document']['value']>,
+  trimMarks: boolean
 ): Promise<Blob> => {
   const runtime = getSharedTextRuntime()
   const layouts = new Map(
@@ -78,6 +79,7 @@ const exportPdf = async (
   // Loaded on demand: the PDF writer is most of what a PDF costs and nothing else needs it.
   const { exportDocumentToPdf } = await import('@designo/exporter/pdf')
   const bytes = await exportDocumentToPdf(exportedDocument, {
+    trimMarks,
     getTextLayout: (node) => layouts.get(node.id),
     getFontBytes: runtime.library.getFontBytes,
     rasterizeNode: async (nodeId) => {
@@ -119,7 +121,7 @@ export const useExport = (editor: Editor): ExportController => {
     try {
       if (settings.value.format === 'pdf') {
         downloadBlob(
-          await exportPdf(currentDocument),
+          await exportPdf(currentDocument, settings.value.trimMarks),
           buildExportFileName(currentDocument.name, 'pdf', settings.value.scale)
         )
         return
