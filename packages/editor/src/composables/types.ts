@@ -32,6 +32,8 @@ export interface DesignoFiles {
   isDemo: Ref<boolean>
   saveError: Ref<string | undefined>
   selectFile: (fileId: string) => void
+  /** Removes a file from the server; ignored in the demo. */
+  deleteFile: (fileId: string) => Promise<void>
   /** Sends a batch the editor has already applied locally; ignored in the demo. */
   saveOperations: (operations: readonly DesignOperation[]) => void
 }

@@ -18,8 +18,20 @@ const isJsonResponse = (response: Response): boolean =>
 const readError = async (response: Response): Promise<string> => {
   const body: unknown = await response.json().catch(() => undefined)
   const parsed = errorBodySchema.safeParse(body)
-  return parsed.success ? parsed.data.error : `Saving failed (${response.status})`
+  return parsed.success ? parsed.data.error : `Request failed (${response.status})`
 }
+
+const summarizeDocument = (document: DesignDocument): DocumentSummary => ({
+  id: document.id,
+  name: document.name,
+  nodeCount: Object.keys(document.nodes).length
+})
+
+const deleteFileRequest = (fileId: string): Promise<Response | undefined> =>
+  fetch(`/api/files/${encodeURIComponent(fileId)}`, { method: 'DELETE' }).catch(() => undefined)
+
+const failureMessage = (response: Response | undefined): Promise<string> =>
+  response ? readError(response) : Promise.resolve('The Designo server is not answering')
 
 const postOperationsRequest = (
   fileId: string,
@@ -54,9 +66,7 @@ export const useDesignoFiles = (onAccessRefused: () => void): DesignoFiles => {
     isDemo.value = true
     activeDocument.value = sample
     selectedFileId.value = sample.id
-    documentSummaries.value = [
-      { id: sample.id, name: sample.name, nodeCount: Object.keys(sample.nodes).length }
-    ]
+    documentSummaries.value = [summarizeDocument(sample)]
   }
 
   // A refusal is not an error to show in the editor: the sign-in screens take over.
@@ -107,7 +117,7 @@ export const useDesignoFiles = (onAccessRefused: () => void): DesignoFiles => {
       // Show the file as the server has it, since this edit did not land.
       lastDocumentJson.value = ''
       if (refusedAccess(response)) return
-      saveError.value = response ? await readError(response) : 'The Designo server is not answering'
+      saveError.value = await failureMessage(response)
       return
     }
     saveError.value = undefined
@@ -127,6 +137,19 @@ export const useDesignoFiles = (onAccessRefused: () => void): DesignoFiles => {
     void refresh()
   }
 
+  // The file goes from the server first, so a failed delete leaves the list as it was.
+  const deleteFile = async (fileId: string): Promise<void> => {
+    const response = isDemo.value ? undefined : await deleteFileRequest(fileId)
+    if (isDemo.value || refusedAccess(response)) return
+    saveError.value = response?.ok ? undefined : await failureMessage(response)
+    if (!response?.ok) return
+    if (selectedFileId.value === fileId) {
+      selectedFileId.value = undefined
+      activeDocument.value = undefined
+    }
+    await refresh()
+  }
+
   const pollTimer = setInterval(() => {
     void pendingSave.value.then(refresh)
   }, POLL_INTERVAL_MILLISECONDS)
@@ -140,6 +163,7 @@ export const useDesignoFiles = (onAccessRefused: () => void): DesignoFiles => {
     isDemo,
     saveError,
     selectFile,
+    deleteFile,
     saveOperations
   }
 }

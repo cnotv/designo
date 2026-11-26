@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   applyOperationsToFile,
   createShortId,
+  deleteDocument,
   fileIdSchema,
   listDocuments,
   operationBatchSchema,
@@ -9,12 +10,20 @@ import {
 } from '@designo/storage'
 import { z } from 'zod'
 import { handleAssetsRequest, isAssetsPath } from './assetsApi.ts'
-import { MAX_BODY_BYTES, jsonRequestProblem, readJsonBody, sendError, sendJson } from './http.ts'
+import {
+  MAX_BODY_BYTES,
+  crossSiteProblem,
+  jsonRequestProblem,
+  readJsonBody,
+  sendError,
+  sendJson
+} from './http.ts'
 
 export const FILES_ROUTE = '/api/files'
 
 const HTTP_OK = 200
 const HTTP_BAD_REQUEST = 400
+const HTTP_FORBIDDEN = 403
 const HTTP_NOT_FOUND = 404
 const HTTP_METHOD_NOT_ALLOWED = 405
 const HTTP_CONFLICT = 409
@@ -67,6 +76,25 @@ const handleOperationsPost = async (
   sendJson(response, HTTP_OK, applied)
 }
 
+const handleDelete = async (
+  dataDirectory: string,
+  fileId: string,
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const crossSite = crossSiteProblem(request)
+  if (crossSite) {
+    sendError(response, HTTP_FORBIDDEN, crossSite)
+    return
+  }
+  const failure = await deleteDocument(dataDirectory, fileId).then(
+    () => undefined,
+    () => true
+  )
+  if (failure) sendError(response, HTTP_NOT_FOUND, 'Unknown file')
+  else sendJson(response, HTTP_OK, { deleted: fileId })
+}
+
 const handleRead = async (
   dataDirectory: string,
   fileId: string,
@@ -83,8 +111,26 @@ const handleRead = async (
   }
 }
 
+const routeFileRequest = async (
+  dataDirectory: string,
+  target: { fileId: string; isOperations: boolean },
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const { fileId, isOperations } = target
+  if (isOperations && request.method === 'POST') {
+    await handleOperationsPost(dataDirectory, fileId, request, response)
+  } else if (!isOperations && fileId !== '' && request.method === 'DELETE') {
+    await handleDelete(dataDirectory, fileId, request, response)
+  } else if (isOperations || request.method !== 'GET') {
+    sendError(response, HTTP_METHOD_NOT_ALLOWED, 'Method not allowed')
+  } else {
+    await handleRead(dataDirectory, fileId, response)
+  }
+}
+
 /**
- * Answers a request under the files route. GET lists files or reads one; POST to
+ * Answers a request under the files route. GET lists files or reads one; DELETE removes one; POST to
  * `<file id>/operations` applies a batch of operations to that file; `assets` stores and serves
  * pictures.
  * @param dataDirectory - Where Designo files live.
@@ -111,13 +157,5 @@ export const handleFilesRequest = async (
     sendError(response, HTTP_NOT_FOUND, 'Unknown file')
     return
   }
-  if (isOperations && request.method === 'POST') {
-    await handleOperationsPost(dataDirectory, fileId, request, response)
-    return
-  }
-  if (isOperations || request.method !== 'GET') {
-    sendError(response, HTTP_METHOD_NOT_ALLOWED, 'Method not allowed')
-    return
-  }
-  await handleRead(dataDirectory, fileId, response)
+  await routeFileRequest(dataDirectory, { fileId, isOperations }, request, response)
 }

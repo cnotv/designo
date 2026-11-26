@@ -28,6 +28,16 @@ waiting for a decision first, and each row has **Approve**, **Block** or **Unblo
 applies on that person's next request. Admins themselves have no Block button: their addresses
 come from the server's settings.
 
+## Panels and files
+
+The two buttons at the ends of the top bar hide and show the left panel (files, pages and layers)
+and the right panel (properties). The canvas takes the room they leave. Each panel is toggled on
+its own, and both come back as they were.
+
+Hover a file in the **Files** list to show its trash button. It asks for confirmation, then
+removes the file from the server; this cannot be undone. The sample shown without a server has no
+delete button.
+
 ## Tools
 
 | Tool      | Key | Does                                              |

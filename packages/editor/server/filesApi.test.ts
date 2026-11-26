@@ -47,6 +47,13 @@ describe('files API', () => {
     expect((await (await fetch(`${baseUrl}/file-1`)).json()).rootId).toBe('page')
   })
 
+  it('deletes a file, and answers 404 for one that is gone', async () => {
+    expect((await fetch(`${baseUrl}/file-1`, { method: 'DELETE' })).status).toBe(200)
+    expect(await (await fetch(baseUrl)).json()).toEqual([])
+    expect((await fetch(`${baseUrl}/file-1`, { method: 'DELETE' })).status).toBe(404)
+    expect((await fetch(baseUrl, { method: 'DELETE' })).status).toBe(405)
+  })
+
   it('applies posted operations and returns the saved document', async () => {
     const response = await postOperations({
       operations: [
