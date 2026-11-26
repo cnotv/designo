@@ -298,11 +298,13 @@ export interface DesignNode
   order: number
 }
 
-/** What a PDF's info dictionary and XMP say about the file. An empty or absent field is left out. */
+/** What a PDF's info dictionary, XMP and catalog say about the file. An empty or absent field is left out. */
 export interface DocumentMetadata {
   title?: string
   author?: string
   subject?: string
+  /** A BCP 47 language tag such as `en` or `de-DE`, written as the PDF's `Lang`. */
+  language?: string
 }
 
 /** A named value of the document that nodes reference instead of copying it. */

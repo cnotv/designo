@@ -323,8 +323,9 @@ The Export section sits at the bottom of the properties panel.
   blur. Layout guides are never drawn. A page frame with bleed exports a page grown by the bleed on every
   side, with a BleedBox and a TrimBox, and its fill and clipping reach the bleed edge; the **Trim
   marks** checkbox adds crop marks in a slug beyond the bleed. CMYK is not part of this export yet.
-- **Metadata and tags:** with PDF chosen, **Title**, **Author** and **Subject** fields appear in the
-  export section; they are written to the PDF's info dictionary and XMP, and the title falls back to
+- **Metadata and tags:** with PDF chosen, **Title**, **Author**, **Subject** and **Language** fields appear in the
+  export section; they are written to the PDF's info dictionary and XMP, the language (a tag such as `en` or
+  `de-DE`) as its `Lang`, and the title falls back to
   the document name. A text layer has a **PDF tag** select in the properties panel (heading 1 to 6,
   paragraph or list item). When any exported text is tagged, the PDF is a tagged PDF: each tagged
   text becomes a structure element, and consecutive list items share one list. Reading order is the
@@ -337,7 +338,7 @@ The Export section sits at the bottom of the properties panel.
   embedded, columns and tables, a name, email and phone number in the first lines, plain Experience,
   Education and Skills headings, text in the header or footer strip or over a picture, the title,
   author and language, and links. It is not a real ATS. Page 1 of the palette sample has one line that passes and one blurred line that fails; the
-  **Sample: CV** file is a made-up one column CV that passes all but the language. An edit clears the report.
+  **Sample: CV** file is a made-up one column CV that passes every rule. An edit clears the report.
 - **A file to try it on:** `pnpm sample:book` writes `book-sample` to the data directory: twelve
   numbered page frames laid out on one canvas, and an art direction board with no number. Its
   PDF has twelve pages and no board. It is rewritten each time it runs, so edit a copy.

@@ -23,7 +23,7 @@ interface CvLine {
 }
 
 // Every name, address and employer is made up. A single column of plain text lines, the layout an
-// ATS reads best: the ATS check passes it except for the language the PDF does not carry yet.
+// ATS reads best: the ATS check passes it.
 const CV_LINES: CvLine[] = [
   { id: 'name', text: 'Jane Doe', y: 48, fontSize: 28, tag: 'h1', fontWeight: 700 },
   {
@@ -119,7 +119,7 @@ const lineOperation = (line: CvLine): DesignOperation => ({
 
 /**
  * Builds a made-up one page CV, the sample to try the ATS check on: one column, plain headings,
- * contact details up top and a title and author in the PDF.
+ * contact details up top and a title, author and language in the PDF.
  * @returns The sample document.
  */
 export const createCvDocument = (): DesignDocument => {
@@ -140,7 +140,7 @@ export const createCvDocument = (): DesignDocument => {
       }
     },
     ...CV_LINES.map(lineOperation),
-    { kind: 'updateMetadata', patch: { title: 'Jane Doe, CV', author: 'Jane Doe' } }
+    { kind: 'updateMetadata', patch: { title: 'Jane Doe, CV', author: 'Jane Doe', language: 'en' } }
   ])
   if (!result.ok) throw new Error(result.error)
   return result.document

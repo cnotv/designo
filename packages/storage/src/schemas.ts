@@ -363,12 +363,16 @@ const storedNodeSchema = nodePatchSchema
   })
 
 const MAX_METADATA_LENGTH = 500
+const MAX_LANGUAGE_LENGTH = 35
+const LANGUAGE_TAG_PATTERN = /^$|^[A-Za-z]{2,3}(?:-[\dA-Za-z]{2,8})*$/
 
 export const documentMetadataSchema = z
   .object({
     title: z.string().max(MAX_METADATA_LENGTH),
     author: z.string().max(MAX_METADATA_LENGTH),
-    subject: z.string().max(MAX_METADATA_LENGTH)
+    subject: z.string().max(MAX_METADATA_LENGTH),
+    // Empty clears it; anything else is a language tag such as `en` or `de-DE`.
+    language: z.string().max(MAX_LANGUAGE_LENGTH).regex(LANGUAGE_TAG_PATTERN)
   })
   .partial()
   .strict()
@@ -467,7 +471,7 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('updateMetadata'),
     patch: documentMetadataSchema.describe(
-      'The PDF title, author and subject; an empty string clears a field.'
+      'The PDF title, author, subject and language (a tag such as en or de-DE); an empty string clears a field.'
     )
   })
 ])

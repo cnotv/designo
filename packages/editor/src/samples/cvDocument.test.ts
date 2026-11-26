@@ -8,7 +8,7 @@ describe('createCvDocument', () => {
     const texts = Object.values(document.nodes).filter((node) => node.type === 'text')
     expect(texts.length).toBeGreaterThan(10)
     expect(texts.every((node) => node.pdfTag)).toBe(true)
-    expect(document.metadata).toEqual({ title: 'Jane Doe, CV', author: 'Jane Doe' })
+    expect(document.metadata).toEqual({ title: 'Jane Doe, CV', author: 'Jane Doe', language: 'en' })
   })
 
   it('passes the layout and metadata rules an ATS cares about', () => {

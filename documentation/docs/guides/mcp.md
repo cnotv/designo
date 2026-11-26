@@ -173,7 +173,7 @@ A finding has a `rule`, a `status`, a `message` and, when it concerns one thing,
 Unicode map), `reading-order` (several columns or a table interleave in a single-column reader),
 `contact-details` (a name, an email and a phone number in the first lines), `section-headings`
 (experience, education and skills as plain lines), `layout-traps` (text in the header or footer
-strip, over a picture, or an icon in place of a word), `metadata` (title, author and language) and
+strip, over a picture, or an icon in place of a word), `metadata` (title, author and language, set with `updateMetadata`) and
 `links` (each is an annotation with its text drawn). The checks are heuristics for a resume. The
 report says which reader and rules produced it; it is not a real ATS, and it does not score a
 resume against a job.

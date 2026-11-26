@@ -675,6 +675,7 @@ export const exportDocumentToPdf = async (
     // The default 1.3 writes no XMP, and a tagged structure needs 1.4 or later.
     pdfVersion: '1.7',
     info,
+    ...(document.metadata?.language ? { lang: document.metadata.language } : {}),
     tagged: pages.some((page) => hasTaggedText(document, page))
   })
   escapeInfoInXmp(pdf, Object.values(info))

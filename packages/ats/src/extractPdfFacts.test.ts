@@ -37,7 +37,11 @@ const exportSample = async (): Promise<Uint8Array> => {
     }
   ])
   if (!result.ok) throw new Error(result.error)
-  const texts = Object.values(result.document.nodes).filter((node) => node.type === 'text')
+  const document = {
+    ...result.document,
+    metadata: { language: 'en' }
+  }
+  const texts = Object.values(document.nodes).filter((node) => node.type === 'text')
   const layouts = new Map(
     await Promise.all(
       texts.map(
@@ -46,7 +50,7 @@ const exportSample = async (): Promise<Uint8Array> => {
       )
     )
   )
-  return exportDocumentToPdf(result.document, {
+  return exportDocumentToPdf(document, {
     getTextLayout: (node) => layouts.get(node.id),
     getFontBytes: (fontId) => fontBytes.get(fontId)
   })
@@ -65,5 +69,6 @@ describe('extractPdfFacts', () => {
       })
     ])
     expect(facts.title).toBe('Resume')
+    expect(facts.language).toBe('en')
   })
 })

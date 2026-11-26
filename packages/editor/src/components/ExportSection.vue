@@ -48,8 +48,15 @@ const targetLabel = computed(() => {
 const METADATA_FIELDS: { field: keyof DocumentMetadata; label: string }[] = [
   { field: 'title', label: 'Title' },
   { field: 'author', label: 'Author' },
-  { field: 'subject', label: 'Subject' }
+  { field: 'subject', label: 'Subject' },
+  { field: 'language', label: 'Language' }
 ]
+
+// Read in the template, so the title's hint follows the open file.
+const getPlaceholder = (field: keyof DocumentMetadata): string =>
+  ({ title: editor.document.value?.name ?? '', author: '', subject: '', language: 'en or de-DE' })[
+    field
+  ]
 
 const setMetadata = (field: keyof DocumentMetadata, event: Event): void => {
   if (editor.document.value)
@@ -112,7 +119,7 @@ const setScale = (value: AcceptableValue): void => {
         <Input
           :id="`pdf-${item.field}`"
           :model-value="editor.document.value.metadata?.[item.field] ?? ''"
-          :placeholder="item.field === 'title' ? editor.document.value.name : ''"
+          :placeholder="getPlaceholder(item.field)"
           class="h-7 text-xs"
           @change="setMetadata(item.field, $event)"
         />

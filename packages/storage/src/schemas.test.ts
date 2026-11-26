@@ -114,6 +114,13 @@ describe('PDF metadata and tags', () => {
     ).toBe(false)
   })
 
+  it('takes a language tag, or an empty string to clear it, and nothing else', () => {
+    const accepts = (language: string): boolean =>
+      operationBatchSchema.safeParse([{ kind: 'updateMetadata', patch: { language } }]).success
+    expect([accepts('en'), accepts('de-DE'), accepts('')]).toEqual([true, true, true])
+    expect([accepts('English'), accepts('e'), accepts('en_US')]).toEqual([false, false, false])
+  })
+
   it('takes a heading level, paragraph or list item as pdfTag, and nothing else', () => {
     expect(nodePatchSchema.safeParse({ pdfTag: 'h3' }).success).toBe(true)
     expect(nodePatchSchema.safeParse({ pdfTag: null }).success).toBe(true)

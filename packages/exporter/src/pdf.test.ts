@@ -658,6 +658,14 @@ describe('exportDocumentToPdf', () => {
       expect(pdf).toContain('<rdf:li>Jane Doe</rdf:li>')
     })
 
+    it('writes the language as the catalog Lang, and none when it is not set', async () => {
+      const withLanguage = build(twoPageDocument(), [
+        { kind: 'updateMetadata', patch: { language: 'de-DE' } }
+      ])
+      expect(await exportWith(withLanguage)).toContain('/Lang (de-DE)')
+      expect(await exportWith(twoPageDocument())).not.toContain('/Lang')
+    })
+
     it('escapes markup characters in the XMP only', async () => {
       const document = build(twoPageDocument(), [
         { kind: 'updateMetadata', patch: { title: 'Fish & <Chips>' } }
