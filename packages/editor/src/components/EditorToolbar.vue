@@ -6,6 +6,8 @@ import {
   ImagePlus,
   Maximize,
   MousePointer2,
+  PanelLeft,
+  PanelRight,
   Redo2,
   Square,
   Type,
@@ -24,6 +26,8 @@ import AccountMenu from './AccountMenu.vue'
 
 defineProps<{ account?: SignedInAccount }>()
 const emit = defineEmits<{ signOut: []; accessRefused: [] }>()
+const isLeftPanelOpen = defineModel<boolean>('leftPanelOpen', { required: true })
+const isRightPanelOpen = defineModel<boolean>('rightPanelOpen', { required: true })
 
 const { editor, files } = useEditorContext()
 const { isDemo, saveError } = files
@@ -65,6 +69,20 @@ const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PER
 
 <template>
   <header class="bg-background flex h-11 items-center gap-2 border-b px-2">
+    <Tooltip>
+      <TooltipTrigger as-child>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Toggle left panel"
+          :aria-pressed="isLeftPanelOpen"
+          @click="isLeftPanelOpen = !isLeftPanelOpen"
+        >
+          <PanelLeft />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{{ isLeftPanelOpen ? 'Hide' : 'Show' }} left panel</TooltipContent>
+    </Tooltip>
     <span class="px-2 text-sm font-semibold">Designo</span>
     <Separator orientation="vertical" class="h-6!" />
     <ToggleGroup v-model="selectedTool" type="single" size="sm" aria-label="Tools">
@@ -156,6 +174,20 @@ const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PER
           </Button>
         </TooltipTrigger>
         <TooltipContent>Designo on GitHub</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Toggle right panel"
+            :aria-pressed="isRightPanelOpen"
+            @click="isRightPanelOpen = !isRightPanelOpen"
+          >
+            <PanelRight />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{{ isRightPanelOpen ? 'Hide' : 'Show' }} right panel</TooltipContent>
       </Tooltip>
       <AccountMenu
         v-if="account"

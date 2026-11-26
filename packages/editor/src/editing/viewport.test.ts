@@ -1,6 +1,6 @@
 import { DEFAULT_NODE_PROPERTIES, type DesignNode } from '@designo/core'
 import { describe, expect, it } from 'vitest'
-import { fitViewportToContent, getContentBounds } from './viewport.ts'
+import { fitViewportToContent, getContentBounds, keepCenterOnResize } from './viewport.ts'
 
 const rectangleAt = (x: number, y: number, width: number, height: number): DesignNode => ({
   ...DEFAULT_NODE_PROPERTIES,
@@ -38,5 +38,18 @@ describe('fitViewportToContent', () => {
   it('zooms out so large content fits inside the margin', () => {
     const viewport = fitViewportToContent({ x: 0, y: 0, width: 1440, height: 560 }, 800, 600, 40)
     expect(viewport.scale).toBeCloseTo(0.5)
+  })
+})
+
+describe('keepCenterOnResize', () => {
+  it('keeps the middle of the canvas on the same world point when the canvas widens', () => {
+    const before = { offsetX: 100, offsetY: 50, scale: 2 }
+    const after = keepCenterOnResize(
+      before,
+      { width: 600, height: 400 },
+      { width: 840, height: 400 }
+    )
+    expect((300 - before.offsetX) / before.scale).toBe((420 - after.offsetX) / after.scale)
+    expect(after.offsetY).toBe(before.offsetY)
   })
 })

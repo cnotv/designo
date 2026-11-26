@@ -98,3 +98,22 @@ export const panBy = (viewport: Viewport, deltaX: number, deltaY: number): Viewp
   offsetX: viewport.offsetX + deltaX,
   offsetY: viewport.offsetY + deltaY
 })
+
+/**
+ * Moves the view so the point at the middle of the canvas stays at the middle when the canvas
+ * grows or shrinks, as when a side panel is hidden: the content stays in view instead of sliding
+ * off one edge.
+ * @param viewport - The current view.
+ * @param previousSize - The canvas size before the change.
+ * @param nextSize - The canvas size after the change.
+ * @returns The adjusted view.
+ */
+export const keepCenterOnResize = (
+  viewport: Viewport,
+  previousSize: { width: number; height: number },
+  nextSize: { width: number; height: number }
+): Viewport => ({
+  ...viewport,
+  offsetX: viewport.offsetX + (nextSize.width - previousSize.width) / 2,
+  offsetY: viewport.offsetY + (nextSize.height - previousSize.height) / 2
+})

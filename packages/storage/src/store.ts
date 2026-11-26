@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import {
@@ -81,4 +81,14 @@ export const listDocuments = async (dataDirectory: string): Promise<DocumentSumm
       nodeCount: Object.keys(document.nodes).length
     }))
     .toSorted((first, second) => first.name.localeCompare(second.name))
+}
+
+/**
+ * Deletes one document.
+ * @param dataDirectory - Where Designo files live.
+ * @param fileId - Id of the file to delete.
+ * @returns Resolves once the file is gone; rejects with ENOENT when it never existed.
+ */
+export const deleteDocument = async (dataDirectory: string, fileId: string): Promise<void> => {
+  await rm(documentPath(dataDirectory, fileId))
 }

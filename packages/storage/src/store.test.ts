@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { CURRENT_FORMAT_VERSION, createDocument } from '@designo/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { listDocuments, readDocument, resolveDataDirectory, writeDocument } from './store.ts'
+import {
+  deleteDocument,
+  listDocuments,
+  readDocument,
+  resolveDataDirectory,
+  writeDocument
+} from './store.ts'
 
 let dataDirectory: string
 
@@ -16,6 +22,13 @@ afterEach(async () => {
 })
 
 describe('store', () => {
+  it('deletes a document and refuses one that is not there', async () => {
+    await writeDocument(dataDirectory, createDocument('file-d', 'D', 'page-d'))
+    await deleteDocument(dataDirectory, 'file-d')
+    expect(await listDocuments(dataDirectory)).toEqual([])
+    await expect(deleteDocument(dataDirectory, 'file-d')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
   it('round-trips a document', async () => {
     const document = createDocument('file-a', 'A', 'page-a')
     await writeDocument(dataDirectory, document)
