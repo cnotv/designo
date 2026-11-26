@@ -1,6 +1,7 @@
 import {
   applyOperations,
   createDocument,
+  DEFAULT_NODE_PROPERTIES,
   millimetresToPoints,
   type DesignDocument,
   type DesignOperation,
@@ -37,7 +38,31 @@ const swatchOperations = (color: string, position: number): DesignOperation[] =>
       y: 204,
       text: color,
       fontSize: 14,
-      fill: '#555555'
+      fill: '#555555',
+      bindings: { fill: 'caption' }
+    }
+  }
+]
+
+// The palette's ink and caption colours are variables, and the title is a text style, so a change
+// to one reaches every node that uses it.
+const styleOperations = (): DesignOperation[] => [
+  { kind: 'setVariable', variable: { id: 'ink', name: 'Ink', kind: 'color', value: '#111111' } },
+  {
+    kind: 'setVariable',
+    variable: { id: 'caption', name: 'Caption', kind: 'color', value: '#555555' }
+  },
+  {
+    kind: 'setTextStyle',
+    style: {
+      id: 'heading',
+      name: 'Heading',
+      fontFamily: DEFAULT_NODE_PROPERTIES.fontFamily,
+      fontSize: 24,
+      fontWeight: 400,
+      fontStyle: 'normal',
+      lineHeight: 1.2,
+      letterSpacing: 0
     }
   }
 ]
@@ -249,6 +274,7 @@ const masterOperations = (): DesignOperation[] => {
  */
 export const createPaletteDocument = (): DesignDocument => {
   const result = applyOperations(createDocument('sample-palette', 'Sample: palette', 'page'), [
+    ...styleOperations(),
     {
       kind: 'create',
       id: 'frame',
@@ -261,7 +287,14 @@ export const createPaletteDocument = (): DesignDocument => {
       id: 'title',
       type: 'text',
       parentId: 'frame',
-      properties: { x: SWATCH_LEFT, y: 28, text: 'Forest palette', fontSize: 24, fill: '#111111' }
+      properties: {
+        x: SWATCH_LEFT,
+        y: 28,
+        text: 'Forest palette',
+        fill: '#111111',
+        bindings: { fill: 'ink' },
+        textStyleId: 'heading'
+      }
     },
     ...SWATCH_COLORS.flatMap(swatchOperations),
     ...effectOperations(),

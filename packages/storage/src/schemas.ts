@@ -3,6 +3,7 @@ import {
   PDF_TAGS,
   CURRENT_FORMAT_VERSION,
   DEFAULT_NODE_PROPERTIES,
+  HEX_COLOR_PATTERN,
   isValidLink,
   FONT_STYLES,
   IMAGE_FITS,
@@ -28,15 +29,13 @@ import { z } from 'zod'
 const MAX_TEXT_LENGTH = 10_000
 const MAX_GUIDE_COLUMNS = 24
 
-const HEX_COLOR = /^#(?:[\da-f]{6}|[\da-f]{8})$/i
-
 export const fileIdSchema = z
   .string()
   .regex(/^[\w-]{1,64}$/, 'Letters, digits, - and _ only, at most 64 characters')
 
 export const nodeIdSchema = z.string().regex(/^[\w:-]{1,64}$/, 'Letters, digits, :, - and _ only')
 
-const hexColorSchema = z.string().regex(HEX_COLOR, 'A hex colour: #rrggbb or #rrggbbaa')
+const hexColorSchema = z.string().regex(HEX_COLOR_PATTERN, 'A hex colour: #rrggbb or #rrggbbaa')
 
 const colorSchema = hexColorSchema.nullable()
 
@@ -312,10 +311,33 @@ const masterLinksSchema = z.object({
     )
 })
 
+const styleLinksSchema = z.object({
+  bindings: z
+    .record(z.string(), nodeIdSchema)
+    .optional()
+    .describe(
+      'Maps a property to the id of a variable that sets it: a colour variable for fill or stroke, a number variable for fontSize, fontWeight, lineHeight, letterSpacing, opacity, cornerRadius, strokeWidth, blur, layoutGap or layoutPadding. Replaces all bindings of the node; {} unbinds them. Setting a bound property directly unbinds it.'
+    ),
+  textStyleId: nodeIdSchema
+    .nullable()
+    .optional()
+    .describe(
+      "Text only: the id of a text style whose font, size, weight, style, line height and letter spacing the text follows; null stops following one. A property set directly on the text stays the text's own."
+    ),
+  styleOverrides: z
+    .array(z.string())
+    .optional()
+    .describe('The text style properties the text keeps for itself; [] makes it follow them all.')
+})
+
+/** A patch that may also bind properties to variables and set a text style. */
+export const styledNodePatchSchema = nodePatchSchema.extend(styleLinksSchema.shape)
+
 /** A patch that may also make a frame or group a component, or a frame a master, or use one. */
 const nodeUpdateSchema = nodePatchSchema
   .extend({ isComponent: z.boolean().optional() })
   .extend(masterLinksSchema.shape)
+  .extend(styleLinksSchema.shape)
 
 // Files from before these properties existed have none, and read as a text with no spans and no list.
 const storedNodeSchema = nodePatchSchema
@@ -331,6 +353,7 @@ const storedNodeSchema = nodePatchSchema
   })
   .extend(componentLinksSchema.shape)
   .extend(masterLinksSchema.shape)
+  .extend(styleLinksSchema.shape)
   .extend({
     id: nodeIdSchema,
     type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'text', 'image']),
@@ -350,11 +373,41 @@ export const documentMetadataSchema = z
   .partial()
   .strict()
 
+export const variableSchema = z
+  .object({
+    id: nodeIdSchema,
+    name: z.string().max(200),
+    kind: z.enum(['color', 'number']),
+    value: z
+      .union([hexColorSchema, z.number().finite()])
+      .describe('A hex colour for a colour variable, a number for a number variable.')
+  })
+  .strict()
+  .describe('A named value that nodes reference through `bindings` instead of copying it.')
+
+export const textStyleSchema = z
+  .object({
+    id: nodeIdSchema,
+    name: z.string().max(200),
+    fontFamily: z.string().max(200),
+    fontSize: z.number().positive(),
+    fontWeight: z.number().min(MIN_FONT_WEIGHT).max(MAX_FONT_WEIGHT),
+    fontStyle: z.enum(FONT_STYLES),
+    lineHeight: z.number().min(MIN_LINE_HEIGHT).max(MAX_LINE_HEIGHT),
+    letterSpacing: z.number().min(MIN_LETTER_SPACING).max(MAX_LETTER_SPACING)
+  })
+  .strict()
+  .describe(
+    'A named bundle of type settings that a text follows through its `textStyleId`. lineHeight and letterSpacing are multiples of fontSize.'
+  )
+
 export const storedDocumentSchema = z.object({
   formatVersion: z.literal(CURRENT_FORMAT_VERSION),
   id: fileIdSchema,
   name: z.string(),
   metadata: documentMetadataSchema.optional(),
+  variables: z.record(z.string(), variableSchema).optional(),
+  textStyles: z.record(z.string(), textStyleSchema).optional(),
   rootId: nodeIdSchema,
   nodes: z.record(z.string(), storedNodeSchema)
 })
@@ -379,7 +432,7 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
     type: creatableNodeTypeSchema,
     parentId: nodeIdSchema,
     order: z.number().optional(),
-    properties: nodePatchSchema.optional()
+    properties: styledNodePatchSchema.optional()
   }),
   z.object({
     kind: z.literal('createPage'),
@@ -407,6 +460,10 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
     order: z.number().optional()
   }),
   z.object({ kind: z.literal('reorderPage'), id: nodeIdSchema, order: z.number() }),
+  z.object({ kind: z.literal('setVariable'), variable: variableSchema }),
+  z.object({ kind: z.literal('deleteVariable'), id: nodeIdSchema }),
+  z.object({ kind: z.literal('setTextStyle'), style: textStyleSchema }),
+  z.object({ kind: z.literal('deleteTextStyle'), id: nodeIdSchema }),
   z.object({
     kind: z.literal('updateMetadata'),
     patch: documentMetadataSchema.describe(

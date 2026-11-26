@@ -15,13 +15,20 @@ import {
   withOverridesAfterPatch
 } from './components.ts'
 import { layoutDocument } from './layout.ts'
+import {
+  applyStyleOperation,
+  isStyleOperation,
+  resolveStyles,
+  withStyleLinksAfterPatch
+} from './styles.ts'
 import { checkTextSpans, clampSpansToText } from './textSpans.ts'
 import type {
   DesignDocument,
   DesignNode,
   DesignNodeTree,
   DesignOperation,
-  OperationResult
+  OperationResult,
+  StyleOperation
 } from './types.ts'
 
 /**
@@ -183,7 +190,10 @@ const applyCreate = (
     parentId: operation.parentId,
     order: operation.order ?? nextSiblingOrder(document, operation.parentId)
   }
-  return withValidNode(document, node)
+  return withValidNode(
+    document,
+    withStyleLinksAfterPatch(node, undefined, operation.properties ?? {})
+  )
 }
 
 /**
@@ -229,7 +239,8 @@ const applyUpdate = (
       ? checkMakeComponent(document, updated)
       : undefined
   if (componentProblem) return failure(componentProblem)
-  return withValidNode(document, withOverridesAfterPatch(document, updated, operation.patch))
+  const withOverrides = withOverridesAfterPatch(document, updated, operation.patch)
+  return withValidNode(document, withStyleLinksAfterPatch(withOverrides, node, operation.patch))
 }
 
 const applyDelete = (
@@ -387,7 +398,7 @@ const applyResetOverrides = (
 
 const applyWithoutLayout = (
   document: DesignDocument,
-  operation: DesignOperation
+  operation: Exclude<DesignOperation, StyleOperation>
 ): OperationResult => {
   if (operation.kind === 'create') return applyCreate(document, operation)
   if (operation.kind === 'createPage') return applyCreatePage(document, operation)
@@ -411,7 +422,11 @@ export const applyOperation = (
   document: DesignDocument,
   operation: DesignOperation
 ): OperationResult => {
-  const result = applyWithoutLayout(document, operation)
+  const applied = isStyleOperation(operation)
+    ? applyStyleOperation(document, operation)
+    : applyWithoutLayout(document, operation)
+  // Variables and styles resolve first, so instances copy the resolved values.
+  const result = applied.ok ? resolveStyles(applied.document) : applied
   // Layout is part of every operation, so undo, validation and sync need no second path.
   return result.ok ? { ok: true, document: layoutDocument(syncInstances(result.document)) } : result
 }

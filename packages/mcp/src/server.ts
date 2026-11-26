@@ -16,7 +16,7 @@ import {
   creatableNodeTypeSchema,
   fileIdSchema,
   nodeIdSchema,
-  nodePatchSchema,
+  styledNodePatchSchema,
   operationBatchSchema,
   pageSetupSchema,
   textSpansSchema
@@ -30,6 +30,7 @@ import {
   getDocumentTreeTool,
   getNodeTool,
   getScreenshotTool,
+  getStylesTool,
   listFilesTool,
   measureTextTool,
   setPageSetupTool
@@ -176,6 +177,19 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
   )
 }
 
+const registerStyleTools = (server: McpServer, context: DesignoToolContext): void => {
+  server.registerTool(
+    'get_styles',
+    {
+      description:
+        'List the variables and text styles of a file. Variables are named colours and numbers; a node references one through `bindings` (property to variable id) and follows it. Text styles are named bundles of font, size, weight, style, line height and letter spacing; a text references one through `textStyleId`. Create, change and delete them with the setVariable, deleteVariable, setTextStyle and deleteTextStyle operations of apply_ops; changing one updates every node that uses it, in the editor, screenshots, SVG and PDF.',
+      inputSchema: { fileId: fileIdSchema },
+      annotations: READ_ONLY
+    },
+    (input) => toToolResult(() => getStylesTool(context, input))
+  )
+}
+
 const registerWriteTools = (server: McpServer, context: DesignoToolContext): void => {
   server.registerTool(
     'create_file',
@@ -194,7 +208,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
         fileId: fileIdSchema,
         type: creatableNodeTypeSchema,
         parentId: nodeIdSchema,
-        properties: nodePatchSchema.optional()
+        properties: styledNodePatchSchema.optional()
       }
     },
     ({ fileId, ...operation }) =>
@@ -227,7 +241,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'update_node',
     {
       description: 'Change some properties of one node; the rest stay as they are.',
-      inputSchema: { fileId: fileIdSchema, nodeId: nodeIdSchema, patch: nodePatchSchema }
+      inputSchema: { fileId: fileIdSchema, nodeId: nodeIdSchema, patch: styledNodePatchSchema }
     },
     ({ fileId, nodeId, patch }) =>
       toToolResult(() =>
@@ -262,7 +276,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'apply_ops',
     {
       description:
-        'Apply a batch of create, createPage, reorderPage, update, updateMetadata (patch with title, author, subject for the PDF; an empty string clears one), delete, move, createInstance, detachInstance and resetOverrides operations as one change: if one fails, nothing is saved. Components: update a frame or group with patch isComponent true to make it a component; createInstance (componentId, parentId, x, y) places a copy that follows the component, named `<instance id>:<component node id>` for each node inside it; editing a property of an instance node keeps it as an override; resetOverrides drops them; detachInstance turns the instance into plain nodes. createPage adds a page after the others (or at order), reorderPage gives a page a new order, and nodes can then be created inside it by its id; export_pdf prints each page, or the frames given a pdfPage. Master pages: update a frame with isMaster true to make it a master; update a page frame with masterId set to the id of the master and the children of the master are drawn on it, behind its own nodes, in screenshots, SVG and PDF; a text with {page} shows the number of its page (its pdfPage, else its place among the frames that use a master); masterHidden lists master child ids a page leaves out. Give create operations your own ids to nest nodes inside each other in the same batch. The order of a move puts the node in front of a sibling that holds the same order (that sibling and the ones above it shift up by one), so order 0 inserts at the front. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
+        'Apply a batch of create, createPage, reorderPage, update, setVariable (variable with id, name, kind color or number, and a value), deleteVariable, setTextStyle (style with id, name, fontFamily, fontSize, fontWeight, fontStyle, lineHeight, letterSpacing), deleteTextStyle, updateMetadata (patch with title, author, subject for the PDF; an empty string clears one), delete, move, createInstance, detachInstance and resetOverrides operations as one change: if one fails, nothing is saved. Variables and text styles: bind a property by setting `bindings` on create or update, for example {"fill": "ink"}; set `textStyleId` on a text; a property set directly on a node ends its binding, or stays the text own against its style. Components: update a frame or group with patch isComponent true to make it a component; createInstance (componentId, parentId, x, y) places a copy that follows the component, named `<instance id>:<component node id>` for each node inside it; editing a property of an instance node keeps it as an override; resetOverrides drops them; detachInstance turns the instance into plain nodes. createPage adds a page after the others (or at order), reorderPage gives a page a new order, and nodes can then be created inside it by its id; export_pdf prints each page, or the frames given a pdfPage. Master pages: update a frame with isMaster true to make it a master; update a page frame with masterId set to the id of the master and the children of the master are drawn on it, behind its own nodes, in screenshots, SVG and PDF; a text with {page} shows the number of its page (its pdfPage, else its place among the frames that use a master); masterHidden lists master child ids a page leaves out. Give create operations your own ids to nest nodes inside each other in the same batch. The order of a move puts the node in front of a sibling that holds the same order (that sibling and the ones above it shift up by one), so order 0 inserts at the front. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
       inputSchema: {
         fileId: fileIdSchema,
         operations: operationBatchSchema
@@ -281,6 +295,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
 export const createDesignoServer = (context: DesignoToolContext): McpServer => {
   const server = new McpServer({ name: 'designo', version: SERVER_VERSION })
   registerReadTools(server, context)
+  registerStyleTools(server, context)
   registerWriteTools(server, context)
   return server
 }

@@ -22,6 +22,7 @@ import {
   getDocumentTreeTool,
   getNodeTool,
   getScreenshotTool,
+  getStylesTool,
   listFilesTool,
   measureTextTool,
   setPageSetupTool
@@ -1141,5 +1142,100 @@ describe('set_page_setup', () => {
       arguments: { fileId, nodeId: 'spread', setup: { margins: { top: 'wide' } } }
     })
     expect(result.isError).toBe(true)
+  })
+})
+
+describe('variables and text styles', () => {
+  const ink = { id: 'ink', name: 'Ink', kind: 'color', value: '#111111' } as const
+  const body = {
+    id: 'body',
+    name: 'Body',
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: 400,
+    fontStyle: 'normal',
+    lineHeight: 1.4,
+    letterSpacing: 0
+  } as const
+
+  const setUp = async (): Promise<string> => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'CV' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        { kind: 'setVariable', variable: ink },
+        { kind: 'setTextStyle', style: body },
+        {
+          kind: 'create',
+          id: 'bar',
+          type: 'rectangle',
+          parentId: pageId,
+          properties: { bindings: { fill: 'ink' } }
+        },
+        {
+          kind: 'create',
+          id: 'note',
+          type: 'text',
+          parentId: pageId,
+          properties: { text: 'Hi', textStyleId: 'body' }
+        }
+      ]
+    })
+    return fileId
+  }
+
+  it('get_styles lists them, and the nodes hold the resolved values', async () => {
+    const fileId = await setUp()
+    expect(await getStylesTool(context, { fileId })).toEqual({
+      variables: [ink],
+      textStyles: [body]
+    })
+    expect((await getNodeTool(context, { fileId, nodeId: 'bar' })).fill).toBe('#111111')
+    expect((await getNodeTool(context, { fileId, nodeId: 'note' })).fontSize).toBe(11)
+  })
+
+  it('one apply_ops on a variable or a style reaches the node and the SVG export', async () => {
+    const fileId = await setUp()
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        { kind: 'setVariable', variable: { ...ink, value: '#ff0000' } },
+        { kind: 'setTextStyle', style: { ...body, fontSize: 30 } }
+      ]
+    })
+    expect((await getNodeTool(context, { fileId, nodeId: 'bar' })).fill).toBe('#ff0000')
+    expect((await getNodeTool(context, { fileId, nodeId: 'note' })).fontSize).toBe(30)
+    expect(await exportSvgTool(context, { fileId })).toContain('#ff0000')
+  })
+
+  it('refuses a binding to a variable that does not exist', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'CV' })
+    await expect(
+      applyOperationsTool(context, {
+        fileId,
+        operations: [
+          {
+            kind: 'create',
+            type: 'rectangle',
+            parentId: pageId,
+            properties: { bindings: { fill: 'nope' } }
+          }
+        ]
+      })
+    ).rejects.toThrow('variable nope')
+  })
+
+  it('registers get_styles, and update_node binds a property', async () => {
+    const fileId = await setUp()
+    const client = await connectClient()
+    const { tools } = await client.listTools()
+    expect(tools.map((tool) => tool.name)).toContain('get_styles')
+    const result = await client.callTool({
+      name: 'update_node',
+      arguments: { fileId, nodeId: 'bar', patch: { bindings: {} } }
+    })
+    expect(result.isError).toBeFalsy()
+    const styles = await client.callTool({ name: 'get_styles', arguments: { fileId } })
+    expect(JSON.stringify(styles.content)).toContain('Ink')
   })
 })

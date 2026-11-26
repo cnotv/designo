@@ -270,6 +270,17 @@ master.
 - **Override:** an agent lists master nodes a page leaves out in `masterHidden` and draws its own
   node in their place. The editor has no control for that yet.
 
+## Variables and text styles
+
+A file can hold named colours and numbers (variables) and named type settings (text styles), which
+nodes follow instead of copying their values. The sample file's title uses the `Heading` text style
+and its colours use the `Ink` and `Caption` variables. The editor draws the resolved values, so a
+bound node looks like any other. Changing a bound property in the properties panel ends its binding
+and keeps the new value; changing a size or weight on a text with a text style keeps that one
+property as the text's own. Agents create, change and delete variables and styles with the MCP
+server (see [Variables and text styles](./mcp.md#variables-and-text-styles)); the editor has no
+panel for them yet. Undo and redo cover them.
+
 ## Export
 
 ![The Export section of the properties panel](/img/export.png)

@@ -3,7 +3,8 @@ import type {
   CURRENT_FORMAT_VERSION,
   IMAGE_FITS,
   LIST_STYLES,
-  PDF_TAGS
+  PDF_TAGS,
+  TEXT_STYLE_PROPERTIES
 } from './defaults.ts'
 export type ImageFit = (typeof IMAGE_FITS)[number]
 export type ListStyle = (typeof LIST_STYLES)[number]
@@ -271,8 +272,25 @@ export interface DesignNodeTagging {
   pdfTag?: PdfTag | null
 }
 
+/**
+ * How a node takes part in variables and text styles. `bindings` maps a property name to the id of
+ * a variable that sets it; `textStyleId` names a text style, and `styleOverrides` lists the style
+ * properties the node keeps for itself. Every change to a variable or style is resolved into the
+ * node's own properties, so a reader that ignores these still sees the final values.
+ */
+export interface DesignNodeStyleLinks {
+  bindings?: Readonly<Record<string, string>>
+  textStyleId?: string | null
+  styleOverrides?: readonly string[]
+}
+
 export interface DesignNode
-  extends DesignNodeProperties, DesignNodeComponentLinks, DesignNodeMasterLinks, DesignNodeTagging {
+  extends
+    DesignNodeProperties,
+    DesignNodeComponentLinks,
+    DesignNodeMasterLinks,
+    DesignNodeTagging,
+    DesignNodeStyleLinks {
   id: string
   type: DesignNodeType
   parentId: string | null
@@ -287,12 +305,32 @@ export interface DocumentMetadata {
   subject?: string
 }
 
+/** A named value of the document that nodes reference instead of copying it. */
+export interface DesignVariable {
+  id: string
+  name: string
+  kind: 'color' | 'number'
+  /** A hex colour for a colour variable, a number for a number variable. */
+  value: string | number
+}
+
+/** The properties a text style sets. */
+export type TextStyleProperties = Pick<DesignNodeProperties, (typeof TEXT_STYLE_PROPERTIES)[number]>
+
+/** A named bundle of type settings that text nodes reference. */
+export interface TextStyle extends TextStyleProperties {
+  id: string
+  name: string
+}
+
 export interface DesignDocument {
   formatVersion: typeof CURRENT_FORMAT_VERSION
   id: string
   name: string
   /** Written to the exported PDF; the title falls back to `name`. */
   metadata?: DocumentMetadata
+  variables?: Readonly<Record<string, DesignVariable>>
+  textStyles?: Readonly<Record<string, TextStyle>>
   rootId: string
   nodes: Readonly<Record<string, DesignNode>>
 }
@@ -300,7 +338,8 @@ export interface DesignDocument {
 export type DesignNodePatch = Partial<DesignNodeProperties> &
   Partial<DesignNodeComponentLinks> &
   Partial<DesignNodeMasterLinks> &
-  Partial<DesignNodeTagging>
+  Partial<DesignNodeTagging> &
+  Partial<DesignNodeStyleLinks>
 
 export type DesignOperation =
   | {
@@ -334,6 +373,20 @@ export type DesignOperation =
   | { kind: 'reorderPage'; id: string; order: number }
   /** Changes the document's metadata; a field set to an empty string is cleared. */
   | { kind: 'updateMetadata'; patch: DocumentMetadata }
+  /** Adds a variable or changes the one with the same id; every node that uses it follows. */
+  | { kind: 'setVariable'; variable: DesignVariable }
+  /** Removes a variable; nodes that used it keep its last value. */
+  | { kind: 'deleteVariable'; id: string }
+  /** Adds a text style or changes the one with the same id; every text that uses it follows. */
+  | { kind: 'setTextStyle'; style: TextStyle }
+  /** Removes a text style; texts that used it keep its last values. */
+  | { kind: 'deleteTextStyle'; id: string }
+
+/** The operations that change the document's variables and text styles. */
+export type StyleOperation = Extract<
+  DesignOperation,
+  { kind: 'setVariable' | 'deleteVariable' | 'setTextStyle' | 'deleteTextStyle' }
+>
 
 export type OperationResult = { ok: true; document: DesignDocument } | { ok: false; error: string }
 

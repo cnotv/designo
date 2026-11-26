@@ -120,3 +120,69 @@ describe('PDF metadata and tags', () => {
     expect(nodePatchSchema.safeParse({ pdfTag: 'h7' }).success).toBe(false)
   })
 })
+
+describe('variables and text styles', () => {
+  const style = {
+    id: 'body',
+    name: 'Body',
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: 400,
+    fontStyle: 'normal',
+    lineHeight: 1.4,
+    letterSpacing: 0
+  }
+
+  it('takes operations that set and delete a variable and a text style', () => {
+    expect(
+      operationBatchSchema.safeParse([
+        {
+          kind: 'setVariable',
+          variable: { id: 'ink', name: 'Ink', kind: 'color', value: '#111111' }
+        },
+        { kind: 'setVariable', variable: { id: 'gap', name: 'Gap', kind: 'number', value: 8 } },
+        { kind: 'setTextStyle', style },
+        { kind: 'deleteVariable', id: 'ink' },
+        { kind: 'deleteTextStyle', id: 'body' }
+      ]).success
+    ).toBe(true)
+  })
+
+  it('refuses a colour that is not hex, and a style with a bad size', () => {
+    expect(
+      operationBatchSchema.safeParse([
+        { kind: 'setVariable', variable: { id: 'ink', name: 'Ink', kind: 'color', value: 'red' } }
+      ]).success
+    ).toBe(false)
+    expect(
+      operationBatchSchema.safeParse([{ kind: 'setTextStyle', style: { ...style, fontSize: 0 } }])
+        .success
+    ).toBe(false)
+  })
+
+  it('takes bindings and a text style on an update and on a create', () => {
+    expect(
+      operationBatchSchema.safeParse([
+        { kind: 'update', id: 'a', patch: { bindings: { fill: 'ink' }, textStyleId: 'body' } },
+        {
+          kind: 'create',
+          type: 'text',
+          parentId: 'page',
+          properties: { textStyleId: 'body', styleOverrides: ['fontSize'] }
+        }
+      ]).success
+    ).toBe(true)
+  })
+
+  it('reads a stored document with variables and styles, and one without', () => {
+    const document = createDocument('file-a', 'A', 'page-a')
+    expect(storedDocumentSchema.safeParse(document).success).toBe(true)
+    expect(
+      storedDocumentSchema.safeParse({
+        ...document,
+        variables: { ink: { id: 'ink', name: 'Ink', kind: 'color', value: '#111111' } },
+        textStyles: { body: style }
+      }).success
+    ).toBe(true)
+  })
+})

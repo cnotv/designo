@@ -9,6 +9,8 @@ import {
   type DesignDocument,
   type DesignNode,
   type DesignNodeTree,
+  type DesignVariable,
+  type TextStyle,
   type PageSetupInput,
   getPageSetupPatch,
   type ListStyle,
@@ -92,6 +94,23 @@ export const getNodeTool = async (
   const node = document.nodes[input.nodeId]
   if (!node) throw new Error(`Node ${input.nodeId} does not exist`)
   return node
+}
+
+/**
+ * Lists the variables and text styles of a file.
+ * @param context - Where files live and how ids are made.
+ * @param input - The file.
+ * @returns Every variable and every text style.
+ */
+export const getStylesTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string }
+): Promise<{ variables: DesignVariable[]; textStyles: TextStyle[] }> => {
+  const document = await readDocument(context.dataDirectory, input.fileId)
+  return {
+    variables: Object.values(document.variables ?? {}),
+    textStyles: Object.values(document.textStyles ?? {})
+  }
 }
 
 /**
