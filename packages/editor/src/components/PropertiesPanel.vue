@@ -42,6 +42,13 @@ import {
   readLayoutSizing,
   sizingOptionsFor
 } from '../editing/autoLayout.ts'
+import {
+  NO_STYLE,
+  createApplyTextStyleOperations,
+  createBindVariableOperations,
+  listTextStyles,
+  listVariables
+} from '../editing/styleLibrary.ts'
 import { IMAGE_FIT_OPTIONS, readImageFit } from '../editing/images.ts'
 import { canHaveLink, readLinkInput } from '../editing/links.ts'
 import { getMasterChoices, NO_MASTER, readMasterChoice } from '../editing/masters.ts'
@@ -208,6 +215,33 @@ const updateLayoutCrossAlign = (raw: unknown): void => {
 
 const update = (patch: DesignNodePatch): void => {
   if (node.value) editor.updateNode(node.value.id, patch)
+}
+
+const colourVariables = computed(() =>
+  editor.document.value
+    ? listVariables(editor.document.value).filter((variable) => variable.kind === 'color')
+    : []
+)
+const textStyles = computed(() =>
+  editor.document.value ? listTextStyles(editor.document.value) : []
+)
+
+const bindColour = (property: 'fill' | 'stroke', choice: unknown): void => {
+  const document = editor.document.value
+  if (!document || !node.value) return
+  const variableId = choice === NO_STYLE ? undefined : String(choice)
+  editor.commit(createBindVariableOperations(document, node.value.id, property, variableId))
+}
+
+const applyTextStyle = (choice: unknown): void => {
+  if (node.value) {
+    editor.commit(
+      createApplyTextStyleOperations(
+        node.value.id,
+        choice === NO_STYLE ? undefined : String(choice)
+      )
+    )
+  }
 }
 
 const inputValue = (event: Event): string => (event.target as HTMLInputElement).value
@@ -565,6 +599,20 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             </SelectContent>
           </Select>
         </div>
+        <div v-if="textStyles.length > 0" class="flex flex-col gap-1.5">
+          <Label for="property-text-style">Text style</Label>
+          <Select :model-value="node.textStyleId ?? NO_STYLE" @update:model-value="applyTextStyle">
+            <SelectTrigger id="property-text-style" class="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem :value="NO_STYLE">No text style</SelectItem>
+              <SelectItem v-for="style in textStyles" :key="style.id" :value="style.id">
+                {{ style.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div class="flex flex-col gap-1.5">
           <Label for="property-font-family">Font</Label>
           <FontPicker
@@ -729,6 +777,21 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             @change="updateColor('fill', $event)"
           />
         </div>
+        <Select
+          v-if="node.fill && colourVariables.length > 0"
+          :model-value="node.bindings?.fill ?? NO_STYLE"
+          @update:model-value="bindColour('fill', $event)"
+        >
+          <SelectTrigger class="h-7 text-xs" aria-label="Fill variable">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem :value="NO_STYLE">No variable</SelectItem>
+            <SelectItem v-for="variable in colourVariables" :key="variable.id" :value="variable.id">
+              {{ variable.name }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div class="flex flex-col gap-1.5">
         <div class="flex items-center justify-between">
@@ -773,6 +836,21 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             @change="updateNumber('strokeWidth', $event, 0)"
           />
         </div>
+        <Select
+          v-if="node.stroke && colourVariables.length > 0"
+          :model-value="node.bindings?.stroke ?? NO_STYLE"
+          @update:model-value="bindColour('stroke', $event)"
+        >
+          <SelectTrigger class="h-7 text-xs" aria-label="Stroke variable">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem :value="NO_STYLE">No variable</SelectItem>
+            <SelectItem v-for="variable in colourVariables" :key="variable.id" :value="variable.id">
+              {{ variable.name }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <Separator />
       <EffectsSection :node="node" @update="update" />

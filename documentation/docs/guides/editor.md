@@ -278,8 +278,16 @@ and its colours use the `Ink` and `Caption` variables. The editor draws the reso
 bound node looks like any other. Changing a bound property in the properties panel ends its binding
 and keeps the new value; changing a size or weight on a text with a text style keeps that one
 property as the text's own. Agents create, change and delete variables and styles with the MCP
-server (see [Variables and text styles](./mcp.md#variables-and-text-styles)); the editor has no
-panel for them yet. Undo and redo cover them.
+server (see [Variables and text styles](./mcp.md#variables-and-text-styles)).
+
+![The Styles panel, and the sample title following an edited Ink variable](/img/styles-panel.gif)
+
+The **Styles** panel in the left sidebar lists them. Its buttons add a colour variable, a number
+variable, or a text style copied from the selected text. Each row renames in place, a colour or
+number variable edits its value (every bound node follows at once), and the bin deletes it. To use
+one, select a layer: a fill or stroke gets a variable menu under it, and a text gets a **Text
+style** menu above the font. Choosing "No variable" or "No text style" detaches it and keeps the
+current value. Undo and redo cover every change.
 
 ## Export
 
