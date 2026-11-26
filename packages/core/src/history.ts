@@ -1,4 +1,5 @@
 import { applyOperation, getChildren, getSubtreeIds } from './document.ts'
+import { invertStyleOperation, isStyleOperation, STYLE_LINK_KEYS } from './styles.ts'
 import type {
   DesignDocument,
   DocumentMetadata,
@@ -7,10 +8,16 @@ import type {
   DesignOperation
 } from './types.ts'
 
-const pickPreviousValues = (node: DesignNode, patch: DesignNodePatch): DesignNodePatch =>
-  Object.fromEntries(
-    Object.keys(patch).map((key) => [key, node[key as keyof DesignNodePatch]])
+// Editing a bound or styled property changes how the node is linked, so undo gives the links back too.
+const pickPreviousValues = (node: DesignNode, patch: DesignNodePatch): DesignNodePatch => {
+  const linkKeys = STYLE_LINK_KEYS.some((key) => node[key] !== undefined) ? STYLE_LINK_KEYS : []
+  return Object.fromEntries(
+    [...new Set([...Object.keys(patch), ...linkKeys])].map((key) => [
+      key,
+      node[key as keyof DesignNodePatch]
+    ])
   ) as DesignNodePatch
+}
 
 const nodeProperties = (node: DesignNode): DesignNodePatch => {
   const { id: _id, type: _type, parentId: _parentId, order: _order, ...properties } = node
@@ -81,6 +88,7 @@ export const invertOperation = (
       }
     ]
   }
+  if (isStyleOperation(operation)) return invertStyleOperation(document, operation)
   if (CREATING_KINDS.includes(operation.kind)) return [{ kind: 'delete', id: operation.id }]
   const node = document.nodes[operation.id]
   if (!node) return []

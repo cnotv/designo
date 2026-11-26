@@ -1,4 +1,5 @@
 import { DEFAULT_NODE_PROPERTIES } from './defaults.ts'
+import { STYLE_LINK_KEYS } from './styles.ts'
 import { getChildren, getSubtreeIds } from './document.ts'
 import type { DesignDocument, DesignNode, DesignNodePatch } from './types.ts'
 
@@ -193,8 +194,13 @@ const mirroredProperties = (
   offset: Offset
 ): Partial<DesignNode> => {
   const overridden = new Set(existing.overrides ?? [])
-  return Object.fromEntries(
-    Object.entries(source)
+  // A link the component dropped is dropped from the copy too, or the copy would keep following it.
+  const droppedLinks = STYLE_LINK_KEYS.filter((key) => key in existing && !(key in source)).map(
+    (key) => [key, undefined] as const
+  )
+  return Object.fromEntries([
+    ...droppedLinks,
+    ...Object.entries(source)
       .map(([key, value]) => [
         key,
         key === 'x' || key === 'y' ? mirroredValue(source, key, offset) : value
@@ -206,7 +212,7 @@ const mirroredProperties = (
           !overridden.has(key) &&
           !(isRoot && OWN_TO_INSTANCE_ROOT.includes(key))
       )
-  )
+  ])
 }
 
 interface CopyChanges {

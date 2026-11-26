@@ -178,22 +178,23 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 
 ## Tools
 
-| Tool                | Does                                                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `list_files`        | Lists files with their ids and names                                                                                           |
-| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                                             |
-| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                                             |
-| `get_node`          | Reads one node with every property                                                                                             |
-| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                    |
-| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                                          |
-| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                     |
-| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                  |
-| `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                                               |
-| `add_image`         | Stores a PNG, JPEG, WebP or GIF from base64, a file path, a URL or a stored `assetId`; places it as an image node              |
-| `update_node`       | Changes some properties of one node                                                                                            |
-| `delete_node`       | Deletes a node and everything inside it                                                                                        |
-| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                                |
-| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, updateMetadata, delete, move and component operations as one change |
+| Tool                | Does                                                                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list_files`        | Lists files with their ids and names                                                                                                                 |
+| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                                                                   |
+| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                                                                   |
+| `get_node`          | Reads one node with every property                                                                                                                   |
+| `get_styles`        | Lists the variables and text styles of the file                                                                                                      |
+| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                                          |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                                                                |
+| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                                           |
+| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                                        |
+| `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                                                                     |
+| `add_image`         | Stores a PNG, JPEG, WebP or GIF from base64, a file path, a URL or a stored `assetId`; places it as an image node                                    |
+| `update_node`       | Changes some properties of one node                                                                                                                  |
+| `delete_node`       | Deletes a node and everything inside it                                                                                                              |
+| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                                                      |
+| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, updateMetadata, variable, text style, delete, move and component operations as one change |
 
 `add_image` takes the picture from exactly one of `data` (base64, at most 20 MB), `path` (a file
 the server can read), `url` (`http` or `https`) or `assetId` (a picture already stored, so no bytes
@@ -385,3 +386,34 @@ ignored. Only a frame can have a `layoutMode`.
 Ask the agent: "Create a Designo file called Palette and lay out five colour swatches in a
 row inside a white frame, each with its hex code underneath." With the editor running, open it
 to watch; headless, ask the agent for a screenshot.
+
+## Variables and text styles
+
+A palette or a type scale is defined once and referenced by nodes, so changing it is one operation
+instead of one `update_node` call for every node. `get_styles` lists what a file has.
+
+`apply_ops` creates and removes them:
+
+- `setVariable` adds or changes a variable: `{ id, name, kind, value }`, where `kind` is `color` (a
+  hex `value`) or `number`.
+- `setTextStyle` adds or changes a text style: `{ id, name, fontFamily, fontSize, fontWeight,
+fontStyle, lineHeight, letterSpacing }`.
+- `deleteVariable` and `deleteTextStyle` remove one. The nodes that used it keep its last value and
+  stop following it.
+
+A node uses them through `create`, `update`, `create_node` and `update_node`:
+
+- `bindings` maps a property to a variable id, for example `{ "fill": "ink", "cornerRadius":
+"round" }`. A colour variable drives `fill` and `stroke`; a number variable drives `fontSize`,
+  `fontWeight`, `lineHeight`, `letterSpacing`, `opacity`, `cornerRadius`, `strokeWidth`, `blur`,
+  `layoutGap` and `layoutPadding`. It replaces all the bindings of the node; `{}` unbinds them.
+- `textStyleId` makes a text follow a text style; `null` stops it.
+
+Setting a bound property directly on a node ends its binding, and the value stays. Setting a style
+property such as `fontSize` on a text with a text style keeps that property as the node's own: it is
+listed in `styleOverrides`, and the text follows the style for the rest. A binding wins over a text
+style. A binding to a missing variable, a colour variable on a number property, or a value out of
+range for its property is refused, and nothing is saved.
+
+The document stores the resolved value in each node, so `get_node`, screenshots, SVG and PDF show
+the final colours and sizes. Undo restores the links as well as the values.

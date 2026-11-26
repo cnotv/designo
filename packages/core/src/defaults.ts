@@ -91,3 +91,33 @@ export const CONTAINER_NODE_TYPES = ['page', 'frame', 'group'] as const
 export const DATA_DIRECTORY_ENVIRONMENT_VARIABLE = 'DESIGNO_DATA_DIR'
 
 export const DEFAULT_DATA_DIRECTORY_NAME = '.designo-data'
+
+/** A colour as the document stores it: #rrggbb or #rrggbbaa. */
+export const HEX_COLOR_PATTERN = /^#(?:[\da-f]{6}|[\da-f]{8})$/i
+
+/** The colour properties a colour variable can drive. */
+export const COLOR_BINDABLE_PROPERTIES = ['fill', 'stroke'] as const
+
+/** The number properties a number variable can drive, with the range each accepts. */
+export const NUMBER_BINDABLE_RANGES = {
+  fontSize: { min: 0.1, max: Infinity },
+  fontWeight: { min: MIN_FONT_WEIGHT, max: MAX_FONT_WEIGHT },
+  lineHeight: { min: MIN_LINE_HEIGHT, max: MAX_LINE_HEIGHT },
+  letterSpacing: { min: MIN_LETTER_SPACING, max: MAX_LETTER_SPACING },
+  opacity: { min: 0, max: 1 },
+  cornerRadius: { min: 0, max: Infinity },
+  strokeWidth: { min: 0, max: Infinity },
+  blur: { min: 0, max: Infinity },
+  layoutGap: { min: 0, max: Infinity },
+  layoutPadding: { min: 0, max: Infinity }
+} as const
+
+/** What a text style sets on a text node. */
+export const TEXT_STYLE_PROPERTIES = [
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'fontStyle',
+  'lineHeight',
+  'letterSpacing'
+] as const
