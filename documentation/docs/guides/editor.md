@@ -280,6 +280,8 @@ and keeps the new value; changing a size or weight on a text with a text style k
 property as the text's own. Agents create, change and delete variables and styles with the MCP
 server (see [Variables and text styles](./mcp.md#variables-and-text-styles)).
 
+![The Styles panel, and the sample title following an edited Ink variable](/img/styles-panel.gif)
+
 The **Styles** panel in the left sidebar lists them. Its buttons add a colour variable, a number
 variable, or a text style copied from the selected text. Each row renames in place, a colour or
 number variable edits its value (every bound node follows at once), and the bin deletes it. To use
