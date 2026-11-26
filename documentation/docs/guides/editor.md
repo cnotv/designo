@@ -263,6 +263,10 @@ master.
   number is its **PDF page**, or, without one, its place among the pages that use a master. The
   master's own text keeps showing `{page}`. A page number is best a fixed-width text, centred, so it
   keeps its place at any digit count; spans in a text with `{page}` are dropped.
+  ![A master with a rule and a page number, and two pages that each show their own number](/img/master-pages.png)
+
+![Moving the master's rule moves it on both pages](/img/master-pages.gif)
+
 - **Override:** an agent lists master nodes a page leaves out in `masterHidden` and draws its own
   node in their place. The editor has no control for that yet.
 
