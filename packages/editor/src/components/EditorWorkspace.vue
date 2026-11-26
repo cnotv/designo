@@ -85,8 +85,12 @@ const confirmDelete = (): void => {
       />
 
       <aside
-        v-show="isLeftPanelOpen"
-        class="bg-background flex min-h-0 flex-col overflow-hidden border-r"
+        :class="
+          cn(
+            'bg-background flex min-h-0 min-w-0 flex-col overflow-hidden border-r',
+            !isLeftPanelOpen && 'invisible'
+          )
+        "
       >
         <nav aria-label="Files" class="flex flex-col gap-0.5 p-1">
           <h2 class="text-muted-foreground px-2 pt-2 pb-1 font-semibold">Files</h2>
@@ -139,7 +143,14 @@ const confirmDelete = (): void => {
         <TextEditOverlay />
       </main>
 
-      <aside v-show="isRightPanelOpen" class="bg-background min-h-0 overflow-y-auto border-l">
+      <aside
+        :class="
+          cn(
+            'bg-background min-h-0 min-w-0 overflow-x-hidden overflow-y-auto border-l',
+            !isRightPanelOpen && 'invisible'
+          )
+        "
+      >
         <PropertiesPanel />
       </aside>
     </div>
@@ -147,9 +158,7 @@ const confirmDelete = (): void => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete {{ fileToDelete?.name }}?</DialogTitle>
-          <DialogDescription>
-            The file is removed from the server and cannot be restored.
-          </DialogDescription>
+          <DialogDescription> The file is deleted and cannot be restored. </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" @click="fileToDelete = undefined">Cancel</Button>
