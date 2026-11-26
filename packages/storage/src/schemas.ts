@@ -292,8 +292,30 @@ const componentLinksSchema = z.object({
   overrides: z.array(z.string()).optional()
 })
 
-/** A patch that may also make a frame or group a component, or stop it being one. */
-const nodeUpdateSchema = nodePatchSchema.extend({ isComponent: z.boolean().optional() })
+/** How a frame takes part in master pages: a master holds what pages share, a page names its master. */
+const masterLinksSchema = z.object({
+  isMaster: z
+    .boolean()
+    .optional()
+    .describe(
+      "Frames only: true makes the frame a master page. Its children are drawn on every page frame that names it in masterId, behind that page's own nodes, and a text with {page} shows each page's number."
+    ),
+  masterId: nodeIdSchema
+    .nullable()
+    .optional()
+    .describe('Frames only: the id of the master frame this page uses; null stops using one.'),
+  masterHidden: z
+    .array(nodeIdSchema)
+    .optional()
+    .describe(
+      'Frames only: ids of direct children of the master that this page does not show. A page replaces one by hiding it and drawing its own node.'
+    )
+})
+
+/** A patch that may also make a frame or group a component, or a frame a master, or use one. */
+const nodeUpdateSchema = nodePatchSchema
+  .extend({ isComponent: z.boolean().optional() })
+  .extend(masterLinksSchema.shape)
 
 // Files from before these properties existed have none, and read as a text with no spans and no list.
 const storedNodeSchema = nodePatchSchema
@@ -308,6 +330,7 @@ const storedNodeSchema = nodePatchSchema
       .default(DEFAULT_NODE_PROPERTIES.listIndent)
   })
   .extend(componentLinksSchema.shape)
+  .extend(masterLinksSchema.shape)
   .extend({
     id: nodeIdSchema,
     type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'text', 'image']),

@@ -44,6 +44,7 @@ import {
 } from '../editing/autoLayout.ts'
 import { IMAGE_FIT_OPTIONS, readImageFit } from '../editing/images.ts'
 import { canHaveLink, readLinkInput } from '../editing/links.ts'
+import { getMasterChoices, NO_MASTER, readMasterChoice } from '../editing/masters.ts'
 import { NO_PDF_TAG, readPdfTag } from '../editing/pdfMetadata.ts'
 import { readPdfPageInput } from '../editing/pdfPage.ts'
 import {
@@ -248,6 +249,15 @@ const updateLineHeight = (event: Event): void => {
   if (lineHeight !== undefined) update({ lineHeight })
 }
 
+const masterChoices = computed(() =>
+  editor.document.value && node.value ? getMasterChoices(editor.document.value, node.value.id) : []
+)
+
+const updateMasterId = (raw: unknown): void => {
+  const masterId = readMasterChoice(raw)
+  if (masterId !== undefined) update({ masterId })
+}
+
 const updatePdfPage = (event: Event): void => {
   const pdfPage = readPdfPageInput(inputValue(event))
   if (pdfPage !== undefined) update({ pdfPage })
@@ -367,6 +377,28 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             class="h-7 text-xs tabular-nums"
             @change="updatePdfPage"
           />
+        </div>
+        <div v-if="node.type === 'frame'" class="flex flex-col gap-1.5">
+          <Label for="property-master">Master page</Label>
+          <Select :model-value="node.masterId ?? NO_MASTER" @update:model-value="updateMasterId">
+            <SelectTrigger id="property-master" class="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="choice in masterChoices" :key="choice.value" :value="choice.value">
+                {{ choice.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Toggle
+            size="sm"
+            variant="outline"
+            aria-label="Use as a master page"
+            :model-value="node.isMaster === true"
+            @update:model-value="update({ isMaster: Boolean($event) })"
+          >
+            Use as a master
+          </Toggle>
         </div>
       </div>
 

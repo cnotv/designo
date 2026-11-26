@@ -235,6 +235,17 @@ Editing a property of a node inside an instance keeps it as an override, listed 
 turns an instance into plain nodes. Nodes inside an instance cannot be created, deleted or moved;
 change the component or detach the instance. Placing an instance inside a component is refused.
 
+### Master pages
+
+`apply_ops` sets up masters with `update` patches on frames. `isMaster: true` makes a frame a master.
+A page frame sets `masterId` to the master's id (null stops using one) and the master's children are
+drawn on that page, moved to it and behind its own nodes, in `get_screenshot`, `export_svg` and
+`export_pdf`. A text with `{page}` shows the number of the page it is on: the frame's `pdfPage`, or
+its place among the frames that use a master. `masterHidden` is a list of ids of direct children of
+the master that one page leaves out, so it can draw its own in their place. Editing the master
+changes every page that uses it. The drawn copies are not in the file: `get_document_tree` shows the
+stored nodes only.
+
 ### Render limits and errors
 
 resvg is native code, and some inputs make it abort the whole process, so every screenshot is drawn

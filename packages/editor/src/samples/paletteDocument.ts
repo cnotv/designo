@@ -152,8 +152,59 @@ const pageFrameOperations = (position: number): DesignOperation[] => {
   ]
 }
 
+// A master holds a rule and a page number once; both page frames name it, so each shows its own number.
+const masterOperations = (): DesignOperation[] => {
+  const left = PAGE_FRAME_LEFT + 2 * (PAGE_FRAME_SIZE + PAGE_FRAME_GAP)
+  return [
+    {
+      kind: 'create',
+      id: 'master',
+      type: 'frame',
+      parentId: 'page',
+      properties: {
+        name: 'Master: page number',
+        x: left,
+        y: 0,
+        width: PAGE_FRAME_SIZE,
+        height: PAGE_FRAME_SIZE,
+        fill: '#f4f4f4'
+      }
+    },
+    { kind: 'update', id: 'master', patch: { isMaster: true } },
+    {
+      kind: 'create',
+      id: 'master-rule',
+      type: 'rectangle',
+      parentId: 'master',
+      properties: {
+        x: left + SWATCH_LEFT,
+        y: PAGE_FRAME_SIZE - 56,
+        width: 300,
+        height: 1,
+        fill: '#111111'
+      }
+    },
+    {
+      kind: 'create',
+      id: 'master-page-number',
+      type: 'text',
+      parentId: 'master',
+      properties: {
+        x: left + SWATCH_LEFT,
+        y: PAGE_FRAME_SIZE - 44,
+        width: 300,
+        text: 'Page {page}',
+        textWrap: true,
+        textAlign: 'center',
+        fontSize: 14,
+        fill: '#111111'
+      }
+    }
+  ]
+}
+
 /**
- * Builds the sample file the editor shows when no Designo server is behind it, as on the public demo: a palette, and two frames numbered as the pages of its PDF.
+ * Builds the sample file the editor shows when no Designo server is behind it, as on the public demo: a palette, two frames numbered as the pages of its PDF, and a master that gives both a page number.
  * @returns The sample document.
  */
 export const createPaletteDocument = (): DesignDocument => {
@@ -175,7 +226,10 @@ export const createPaletteDocument = (): DesignDocument => {
     ...SWATCH_COLORS.flatMap(swatchOperations),
     ...effectOperations(),
     ...pageFrameOperations(0),
-    ...pageFrameOperations(1)
+    ...pageFrameOperations(1),
+    ...masterOperations(),
+    { kind: 'update', id: 'page-1', patch: { masterId: 'master' } },
+    { kind: 'update', id: 'page-2', patch: { masterId: 'master' } }
   ])
   if (!result.ok) throw new Error(result.error)
   return result.document

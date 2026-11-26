@@ -1,3 +1,4 @@
+import { resolveMasters } from '@designo/core'
 import { exportNodeToSvg } from '@designo/exporter'
 import { loadTextLayout, toTextLayoutRequest } from '@designo/text'
 import { ref } from 'vue'
@@ -110,8 +111,9 @@ export const useExport = (editor: Editor): ExportController => {
   }
 
   const run = async (): Promise<void> => {
-    const currentDocument = editor.document.value
-    if (!currentDocument || isExporting.value) return
+    const storedDocument = editor.document.value
+    if (!storedDocument || isExporting.value) return
+    const currentDocument = resolveMasters(storedDocument)
     isExporting.value = true
     error.value = undefined
     try {
