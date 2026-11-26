@@ -1,0 +1,64 @@
+- generic [ref=e3]:
+    - banner [ref=e4]:
+        - button "Toggle left panel" [pressed] [ref=e5]
+        - generic [ref=e6]: Designo
+        - group "Tools" [ref=e7]:
+            - button "Move" [pressed] [ref=e8]
+            - button "Frame" [ref=e9]
+            - button "Rectangle" [ref=e10]
+            - button "Ellipse" [ref=e11]
+            - button "Text" [ref=e12]
+        - button "Add image" [ref=e13]
+        - button "Undo" [disabled]
+        - button "Redo" [disabled]
+        - generic [ref=e14]:
+            - button "Zoom to fit" [ref=e15]:
+                - generic [ref=e16]: 100%
+            - link "Designo on GitHub" [ref=e17] [cursor=pointer]:
+                - /url: https://github.com/cnotv/designo
+            - button "Toggle right panel" [pressed] [ref=e18]
+    - complementary [ref=e19]:
+        - navigation "Files" [ref=e20]:
+            - heading "Files" [level=2] [ref=e21]
+            - paragraph [ref=e22]:
+                - text: No files yet. Ask an agent to call
+                - code [ref=e23]: create_file
+                - text: through the Designo MCP server.
+        - region "Pages" [ref=e24]:
+            - generic [ref=e25]:
+                - heading "Pages" [level=2] [ref=e26]
+                - generic [ref=e27]:
+                    - button "Add page from a template" [ref=e28]
+                    - button "Add page" [ref=e29]
+            - list [ref=e30]
+        - region "Layers" [ref=e31]:
+            - heading "Layers" [level=2] [ref=e32]
+            - generic [ref=e35]:
+                - paragraph [ref=e36]: Draw with the toolbar, or ask an agent through the MCP server.
+                - list [ref=e37]
+        - region "Styles" [ref=e38]:
+            - generic [ref=e39]:
+                - heading "Styles" [level=2] [ref=e40]
+                - generic [ref=e41]:
+                    - button "Add colour variable" [ref=e42]
+                    - button "Add number variable" [ref=e43]
+                    - button "Add text style from the selected text" [disabled]
+            - paragraph [ref=e44]: No variables or text styles yet.
+            - list [ref=e45]
+    - main [ref=e46]
+    - complementary [ref=e49]:
+        - region "Properties" [ref=e50]:
+            - paragraph [ref=e51]: Select a layer to edit its properties.
+            - region "Export" [ref=e52]:
+                - heading "Export" [level=2] [ref=e53]
+                - generic [ref=e54]:
+                    - generic [ref=e55]:
+                        - generic [ref=e56]: Format
+                        - combobox "Format" [active] [ref=e57]:
+                            - generic: PDF
+                    - generic [ref=e58]:
+                        - generic [ref=e59]: Scale
+                        - combobox "Scale" [disabled] [ref=e60]:
+                            - generic: 2x
+                - button "Export PDF" [disabled]
+                - paragraph [ref=e61]: Exports every page as one PDF.

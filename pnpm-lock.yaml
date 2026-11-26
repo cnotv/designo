@@ -89,6 +89,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@designo/ats':
+        specifier: workspace:*
+        version: link:../ats
       '@designo/auth':
         specifier: workspace:*
         version: link:../auth
@@ -125,6 +128,9 @@ importers:
       lucide-vue-next:
         specifier: ^1.0.0
         version: 1.0.0(vue@3.5.45(typescript@5.9.3))
+      pdfjs-dist:
+        specifier: ^6.5.438
+        version: 6.5.438
       reka-ui:
         specifier: ^2.11.0
         version: 2.11.0(vue@3.5.45(typescript@5.9.3))
@@ -190,6 +196,9 @@ importers:
 
   packages/mcp:
     dependencies:
+      '@designo/ats':
+        specifier: workspace:*
+        version: link:../ats
       '@designo/auth':
         specifier: workspace:*
         version: link:../auth

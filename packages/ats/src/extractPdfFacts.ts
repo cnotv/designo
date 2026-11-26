@@ -1,4 +1,4 @@
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PdfFacts, PdfFontFacts, PdfLinkFacts, PdfPageFacts, PdfTextItem } from './types.ts'
 
 const OBJECT_PATTERN = /\d+ \d+ obj([\S\s]*?)endobj/g
@@ -26,9 +26,15 @@ const readFonts = (bytes: Uint8Array): PdfFontFacts[] => {
  * Reads an exported PDF the way a parser built on pdf.js does, and collects what the ATS rules
  * need: positioned text, fonts, metadata and links.
  * @param bytes - The PDF.
+ * @param workerSource - Where a browser loads pdf.js's worker from; Node needs none.
  * @returns What a reader finds in the file.
  */
-export const extractPdfFacts = async (bytes: Uint8Array): Promise<PdfFacts> => {
+export const extractPdfFacts = async (
+  bytes: Uint8Array,
+  workerSource?: string
+): Promise<PdfFacts> => {
+  // pdf.js reads the worker's address from one global; there is no per-call option for it.
+  if (workerSource) Reflect.set(GlobalWorkerOptions, 'workerSrc', workerSource)
   const pdf = await getDocument({ data: Uint8Array.from(bytes), useSystemFonts: false }).promise
   const metadata = await pdf.getMetadata()
   const info = metadata.info as Record<string, string | undefined>

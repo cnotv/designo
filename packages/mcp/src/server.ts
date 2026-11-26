@@ -24,6 +24,7 @@ import {
 import { addImageTool } from './addImage.ts'
 import {
   applyOperationsTool,
+  checkAtsTool,
   createFileTool,
   exportPdfTool,
   exportSvgTool,
@@ -177,6 +178,19 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
   )
 }
 
+const registerAtsTools = (server: McpServer, context: DesignoToolContext): void => {
+  server.registerTool(
+    'check_ats',
+    {
+      description:
+        'Export the file as a PDF and report what an applicant tracking system (ATS) could read from it, for a resume or any document sent to a parser. Each finding is pass, warn or fail with a rule name and, when it concerns one thing, the node id or page: selectable-text (every text is text in the PDF, none an image), text-extraction (a pdf.js reader gets the words back without lost spaces or reordering), fonts (embedded with a Unicode map), reading-order (columns and tables a single-column reader interleaves), contact-details (a name, an email and a phone number in the first lines), section-headings (experience, education and skills as plain text lines), layout-traps (text in the header or footer strip, over a picture, or an icon in place of a word), metadata (title, author, language) and links (each link is an annotation with visible text). The report also lists the text in reading order, page by page. It names the reader and rules that produced it and is not a real ATS.',
+      inputSchema: { fileId: fileIdSchema },
+      annotations: READ_ONLY
+    },
+    (input) => toToolResult(() => checkAtsTool(context, input))
+  )
+}
+
 const registerStyleTools = (server: McpServer, context: DesignoToolContext): void => {
   server.registerTool(
     'get_styles',
@@ -296,6 +310,7 @@ export const createDesignoServer = (context: DesignoToolContext): McpServer => {
   const server = new McpServer({ name: 'designo', version: SERVER_VERSION })
   registerReadTools(server, context)
   registerStyleTools(server, context)
+  registerAtsTools(server, context)
   registerWriteTools(server, context)
   return server
 }

@@ -1,0 +1,72 @@
+- generic:
+    - generic [aria-hidden]:
+        - generic:
+            - banner:
+                - button [pressed]
+                - generic: Designo
+                - group:
+                    - button [pressed]
+                    - button
+                    - button
+                    - button
+                    - button
+                - button
+                - button [disabled]
+                - button [disabled]
+                - generic:
+                    - button:
+                        - generic: 100%
+                    - link:
+                        - /url: https://github.com/cnotv/designo
+                    - button [pressed]
+            - complementary:
+                - navigation:
+                    - heading [level=2]: Files
+                    - paragraph:
+                        - text: No files yet. Ask an agent to call
+                        - code: create_file
+                        - text: through the Designo MCP server.
+                - region:
+                    - generic:
+                        - heading [level=2]: Pages
+                        - generic:
+                            - button
+                            - button
+                    - list
+                - region:
+                    - heading [level=2]: Layers
+                    - generic:
+                        - generic:
+                            - generic:
+                                - paragraph: Draw with the toolbar, or ask an agent through the MCP server.
+                                - list
+                - region:
+                    - generic:
+                        - heading [level=2]: Styles
+                        - generic:
+                            - button
+                            - button
+                            - button [disabled]
+                    - paragraph: No variables or text styles yet.
+                    - list
+            - main
+            - complementary:
+                - region:
+                    - paragraph: Select a layer to edit its properties.
+                    - region:
+                        - heading [level=2]: Export
+                        - generic:
+                            - generic:
+                                - generic: Format
+                                - combobox [expanded]:
+                                    - generic: SVG
+                            - generic:
+                                - generic: Scale
+                                - combobox [disabled]:
+                                    - generic: 2x
+                        - button [disabled]: Export SVG
+                        - paragraph: Exports the whole page.
+    - listbox [ref=e62]:
+        - option "SVG" [active] [selected] [ref=e63]
+        - option "PNG" [ref=e67]
+        - option "PDF" [ref=e70]

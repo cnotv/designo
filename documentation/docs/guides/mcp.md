@@ -164,6 +164,20 @@ content. One design unit is a point. Text is selectable and set in its embedded 
 lines where the editor breaks it; a node with blur or a shadow is an image. It fails, naming the
 text, when a text's fonts cannot be found, rather than leaving the text out.
 
+`check_ats` takes a `fileId`, exports the same PDF and reads it back with pdf.js, the way a parser
+does. It answers JSON: a `parser` line naming the reader and rule set, a `summary` count of passes,
+warnings and failures, the `findings`, and `readingOrder`, the text of each page one row at a time.
+A finding has a `rule`, a `status`, a `message` and, when it concerns one thing, a `nodeId` or a
+`page`. The rules are `selectable-text` (a text blurred or shadowed is an image and fails),
+`text-extraction` (the words come back with their spaces and order), `fonts` (embedded, with a
+Unicode map), `reading-order` (several columns or a table interleave in a single-column reader),
+`contact-details` (a name, an email and a phone number in the first lines), `section-headings`
+(experience, education and skills as plain lines), `layout-traps` (text in the header or footer
+strip, over a picture, or an icon in place of a word), `metadata` (title, author and language) and
+`links` (each is an annotation with its text drawn). The checks are heuristics for a resume. The
+report says which reader and rules produced it; it is not a real ATS, and it does not score a
+resume against a job.
+
 A page frame with a bleed (see `set_page_setup`) makes a PDF page that is the frame plus the bleed
 on every side. Its MediaBox and BleedBox are that larger box, its TrimBox is the frame's own box,
 and the frame's fill and clip reach the bleed edge so the artwork bleeds. `trimMarks: true` adds a
@@ -187,6 +201,7 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 | `get_styles`        | Lists the variables and text styles of the file                                                                                                      |
 | `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                                          |
 | `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                                                                |
+| `check_ats`         | Exports the file as a PDF and reports pass, warn or fail for what an applicant tracking system could read from it                                    |
 | `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                                           |
 | `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                                        |
 | `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                                                                     |

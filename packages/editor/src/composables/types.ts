@@ -5,6 +5,7 @@ import type {
   DesignOperation,
   StationeryTemplate
 } from '@designo/core'
+import type { AtsReport } from '@designo/ats'
 import type { DocumentSummary } from '@designo/storage'
 import type { ComputedRef, Ref } from 'vue'
 import type {
@@ -119,6 +120,11 @@ export interface ExportController {
   error: Ref<string | undefined>
   /** Downloads the selection, or the page, with the current settings. */
   run: () => Promise<void>
+  /** What the last ATS check found; undefined before one runs or after the document changes. */
+  atsReport: Ref<AtsReport | undefined>
+  isCheckingAts: Ref<boolean>
+  /** Exports the PDF and reads it back the way an applicant tracking system would. */
+  checkAts: () => Promise<void>
 }
 
 export interface AccessGate {

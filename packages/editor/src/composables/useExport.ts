@@ -1,7 +1,8 @@
 import { resolveMasters } from '@designo/core'
 import { exportNodeToSvg } from '@designo/exporter'
 import { loadTextLayout, toTextLayoutRequest } from '@designo/text'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import type { AtsReport } from '@designo/ats'
 import { buildExportFileName, getExportTargetIds, getRasterSize } from '../editing/export.ts'
 import type { ExportSettings } from '../editing/types.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
@@ -100,6 +101,37 @@ export const useExport = (editor: Editor): ExportController => {
   const settings = ref<ExportSettings>({ ...DEFAULT_SETTINGS })
   const isExporting = ref(false)
   const error = ref<string | undefined>()
+  const atsReport = ref<AtsReport | undefined>()
+  const isCheckingAts = ref(false)
+
+  // A report describes the document it was made from, so an edit retires it.
+  watch(editor.document, () => {
+    atsReport.value = undefined
+  })
+
+  const checkAts = async (): Promise<void> => {
+    const storedDocument = editor.document.value
+    if (!storedDocument || isCheckingAts.value) return
+    const currentDocument = resolveMasters(storedDocument)
+    isCheckingAts.value = true
+    error.value = undefined
+    try {
+      const pdf = await exportPdf(currentDocument, false)
+      // Loaded on demand with the worker pdf.js reads in; nothing else in the editor needs them.
+      const [{ extractPdfFacts }, { checkAts: runChecks }, { default: workerSource }] =
+        await Promise.all([
+          import('@designo/ats/extract'),
+          import('@designo/ats'),
+          import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
+        ])
+      const facts = await extractPdfFacts(new Uint8Array(await pdf.arrayBuffer()), workerSource)
+      atsReport.value = runChecks(currentDocument, facts)
+    } catch (caught) {
+      error.value = caught instanceof Error ? caught.message : 'The ATS check failed'
+    } finally {
+      isCheckingAts.value = false
+    }
+  }
 
   const exportNode = async (
     exportedDocument: NonNullable<Editor['document']['value']>,
@@ -138,5 +170,5 @@ export const useExport = (editor: Editor): ExportController => {
     }
   }
 
-  return { settings, isExporting, error, run }
+  return { settings, isExporting, error, run, atsReport, isCheckingAts, checkAts }
 }

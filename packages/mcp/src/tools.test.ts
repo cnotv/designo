@@ -16,6 +16,7 @@ import { createTextEngine, loadTextLayout } from '@designo/text'
 import { createDesignoServer } from './server.ts'
 import {
   applyOperationsTool,
+  checkAtsTool,
   createFileTool,
   exportPdfTool,
   exportSvgTool,
@@ -447,6 +448,46 @@ describe('export tools', () => {
       ['200', '100'],
       ['300', '150']
     ])
+  })
+
+  it('check_ats reports what a parser reads, and names the node that fails a rule', async () => {
+    const withFonts = { ...context, getFontBytes: (fontId: string) => fixtureFontBytes.get(fontId) }
+    const { fileId, pageId } = await createFileTool(withFonts, { name: 'Resume' })
+    const line = (id: string, text: string, y: number, properties = {}) =>
+      ({
+        kind: 'create',
+        id,
+        type: 'text',
+        parentId: 'sheet',
+        properties: { x: 40, y, width: 400, height: 20, text, ...properties }
+      }) as const
+    await applyOperationsTool(withFonts, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'sheet',
+          type: 'frame',
+          parentId: pageId,
+          properties: { width: 595, height: 842, pdfPage: 1 }
+        },
+        line('name', 'Jane Doe', 40),
+        line('mail', 'jane@example.com', 70),
+        line('phone', '+49 170 1234567', 100),
+        line('experience', 'Experience', 140),
+        line('glow', 'Glowing skills', 200, { blur: 4 })
+      ]
+    })
+    const report = await checkAtsTool(withFonts, { fileId })
+    const statusOf = (rule: string, nodeId?: string) =>
+      report.findings.find((finding) => finding.rule === rule && finding.nodeId === nodeId)?.status
+    expect(statusOf('selectable-text', 'glow')).toBe('fail')
+    expect(statusOf('contact-details')).toBe('pass')
+    expect(statusOf('section-headings')).toBe('warn')
+    expect(statusOf('fonts')).toBe('pass')
+    expect(report.readingOrder[0]).toContain('Jane Doe')
+    expect(report.parser).toContain('pdf.js')
+    expect(report.summary.fail).toBe(1)
   })
 
   it('export_pdf grows a page by its bleed, and trimMarks adds room for crop marks', async () => {

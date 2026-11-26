@@ -217,6 +217,42 @@ const formattedTextOperations = (): DesignOperation[] => [
   }
 ]
 
+// On page 1, for the ATS check: a contact line a parser reads as it is, and a blurred line, which a
+// PDF draws as an image, so no parser can read it and the check fails it.
+const atsOperations = (): DesignOperation[] => [
+  {
+    kind: 'create',
+    id: 'page-1-contact',
+    type: 'text',
+    parentId: 'page-1',
+    properties: {
+      x: PAGE_FRAME_LEFT + SWATCH_LEFT,
+      y: 96,
+      width: PAGE_FRAME_SIZE - SWATCH_LEFT * 2,
+      text: 'Jane Doe, jane@example.com',
+      textWrap: true,
+      fontSize: 18,
+      fill: '#111111'
+    }
+  },
+  {
+    kind: 'create',
+    id: 'page-1-blurred',
+    type: 'text',
+    parentId: 'page-1',
+    properties: {
+      x: PAGE_FRAME_LEFT + SWATCH_LEFT,
+      y: 140,
+      width: PAGE_FRAME_SIZE - SWATCH_LEFT * 2,
+      text: 'Blurred: not readable by a parser',
+      textWrap: true,
+      fontSize: 18,
+      fill: '#111111',
+      blur: 1
+    }
+  }
+]
+
 // A master holds a rule and a page number once; both page frames name it, so each shows its own number.
 const masterOperations = (): DesignOperation[] => {
   const left = PAGE_FRAME_LEFT + 2 * (PAGE_FRAME_SIZE + PAGE_FRAME_GAP)
@@ -269,7 +305,7 @@ const masterOperations = (): DesignOperation[] => {
 }
 
 /**
- * Builds the sample file the editor shows when no Designo server is behind it, as on the public demo: a palette, two frames numbered as the pages of its PDF, and a master that gives both a page number.
+ * Builds the sample file the editor shows when no Designo server is behind it, as on the public demo: a palette, two frames numbered as the pages of its PDF, and a master that gives both a page number. Page 1 holds one line the ATS check passes and one it fails.
  * @returns The sample document.
  */
 export const createPaletteDocument = (): DesignDocument => {
@@ -301,6 +337,7 @@ export const createPaletteDocument = (): DesignDocument => {
     ...pageFrameOperations(0),
     ...pageFrameOperations(1),
     ...formattedTextOperations(),
+    ...atsOperations(),
     ...masterOperations(),
     { kind: 'update', id: 'page-1', patch: { masterId: 'master' } },
     { kind: 'update', id: 'page-2', patch: { masterId: 'master' } }

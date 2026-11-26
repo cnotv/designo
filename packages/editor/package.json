@@ -13,6 +13,7 @@
     "start": "node server/productionServer.ts"
   },
   "dependencies": {
+    "@designo/ats": "workspace:*",
     "@designo/auth": "workspace:*",
     "@designo/core": "workspace:*",
     "@designo/exporter": "workspace:*",
@@ -25,6 +26,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-vue-next": "^1.0.0",
+    "pdfjs-dist": "^6.5.438",
     "reka-ui": "^2.11.0",
     "sirv": "^3.0.2",
     "tailwind-merge": "^3.7.0",

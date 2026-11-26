@@ -17,26 +17,12 @@ export interface PlacedNode {
 
 const isRendered = (node: DesignNode): boolean => node.visible && node.opacity > 0
 
-const boxOf = (node: DesignNode, originX: number, originY: number): Box => ({
-  x: originX + node.x,
-  y: originY + node.y,
-  width: node.width,
-  height: node.height
-})
-
+// Coordinates are absolute on the page, never relative to the parent.
 // ponytail: rotation is ignored, so a rotated node's box is its unrotated one.
-const collect = (
-  document: DesignDocument,
-  parent: DesignNode,
-  originX: number,
-  originY: number
-): { node: DesignNode; box: Box }[] =>
+const collect = (document: DesignDocument, parent: DesignNode): DesignNode[] =>
   getChildren(document, parent.id)
     .filter(isRendered)
-    .flatMap((child) => {
-      const box = boxOf(child, originX, originY)
-      return [{ node: child, box }, ...collect(document, child, box.x, box.y)]
-    })
+    .flatMap((child) => [child, ...collect(document, child)])
 
 /**
  * Lists what a PDF export draws, by page: the frames marked with a `pdfPage` in that order, or each
@@ -50,12 +36,18 @@ export const getPlacedNodes = (document: DesignDocument): PlacedNode[] => {
     .toSorted((first, second) => (first.pdfPage ?? 0) - (second.pdfPage ?? 0))
   const roots = frames.length > 0 ? frames : getPageNodes(document)
   return roots.flatMap((root, index) => {
-    const children = collect(document, root, 0, 0)
-    // A frame is its own page. A design page has no fixed size, so it has no margins to read.
+    // A frame is its own page, and boxes are measured from its corner. A design page has no fixed
+    // size, so it has no margins to read.
+    const origin = root.type === 'frame' ? root : { x: 0, y: 0 }
     const pageBox =
       root.type === 'frame'
         ? { x: 0, y: 0, width: root.width, height: root.height }
         : { x: 0, y: 0, width: 0, height: 0 }
-    return children.map(({ node, box }) => ({ node, page: index + 1, box, pageBox }))
+    return collect(document, root).map((node) => ({
+      node,
+      page: index + 1,
+      box: { x: node.x - origin.x, y: node.y - origin.y, width: node.width, height: node.height },
+      pageBox
+    }))
   })
 }
