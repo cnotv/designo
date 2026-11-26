@@ -9,7 +9,7 @@ import {
 const PAGE_WIDTH = 595
 const PAGE_HEIGHT = 842
 const MARGIN = 48
-const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN - MARGIN
 const INK = '#111111'
 
 interface CvLine {
