@@ -8,6 +8,7 @@ import type {
 } from '@designo/core'
 import type { AtsReport } from '@designo/ats'
 import type { DocumentSummary } from '@designo/storage'
+import type { LiveApplyResult, PresenceEntry, PresenceState, PresenceUser } from '@designo/sync'
 import type { ComputedRef, Ref } from 'vue'
 import type {
   AccountAction,
@@ -31,6 +32,22 @@ import type {
   Viewport
 } from '../editing/types.ts'
 
+/** The open file's live connection to the sync server. */
+export interface LiveFile {
+  /** True while the copy is connected and in sync; edits then go through it. */
+  isLive: Ref<boolean>
+  /** Everyone else on the file. */
+  presence: Ref<PresenceEntry[]>
+  /** Applies a batch to the live copy; undefined when it is not live. */
+  apply: (operations: readonly DesignOperation[]) => LiveApplyResult | undefined
+  /** The file as the live copy holds it now. */
+  current: () => DesignDocument | undefined
+  /** Changes what this tab shares: who it is, its selection or its pointer. */
+  updatePresence: (change: Partial<PresenceState>) => void
+  /** Who this tab is to the others. */
+  presenceUser: () => PresenceUser
+}
+
 export interface DesignoFiles {
   documentSummaries: Ref<DocumentSummary[]>
   selectedFileId: Ref<string | undefined>
@@ -46,6 +63,14 @@ export interface DesignoFiles {
   deleteFile: (fileId: string) => Promise<void>
   /** Sends a batch the editor has already applied locally; ignored in the demo. */
   saveOperations: (operations: readonly DesignOperation[]) => void
+  /** True while the open file is live, so others' edits arrive at once. */
+  isLive: Ref<boolean>
+  /** Everyone else on the open file. */
+  presence: Ref<PresenceEntry[]>
+  /** Changes what this tab shares with the others on the file. */
+  updatePresence: LiveFile['updatePresence']
+  /** Who this tab is to the others on the file. */
+  presenceUser: LiveFile['presenceUser']
 }
 
 export interface Editor {

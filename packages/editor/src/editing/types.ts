@@ -1,5 +1,6 @@
 import type { CodeTarget, PdfColorSpace } from '@designo/exporter'
 import type {
+  DesignComment,
   DesignNode,
   DesignOperation,
   FontStyle,
@@ -347,3 +348,22 @@ export type GateScreen =
   | { screen: 'signed-out'; signInFailed: boolean }
   | { screen: 'pending'; email: string }
   | { screen: 'blocked'; email: string }
+
+/** Another person or agent on the file, as the overlay draws them. */
+export interface RemoteMark {
+  clientId: number
+  name: string
+  color: string
+  /** Their selected nodes that are on the shown page. */
+  selection: readonly string[]
+  /** Their pointer on the page, in design units; null when it is off the canvas. */
+  cursor: Point | null
+}
+
+/** An open comment's pin on the screen. */
+export interface CommentPin {
+  comment: DesignComment
+  /** Its place among the open comments, oldest first, shown on the pin. */
+  number: number
+  screen: Point
+}

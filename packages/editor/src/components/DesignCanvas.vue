@@ -10,6 +10,10 @@ import { getPathEditHandles } from '../editing/pathEditing.ts'
 import { indexDocument } from '../editing/spatialIndex.ts'
 import { createCanvas2dRenderer } from '../rendering/canvas2dRenderer.ts'
 import { drawOverlay } from '../rendering/drawOverlay.ts'
+import { drawPresence } from '../rendering/drawPresence.ts'
+import { toRemoteMarks } from '../editing/presence.ts'
+import { usePresenceSharing } from '../composables/usePresenceSharing.ts'
+import CommentPins from './CommentPins.vue'
 import { onImageLoaded } from '../rendering/imageCache.ts'
 import { prepareCanvas } from '../rendering/prepareCanvas.ts'
 import { buildScene, createSceneSource } from '../rendering/scene.ts'
@@ -119,6 +123,17 @@ const drawMarks = (): void => {
     guides: interaction.guides,
     guideColor: readCssColor(canvas, '--guide', '#f24822')
   })
+  drawPresence(context, document, editor.viewport, toRemoteMarks(files.presence, document))
+}
+
+const { shareCursor, hideCursor } = usePresenceSharing(editor, files)
+const onPointerMove = (event: PointerEvent): void => {
+  interaction.onPointerMove(event)
+  shareCursor(event)
+}
+const onPointerLeave = (): void => {
+  interaction.onPointerLeave()
+  hideCursor()
 }
 
 // The browser's own tooltip shows where a linked node leads when the pointer rests on it.
@@ -198,11 +213,12 @@ watchEffect(drawMarks)
         :title="hoveredLink ?? undefined"
         data-testid="design-canvas"
         @pointerdown="interaction.onPointerDown"
-        @pointermove="interaction.onPointerMove"
+        @pointermove="onPointerMove"
         @pointerup="interaction.onPointerUp"
-        @pointerleave="interaction.onPointerLeave"
+        @pointerleave="onPointerLeave"
         @dblclick="interaction.onDoubleClick"
       />
+      <CommentPins />
     </div>
   </EditorContextMenu>
 </template>

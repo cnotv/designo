@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { presenceColor } from '@designo/sync'
 import { File, Trash2 } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
@@ -19,6 +20,7 @@ import EditorToolbar from './EditorToolbar.vue'
 import LayersPanel from './LayersPanel.vue'
 import PagesPanel from './PagesPanel.vue'
 import StylesPanel from './StylesPanel.vue'
+import CommentsPanel from './CommentsPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import TextEditOverlay from './TextEditOverlay.vue'
 import { useEditorShortcuts } from '../composables/useEditorShortcuts.ts'
@@ -31,7 +33,7 @@ import type { SignedInAccount } from '../editing/types.ts'
 
 const DOCS_SELF_HOSTING_URL = 'https://cnotv.github.io/designo/guides/self-hosting'
 
-defineProps<{ account?: SignedInAccount }>()
+const props = defineProps<{ account?: SignedInAccount }>()
 const emit = defineEmits<{ accessRefused: []; signOut: [] }>()
 
 const files = useFilesStore()
@@ -46,6 +48,14 @@ watch(
   }
 )
 onBeforeUnmount(disposeWorkspaceStores)
+// A signed-in person is shown to the others by name; a visitor keeps the guest name made for the tab.
+watch(
+  () => props.account?.name,
+  (name) => {
+    if (name) files.updatePresence({ user: { name, color: presenceColor(name), kind: 'person' } })
+  },
+  { immediate: true }
+)
 
 const { documentSummaries, selectedFileId, isDemo } = storeToRefs(files)
 const { selectFile, deleteFile } = files
@@ -139,6 +149,8 @@ const confirmDelete = (): void => {
         <LayersPanel />
         <Separator />
         <StylesPanel />
+        <Separator />
+        <CommentsPanel />
       </aside>
 
       <main class="relative min-h-0 min-w-0">

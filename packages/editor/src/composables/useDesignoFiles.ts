@@ -1,13 +1,16 @@
 import type { DesignDocument, DesignOperation } from '@designo/core'
 import type { DocumentSummary } from '@designo/storage'
 import { documentSummaryListSchema, storedDocumentSchema } from '@designo/storage/schemas'
-import { onScopeDispose, ref, type Ref } from 'vue'
+import { computed, onScopeDispose, ref, type Ref } from 'vue'
 import { z } from 'zod'
 import { isAccessRefusal } from '../editing/accessGate.ts'
+import { isJsonEqual } from '@designo/sync'
 import { createDemoFiles } from './demoFiles.ts'
-import type { DesignoFiles } from './types.ts'
+import { useLiveFile } from './useLiveFile.ts'
+import type { DesignoFiles, LiveFile } from './types.ts'
 
-// Polling keeps the loop simple until the Yjs sync server lands; MCP edits show within a second.
+// The file list is polled; the open file is live over the sync server, and polled only when the
+// live connection is down.
 const POLL_INTERVAL_MILLISECONDS = 1000
 
 const errorBodySchema = z.object({ error: z.string() })
@@ -36,6 +39,48 @@ const postOperationsRequest = (
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ operations })
   }).catch(() => undefined)
+
+const postOperations = async (
+  fileId: string,
+  operations: readonly DesignOperation[],
+  state: {
+    lastDocumentJson: Ref<string>
+    saveError: Ref<string | undefined>
+    refusedAccess: (response: Response | undefined) => boolean
+  }
+): Promise<void> => {
+  const response = await postOperationsRequest(fileId, operations)
+  if (!response?.ok) {
+    // Show the file as the server has it, since this edit did not land.
+    state.lastDocumentJson.value = ''
+    if (state.refusedAccess(response)) return
+    state.saveError.value = await failureMessage(response)
+    return
+  }
+  state.saveError.value = undefined
+}
+
+// True when the open file is live and took the batch, which then needs no request of its own.
+const saveThroughLiveFile = (
+  live: LiveFile,
+  operations: readonly DesignOperation[],
+  state: { saveError: Ref<string | undefined>; activeDocument: Ref<DesignDocument | undefined> }
+): boolean => {
+  const result = live.apply(operations)
+  if (!result) return false
+  state.saveError.value = result.ok ? undefined : result.error
+  // Someone else's change got in first; show the file as it is now.
+  if (!result.ok) state.activeDocument.value = live.current() ?? state.activeDocument.value
+  return true
+}
+
+const showLiveDocument = (
+  activeDocument: Ref<DesignDocument | undefined>,
+  document: DesignDocument
+): void => {
+  // The live copy echoes this tab's own edits, which the editor has already shown.
+  if (!isJsonEqual(activeDocument.value, document)) activeDocument.value = document
+}
 
 // Loads now and polls until the store is disposed; a poll waits for the saves before it.
 const followServer = (refresh: () => Promise<void>, pendingSave: Ref<Promise<void>>): void => {
@@ -67,6 +112,10 @@ export const useDesignoFiles = (): DesignoFiles => {
   const pendingSave = ref<Promise<void>>(Promise.resolve())
 
   const demo = createDemoFiles({ documentSummaries, selectedFileId, activeDocument })
+  const isServerReachable = computed(() => !isDemo.value)
+  const live = useLiveFile(selectedFileId, isServerReachable, (document) =>
+    showLiveDocument(activeDocument, document)
+  )
   // A refusal is not an error to show in the editor: the sign-in screens take over.
   const refusedAccess = (response: Response | undefined): boolean => {
     if (!response || !isAccessRefusal(response.status)) return false
@@ -102,24 +151,9 @@ export const useDesignoFiles = (): DesignoFiles => {
     if (isDemo.value) return
     const generationAtStart = localEditGeneration.value
     const hasOpenFile = await refreshList()
-    if (hasOpenFile && selectedFileId.value) {
+    if (hasOpenFile && selectedFileId.value && !live.isLive.value) {
       await refreshOpenFile(selectedFileId.value, generationAtStart)
     }
-  }
-
-  const postOperations = async (
-    fileId: string,
-    operations: readonly DesignOperation[]
-  ): Promise<void> => {
-    const response = await postOperationsRequest(fileId, operations)
-    if (!response?.ok) {
-      // Show the file as the server has it, since this edit did not land.
-      lastDocumentJson.value = ''
-      if (refusedAccess(response)) return
-      saveError.value = await failureMessage(response)
-      return
-    }
-    saveError.value = undefined
   }
 
   // Saves run one after another so the server applies batches in the order they were made.
@@ -127,7 +161,10 @@ export const useDesignoFiles = (): DesignoFiles => {
     localEditGeneration.value += 1
     const fileId = selectedFileId.value
     if (isDemo.value || !fileId) return
-    pendingSave.value = pendingSave.value.then(() => postOperations(fileId, operations))
+    if (saveThroughLiveFile(live, operations, { saveError, activeDocument })) return
+    pendingSave.value = pendingSave.value.then(() =>
+      postOperations(fileId, operations, { lastDocumentJson, saveError, refusedAccess })
+    )
   }
 
   const selectFile = (fileId: string): void => {
@@ -167,6 +204,10 @@ export const useDesignoFiles = (): DesignoFiles => {
     },
     selectFile,
     deleteFile,
-    saveOperations
+    saveOperations,
+    isLive: live.isLive,
+    presence: live.presence,
+    updatePresence: live.updatePresence,
+    presenceUser: live.presenceUser
   }
 }
