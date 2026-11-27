@@ -191,6 +191,47 @@ describe('operations', () => {
     expect(operation).toMatchObject({ properties: { x: 40, y: 40, width: 60, height: 60 } })
   })
 
+  describe('the line tool', () => {
+    const drawLine = (current: { x: number; y: number }, keepSquare = false) =>
+      createDrawOperation({
+        tool: 'line',
+        nodeId: 'new',
+        parentId: 'page',
+        start: { x: 10, y: 10 },
+        current,
+        keepSquare
+      })
+
+    it('makes a stroked path from the press to the release', () => {
+      expect(drawLine({ x: 40, y: 50 })).toMatchObject({
+        type: 'path',
+        properties: {
+          x: 10,
+          y: 10,
+          width: 30,
+          height: 40,
+          fill: null,
+          stroke: '#000000',
+          pathData: 'M0,0l30,40'
+        }
+      })
+    })
+
+    it('gives a click without a drag a line along the x axis', () => {
+      expect(drawLine({ x: 10, y: 10 })).toMatchObject({
+        properties: { width: 100, height: 0 }
+      })
+    })
+
+    it('snaps the direction to 45 degrees with shift, keeping the length', () => {
+      const operation = drawLine({ x: 60, y: 14 }, true)
+      expect(operation).toMatchObject({ properties: { height: 0 } })
+      expect(operation.kind === 'create' && operation.properties?.width).toBeCloseTo(
+        Math.hypot(50, 4)
+      )
+    })
+  })
+
   it('deletes a frame once, not its contents again', () => {
     expect(createDeleteOperations(document, ['box', 'frame'])).toEqual([
       { kind: 'delete', id: 'frame' }

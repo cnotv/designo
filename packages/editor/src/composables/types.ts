@@ -1,4 +1,5 @@
 import type {
+  BooleanOperation,
   DesignDocument,
   DesignNode,
   DesignNodePatch,
@@ -19,6 +20,10 @@ import type {
   GateScreen,
   HistoryState,
   LayerOrderMode,
+  PathDraft,
+  PathEditSession,
+  PathEditTarget,
+  Point,
   SnapGuide,
   TextBoxMeasurer,
   TextEditSession,
@@ -71,6 +76,30 @@ export interface Editor {
   /** Ends the edit with the typed text: one update, or a delete for a new node left empty. */
   commitTextEdit: (draftText: string) => void
   select: (nodeIds: readonly string[]) => void
+  /** The path the pen or polygon tool is drawing, before it is committed. */
+  pathDraft: Ref<PathDraft | undefined>
+  /** Places the next point of the path, starting one on the first click; a click on the first point closes it. */
+  addPathPoint: (point: Point, parentId: string, scale: number) => void
+  /** Sets the handle the last point's curve leaves along, as a pen point is dragged out. */
+  setPathPointHandle: (handleOut: Point) => void
+  /** Commits the path as one node; a polygon closes, a pen line stays open unless asked to close. */
+  finishPathDraft: (closed?: boolean) => void
+  cancelPathDraft: () => void
+  /** The path shown with its anchors and bezier handles, which can be dragged to reshape it. */
+  pathEdit: Ref<PathEditSession | undefined>
+  /** Shows the anchors of a path node for editing, selecting it. */
+  startPathEdit: (nodeId: string) => void
+  stopPathEdit: () => void
+  /** Picks the anchor whose handles are shown, or none. */
+  selectPathAnchor: (selected: PathEditSession['selected']) => void
+  /** Removes the picked anchor; the outline closes over the gap. */
+  removePathAnchor: () => void
+  /** Removes one bezier handle of an anchor, straightening that side of the curve. */
+  removePathHandle: (target: PathEditTarget) => void
+  /** Switches an anchor between a corner and a smooth point. */
+  togglePathAnchor: (address: { contour: number; index: number }) => void
+  /** Adds an anchor on the outline at a point, picking it; nothing when the point is off the outline. */
+  addPathAnchor: (world: Point, scale: number) => void
   setTool: (tool: Tool) => void
   setCanvasSize: (size: { width: number; height: number }) => void
   updateNode: (nodeId: string, patch: DesignNodePatch) => void
@@ -83,6 +112,8 @@ export interface Editor {
   paste: () => void
   groupSelection: () => void
   ungroupSelection: () => void
+  /** Replaces the selected shapes with one path: their union, subtraction, intersection or exclusion. */
+  combineSelection: (operation: BooleanOperation) => void
   makeComponent: () => void
   createInstance: () => void
   detachInstance: () => void

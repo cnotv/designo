@@ -1,10 +1,12 @@
 import {
   applyOperations,
+  getBooleanOperations,
   getChildren,
   getPageNodes,
   getPaintOrder,
   getTemplateOperations,
   invertOperations,
+  type BooleanOperation,
   type DesignDocument,
   type DesignNodePatch,
   type DesignOperation,
@@ -35,6 +37,7 @@ import {
   showPage
 } from '../editing/pages.ts'
 import { createLayerOrderOperations } from '../editing/stacking.ts'
+import { usePathActions } from './usePathEdit.ts'
 import {
   createDeleteOperations,
   createMoveOperations,
@@ -175,6 +178,7 @@ type SelectionActions = Pick<
   | 'paste'
   | 'groupSelection'
   | 'ungroupSelection'
+  | 'combineSelection'
   | 'makeComponent'
   | 'createInstance'
   | 'detachInstance'
@@ -244,6 +248,12 @@ const useSelectionActions = (
       ),
     ungroupSelection: () =>
       withDocument((current) => commitAndSelect(createUngroupOperations(current, selection.value))),
+    combineSelection: (operation: BooleanOperation) =>
+      withDocument((current) => {
+        const resultId = createNodeId('path')
+        const operations = getBooleanOperations(current, selection.value, operation, resultId)
+        commitAndSelect({ operations, selection: operations.length > 0 ? [resultId] : [] })
+      }),
     makeComponent: () =>
       withDocument((current) =>
         commitAndSelect(createMakeComponentOperations(current, selection.value))
@@ -298,6 +308,7 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
   )
 
   const selectionActions = useSelectionActions(document, selection, commit)
+  const pathActions = usePathActions(document, tool, selection, commit)
 
   const withDocument = (action: (current: DesignDocument) => void): void => {
     if (document.value) action(document.value)
@@ -355,9 +366,7 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
     select: (nodeIds: readonly string[]) => {
       selection.value = [...nodeIds]
     },
-    setTool: (next: Tool) => {
-      tool.value = next
-    },
+    ...pathActions,
     setCanvasSize: (size: { width: number; height: number }) => {
       canvasSize.value = size
     },

@@ -83,6 +83,7 @@ const isBlended = (node: DesignNode): boolean =>
 
 const batchKindOf = (node: DesignNode): SceneBatch['kind'] => {
   if (node.type === 'text') return 'text'
+  if (node.type === 'path') return 'path'
   return node.type === 'image' ? 'image' : 'shapes'
 }
 

@@ -1,5 +1,12 @@
 import type { DesignDocument, DesignNode } from '@designo/core'
-import type { Bounds, SnapGuide, SpatialIndex, Viewport } from '../editing/types.ts'
+import type {
+  Bounds,
+  PathEditHandle,
+  PathEditSession,
+  SnapGuide,
+  SpatialIndex,
+  Viewport
+} from '../editing/types.ts'
 import type { GlyphAtlas, TextEngine } from '@designo/text'
 
 export interface OverlayState {
@@ -10,6 +17,9 @@ export interface OverlayState {
   color: string
   guides: readonly SnapGuide[]
   guideColor: string
+  /** Anchors and handles of a path in edit mode, and which anchor is picked. */
+  pathHandles: readonly PathEditHandle[]
+  pathSelected: PathEditSession['selected']
 }
 
 /** What a document needs, worked out once per document, to build a scene for any viewport. */
@@ -28,9 +38,9 @@ export interface SceneItem {
   clipFrames: readonly DesignNode[]
 }
 
-/** A run of items one draw call can take: shapes, texts or images that share clipping. */
+/** A run of items one draw call can take: shapes, texts, images or paths that share clipping. */
 export interface SceneBatch {
-  kind: 'shapes' | 'text' | 'image'
+  kind: 'shapes' | 'text' | 'image' | 'path'
   items: readonly SceneItem[]
   /** True for a shape with a blend mode, which is drawn alone against a copy of what is behind it. */
   blended: boolean

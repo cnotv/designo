@@ -55,6 +55,7 @@ export const DEFAULT_NODE_PROPERTIES: DesignNodeProperties = {
   stroke: null,
   strokeWidth: 1,
   cornerRadius: 0,
+  pathData: '',
   imageAsset: null,
   imageFit: 'stretch',
   text: '',

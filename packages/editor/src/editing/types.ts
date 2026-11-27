@@ -27,9 +27,49 @@ export interface Viewport {
   scale: number
 }
 
-export type DrawingTool = 'frame' | 'rectangle' | 'ellipse' | 'text'
+export type DrawingTool = 'frame' | 'rectangle' | 'ellipse' | 'text' | 'line'
 
-export type Tool = 'select' | DrawingTool
+/** Tools that build a path point by point, with clicks, rather than by dragging out a box. */
+export type PathTool = 'pen' | 'polygon'
+
+export type Tool = 'select' | DrawingTool | PathTool
+
+/**
+ * A point of a path being drawn, in world units. A pen point dragged out when it was placed has a
+ * `handleOut`, the control point its curve leaves along; the curve arrives mirrored.
+ */
+export interface PenPoint extends Point {
+  handleOut?: Point
+}
+
+/** Which part of an anchor a drag holds: the point itself, or the handle of the curve into or out of it. */
+export type PathEditPart = 'anchor' | 'handleIn' | 'handleOut'
+
+/** One anchor of a path being edited, and the part of it. */
+export interface PathEditTarget {
+  contour: number
+  index: number
+  part: PathEditPart
+}
+
+/** A point to grab on a path being edited, in world units. */
+export interface PathEditHandle extends PathEditTarget {
+  point: Point
+}
+
+/** The path whose anchors are shown for editing, and the anchor whose handles are shown. */
+export interface PathEditSession {
+  nodeId: string
+  selected: { contour: number; index: number } | undefined
+}
+
+/** A path the pen or polygon tool is drawing: the points placed so far, before it is committed. */
+export interface PathDraft {
+  tool: PathTool
+  nodeId: string
+  parentId: string
+  points: readonly PenPoint[]
+}
 
 export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
@@ -63,6 +103,16 @@ export type Interaction =
       startWorld: Point
       currentWorld: Point
     }
+  /** An anchor or handle of a path in edit mode being dragged. */
+  | {
+      kind: 'editingPath'
+      nodeId: string
+      target: PathEditTarget
+      startWorld: Point
+      currentWorld: Point
+    }
+  /** A pen or polygon point just placed; dragging it out sets the handle of a pen curve. */
+  | { kind: 'placingPoint'; startWorld: Point; currentWorld: Point }
   | {
       kind: 'marquee'
       startWorld: Point

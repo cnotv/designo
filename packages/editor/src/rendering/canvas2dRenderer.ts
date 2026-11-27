@@ -76,6 +76,23 @@ const applyShadow = (
   context.shadowOffsetY = (x * Math.sin(radians) + y * Math.cos(radians)) * devicePixelsPerUnit
 }
 
+// A path is a Path2D handed to fill and stroke; every other shape is the current path, traced
+// before.
+const fillOutline = (context: CanvasRenderingContext2D, node: DesignNode): void => {
+  if (!node.fill) return
+  context.fillStyle = node.fill
+  if (node.type === 'path') context.fill(new Path2D(node.pathData))
+  else context.fill()
+}
+
+const strokeOutline = (context: CanvasRenderingContext2D, node: DesignNode): void => {
+  if (!node.stroke || node.strokeWidth <= 0) return
+  context.strokeStyle = node.stroke
+  context.lineWidth = node.strokeWidth
+  if (node.type === 'path') context.stroke(new Path2D(node.pathData))
+  else context.stroke()
+}
+
 const paintShape = (
   context: CanvasRenderingContext2D,
   node: DesignNode,
@@ -91,16 +108,9 @@ const paintShape = (
   }
   traceShape(context, node)
   if (getFillGradient(node)) fillWithGradient(context, node)
-  else if (node.fill) {
-    context.fillStyle = node.fill
-    context.fill()
-  }
+  else fillOutline(context, node)
   context.shadowColor = 'transparent'
-  if (node.stroke && node.strokeWidth > 0) {
-    context.strokeStyle = node.stroke
-    context.lineWidth = node.strokeWidth
-    context.stroke()
-  }
+  strokeOutline(context, node)
 }
 
 // A picture still loading draws as its fill, which the shape path paints.

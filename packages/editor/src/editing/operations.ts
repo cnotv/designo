@@ -1,5 +1,6 @@
 import {
   DEFAULT_NODE_PROPERTIES,
+  getPathBox,
   getSubtreeIds,
   type DesignDocument,
   type DesignNode,
@@ -23,7 +24,7 @@ const DRAG_THRESHOLD = 2
 const DEFAULT_TEXT = 'Text'
 const DEFAULT_FONT_SIZE = 16
 
-const FILL_BY_TOOL: Record<Exclude<DrawingTool, 'text'>, string> = {
+const FILL_BY_TOOL: Record<Exclude<DrawingTool, 'text' | 'line'>, string> = {
   frame: '#ffffff',
   rectangle: '#d9d9d9',
   ellipse: '#d9d9d9'
@@ -33,8 +34,13 @@ const NAME_BY_TOOL: Record<DrawingTool, string> = {
   frame: 'Frame',
   rectangle: 'Rectangle',
   ellipse: 'Ellipse',
-  text: 'Text'
+  text: 'Text',
+  line: 'Line'
 }
+
+const LINE_STROKE = '#000000'
+const LINE_STROKE_WIDTH = 2
+const ANGLE_STEP = Math.PI / 4
 
 /**
  * Builds the updates that move nodes by a distance. Coordinates are absolute, so everything a
@@ -140,6 +146,18 @@ const drawnBounds = (start: Point, current: Point, keepSquare: boolean): Bounds 
   }
 }
 
+// A click without a drag gives a line of the default length along the x axis; shift snaps the
+// direction to a multiple of 45 degrees, keeping the length.
+const lineEnd = (start: Point, current: Point, keepAngle: boolean): Point => {
+  const dx = current.x - start.x
+  const dy = current.y - start.y
+  if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return { x: start.x + DEFAULT_SHAPE_SIZE, y: start.y }
+  if (!keepAngle) return current
+  const length = Math.hypot(dx, dy)
+  const angle = Math.round(Math.atan2(dy, dx) / ANGLE_STEP) * ANGLE_STEP
+  return { x: start.x + Math.cos(angle) * length, y: start.y + Math.sin(angle) * length }
+}
+
 /**
  * Builds the create operation for a shape or text the user is drawing.
  * @param drawing - What is being drawn, where, and whether shift keeps it square; a click without
@@ -170,6 +188,17 @@ export const createDrawOperation = ({
       fill: '#000000'
     }
     return { kind: 'create', id: nodeId, type: 'text', parentId, properties }
+  }
+  if (tool === 'line') {
+    const end = lineEnd(start, current, keepSquare)
+    const properties: DesignNodePatch = {
+      ...getPathBox(`M${start.x},${start.y}L${end.x},${end.y}`),
+      name: NAME_BY_TOOL.line,
+      fill: null,
+      stroke: LINE_STROKE,
+      strokeWidth: LINE_STROKE_WIDTH
+    }
+    return { kind: 'create', id: nodeId, type: 'path', parentId, properties }
   }
   return {
     kind: 'create',

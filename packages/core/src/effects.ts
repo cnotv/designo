@@ -58,7 +58,7 @@ export const getGradientLine = (node: DesignNode, gradient: Gradient): GradientL
  * @returns The gradient to paint, or undefined for the solid fill.
  */
 export const getFillGradient = (node: DesignNode): Gradient | undefined =>
-  node.type === 'text' || node.type === 'group' || node.type === 'page'
+  node.type === 'text' || node.type === 'group' || node.type === 'page' || node.type === 'path'
     ? undefined
     : (node.gradient ?? undefined)
 

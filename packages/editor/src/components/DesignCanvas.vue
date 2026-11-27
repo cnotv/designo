@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } fr
 import { useEditorContext } from '../composables/editorContext.ts'
 import { useImageInsertion } from '../composables/useImageInsertion.ts'
 import { isPictureType } from '../editing/images.ts'
+import { getPathEditHandles } from '../editing/pathEditing.ts'
 import { indexDocument } from '../editing/spatialIndex.ts'
 import { createCanvas2dRenderer } from '../rendering/canvas2dRenderer.ts'
 import { drawOverlay } from '../rendering/drawOverlay.ts'
@@ -84,6 +85,12 @@ const drawScene = (): void => {
   atlasStats.value = renderer.value.getTextStats?.()
 }
 
+const pathEditHandles = computed(() => {
+  const session = editor.pathEdit.value
+  const node = session && interaction.shownDocument.value?.nodes[session.nodeId]
+  return node ? getPathEditHandles(node, session.selected) : []
+})
+
 const drawMarks = (): void => {
   const canvas = overlayCanvas.value
   const context = canvas?.getContext('2d')
@@ -101,7 +108,10 @@ const drawMarks = (): void => {
     selection: editor.editingText.value ? [] : editor.selection.value,
     hoveredId: interaction.hoveredId.value,
     marquee: interaction.marquee.value,
-    showHandles: editor.selection.value.length === 1 && !interaction.isBusy.value,
+    showHandles:
+      editor.selection.value.length === 1 && !interaction.isBusy.value && !editor.pathEdit.value,
+    pathHandles: pathEditHandles.value,
+    pathSelected: editor.pathEdit.value?.selected,
     color: readCssColor(canvas, '--selection', '#0d99ff'),
     guides: interaction.guides.value,
     guideColor: readCssColor(canvas, '--guide', '#f24822')

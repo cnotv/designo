@@ -11,6 +11,7 @@ import { createBackdropTexture } from './backdropTexture.ts'
 import { RAMP_ROWS, createGradientRamps } from './gradientRamps.ts'
 import { SHAPE_UNIFORMS, createShapeDrawer } from './shapeDrawer.ts'
 import { createImageDrawer, type ImageDrawer } from './imageDrawer.ts'
+import { createPathDrawer } from './pathDrawer.ts'
 import { createTextureTextDrawer } from './textureTextDrawer.ts'
 
 const FLOAT_BYTES = 4
@@ -113,6 +114,38 @@ const drawImages = (
     if (!imageDrawer.draw(node)) drawShapes([node], false)
   })
 
+interface ClipTarget {
+  gl: WebGL2RenderingContext
+  state: { clipKey: string }
+  drawShapes: (nodes: readonly DesignNode[], clipPass: boolean) => void
+}
+
+// Each frame in the chain adds one to the stencil where it covers what the frames before it
+// left, so only pixels inside every frame reach the full count and get drawn.
+const applyStencilClip = (
+  { gl, state, drawShapes }: ClipTarget,
+  clipFrames: readonly DesignNode[]
+): void => {
+  const clipKey = clipFrames.map((frame) => frame.id).join('/')
+  if (clipKey === state.clipKey) return
+  state.clipKey = clipKey
+  if (clipFrames.length === 0) {
+    gl.disable(gl.STENCIL_TEST)
+    return
+  }
+  gl.enable(gl.STENCIL_TEST)
+  gl.clear(gl.STENCIL_BUFFER_BIT)
+  gl.colorMask(false, false, false, false)
+  clipFrames.forEach((frame, depth) => {
+    gl.stencilFunc(gl.EQUAL, depth, STENCIL_MASK)
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR)
+    drawShapes([frame], true)
+  })
+  gl.colorMask(true, true, true, true)
+  gl.stencilFunc(gl.EQUAL, clipFrames.length, STENCIL_MASK)
+  gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
+}
+
 /**
  * Makes the WebGL2 renderer: shapes as instanced quads whose edges a signed distance field draws,
  * frames clipping their contents through the stencil buffer, and text as instanced glyph quads
@@ -137,7 +170,8 @@ export const createWebglRenderer = (
   const quad = createQuadBuffer(gl)
   const textureText = createTextureTextDrawer(gl, quad)
   const imageDrawer = createImageDrawer(gl, quad)
-  if (!textureText || !imageDrawer) return undefined
+  const pathDrawer = createPathDrawer(gl, quad)
+  if (!textureText || !imageDrawer || !pathDrawer) return undefined
   const instances = gl.createBuffer()
   const shapeVertexArray = createShapeVertexArray(gl, quad, instances)
   const ramps = createGradientRamps(gl)
@@ -148,6 +182,7 @@ export const createWebglRenderer = (
     { program: shapeProgram, uniforms: shapeUniforms },
     textureText.viewTarget,
     imageDrawer.viewTarget,
+    pathDrawer.viewTarget,
     ...(glyphPipeline ? [glyphPipeline.viewTarget] : [])
   ]
 
@@ -161,28 +196,8 @@ export const createWebglRenderer = (
     backdrop
   })
 
-  // Each frame in the chain adds one to the stencil where it covers what the frames before it
-  // left, so only pixels inside every frame reach the full count and get drawn.
-  const applyClip = (clipFrames: readonly DesignNode[]): void => {
-    const clipKey = clipFrames.map((frame) => frame.id).join('/')
-    if (clipKey === state.clipKey) return
-    state.clipKey = clipKey
-    if (clipFrames.length === 0) {
-      gl.disable(gl.STENCIL_TEST)
-      return
-    }
-    gl.enable(gl.STENCIL_TEST)
-    gl.clear(gl.STENCIL_BUFFER_BIT)
-    gl.colorMask(false, false, false, false)
-    clipFrames.forEach((frame, depth) => {
-      gl.stencilFunc(gl.EQUAL, depth, STENCIL_MASK)
-      gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR)
-      drawShapes([frame], true)
-    })
-    gl.colorMask(true, true, true, true)
-    gl.stencilFunc(gl.EQUAL, clipFrames.length, STENCIL_MASK)
-    gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP)
-  }
+  const applyClip = (clipFrames: readonly DesignNode[]): void =>
+    applyStencilClip({ gl, state, drawShapes }, clipFrames)
 
   const drawTexts = (items: readonly SceneItem[], scene: Scene): void => {
     if (glyphPipeline) {
@@ -208,6 +223,8 @@ export const createWebglRenderer = (
       const [blendedItem] = batch.items
       if (batch.kind === 'text') drawTexts(batch.items, scene)
       else if (batch.kind === 'image') drawImages(imageDrawer, batch.items, drawShapes)
+      else if (batch.kind === 'path')
+        batch.items.forEach(({ node }) => pathDrawer.draw(node, scene, state.frame))
       else if (batch.blended && blendedItem) drawBlendedShape(blendedItem.node, device)
       else
         drawShapes(
@@ -217,11 +234,13 @@ export const createWebglRenderer = (
     })
     gl.bindVertexArray(null)
     textureText.evictUnused(state.frame)
+    pathDrawer.evictUnused(state.frame)
   }
 
   const dispose = (): void => {
     textureText.dispose()
     imageDrawer.dispose()
+    pathDrawer.dispose()
     ramps.dispose()
     backdrop.dispose()
     glyphPipeline?.dispose()

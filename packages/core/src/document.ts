@@ -15,6 +15,7 @@ import {
   withOverridesAfterPatch
 } from './components.ts'
 import { layoutDocument } from './layout.ts'
+import { withPathScaledToSize } from './pathOutline.ts'
 import {
   applyStyleOperation,
   isStyleOperation,
@@ -233,7 +234,8 @@ const applyUpdate = (
 ): OperationResult => {
   const node = document.nodes[operation.id]
   if (!node) return failure(`Node ${operation.id} does not exist`)
-  const updated = { ...node, ...clampSpansToText(operation.patch, node) }
+  const patch = withPathScaledToSize(node, operation.patch)
+  const updated = { ...node, ...clampSpansToText(patch, node) }
   const componentProblem =
     operation.patch.isComponent && !node.isComponent
       ? checkMakeComponent(document, updated)

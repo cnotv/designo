@@ -23,7 +23,8 @@ export interface TextSpan {
   fontStyle?: FontStyle
   fill?: string
 }
-export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text' | 'image'
+export type DesignNodeType =
+  'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'path' | 'text' | 'image'
 
 /** Which edge a text node's lines sit against, inside the node's width. */
 export type TextAlign = 'left' | 'center' | 'right' | 'justify'
@@ -183,6 +184,11 @@ export interface DesignNodeProperties {
   stroke: string | null
   strokeWidth: number
   cornerRadius: number
+  /**
+   * Paths only: the outline as SVG path data, in the node's own space where 0,0 is the top left of
+   * its box. Fill, stroke and rotation apply as they do to a rectangle.
+   */
+  pathData: string
   /**
    * Images only: the id of the stored picture, drawn in the node's box as `imageFit` says; null draws the
    * node's `fill` as a placeholder.
@@ -402,3 +408,35 @@ export type FontVariant = Pick<DesignNodeProperties, 'fontWeight' | 'fontStyle'>
 
 /** Everything that picks the font file a text is drawn with. */
 export type TextFace = FontVariant & Pick<DesignNodeProperties, 'fontFamily'>
+
+/** How `combinePaths` merges outlines: add them, cut the later ones from the first, keep what they share, or keep what they do not. */
+export type BooleanOperation = 'union' | 'subtract' | 'intersect' | 'exclude'
+
+/** A box in the same space as a path outline. */
+export interface PathBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** A point of an outline, in the space of the path data. */
+export interface PathPoint {
+  x: number
+  y: number
+}
+
+/**
+ * A point an outline passes through, with the bezier handles that shape the curves on either side.
+ * A handle is relative to the anchor; null means none, so the outline meets the point at a corner.
+ */
+export interface PathAnchor extends PathPoint {
+  handleIn: PathPoint | null
+  handleOut: PathPoint | null
+}
+
+/** One closed or open subpath of an outline, as its anchors. */
+export interface PathContour {
+  anchors: PathAnchor[]
+  closed: boolean
+}

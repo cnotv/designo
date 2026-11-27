@@ -210,12 +210,19 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 | `check_ats`         | Reports pass, warn or fail for what an applicant tracking system could read from a file's PDF export, or from a PDF given as `pdfBase64`             |
 | `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                                           |
 | `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                                        |
-| `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                                                                     |
+| `create_node`       | Creates one frame, group, rectangle, ellipse, path, text or image node                                                                               |
+| `combine_nodes`     | Replaces two or more shapes with one path: `union`, `subtract`, `intersect` or `exclude`                                                             |
 | `add_image`         | Stores a PNG, JPEG, WebP or GIF from base64, a file path, a URL or a stored `assetId`; places it as an image node                                    |
 | `update_node`       | Changes some properties of one node                                                                                                                  |
 | `delete_node`       | Deletes a node and everything inside it                                                                                                              |
 | `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                                                      |
 | `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, updateMetadata, variable, text style, delete, move and component operations as one change |
+
+A `path` node draws SVG path data: give `pathData` (`M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A` and
+`Z`) in the node's own space, where 0,0 is the top left of its box, and set `width` and `height` to the
+size of the outline. `combine_nodes` takes `fileId`, an `operation` and `nodeIds` (rectangles,
+ellipses or paths that share a parent, at least two) and returns the new `nodeId`; `subtract` cuts
+every later shape from the back-most one.
 
 `add_image` takes the picture from exactly one of `data` (base64, at most 20 MB), `path` (a file
 the server can read), `url` (`http` or `https`) or `assetId` (a picture already stored, so no bytes

@@ -96,6 +96,62 @@ const drawHandles = (context: CanvasRenderingContext2D, points: readonly Point[]
   })
 }
 
+const ANCHOR_SIZE = 7
+const BEZIER_HANDLE_RADIUS = 3.5
+
+// Anchors are squares and bezier handles circles on a line to their anchor, as in other pen tools;
+// the picked anchor is filled.
+const drawPathHandles = (
+  context: CanvasRenderingContext2D,
+  viewport: Viewport,
+  overlay: OverlayState
+): void => {
+  const screen = overlay.pathHandles.map((handle) => ({
+    handle,
+    point: worldToScreen(viewport, handle.point)
+  }))
+  const anchorOf = (contour: number, index: number) =>
+    screen.find(
+      ({ handle }) =>
+        handle.part === 'anchor' && handle.contour === contour && handle.index === index
+    )?.point
+  screen
+    .filter(({ handle }) => handle.part !== 'anchor')
+    .forEach(({ handle, point }) => {
+      const anchor = anchorOf(handle.contour, handle.index)
+      if (!anchor) return
+      context.beginPath()
+      context.moveTo(anchor.x, anchor.y)
+      context.lineTo(point.x, point.y)
+      context.stroke()
+      context.beginPath()
+      context.arc(point.x, point.y, BEZIER_HANDLE_RADIUS, 0, Math.PI * 2)
+      context.fillStyle = '#ffffff'
+      context.fill()
+      context.stroke()
+    })
+  screen
+    .filter(({ handle }) => handle.part === 'anchor')
+    .forEach(({ handle, point }) => {
+      const isPicked =
+        overlay.pathSelected?.contour === handle.contour &&
+        overlay.pathSelected.index === handle.index
+      context.fillStyle = isPicked ? overlay.color : '#ffffff'
+      context.fillRect(
+        point.x - ANCHOR_SIZE / 2,
+        point.y - ANCHOR_SIZE / 2,
+        ANCHOR_SIZE,
+        ANCHOR_SIZE
+      )
+      context.strokeRect(
+        point.x - ANCHOR_SIZE / 2,
+        point.y - ANCHOR_SIZE / 2,
+        ANCHOR_SIZE,
+        ANCHOR_SIZE
+      )
+    })
+}
+
 const drawSizeLabel = (
   context: CanvasRenderingContext2D,
   worldBox: Bounds,
@@ -170,6 +226,7 @@ export const drawOverlay = (
     context.globalAlpha = 1
     strokeScreenRect(context, screenBox)
   }
+  drawPathHandles(context, viewport, overlay)
   drawGuides(context, viewport, overlay)
   context.restore()
 }

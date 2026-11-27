@@ -5,9 +5,11 @@ import { exportDocumentToPdf } from '@designo/exporter/pdf'
 import {
   DEFAULT_NODE_PROPERTIES,
   createDocument,
+  getBooleanOperations,
   getNodeTree,
   resolveMasters,
   getSubtreeIds,
+  type BooleanOperation,
   type DesignDocument,
   type DesignNode,
   type DesignNodeTree,
@@ -22,6 +24,7 @@ import {
 import {
   applyOperationsToFile,
   listDocuments,
+  operationBatchSchema,
   readDocument,
   writeDocument,
   type DocumentSummary,
@@ -138,6 +141,35 @@ export const setPageSetupTool = async (
     context.generateId
   )
   return { nodeId: input.nodeId }
+}
+
+/**
+ * Replaces shapes with one path: their union, what is left of the first after the others are cut
+ * from it, their overlap, or everything but their overlap.
+ * @param context - Where files live and how ids are made.
+ * @param input - The file, the operation, and the rectangles, ellipses or paths to combine.
+ * @returns The id of the new path.
+ */
+export const combineNodesTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string; operation: BooleanOperation; nodeIds: readonly string[] }
+): Promise<{ nodeId: string }> => {
+  const document = await readDocument(context.dataDirectory, input.fileId)
+  const nodeId = context.generateId('path')
+  const operations = getBooleanOperations(document, input.nodeIds, input.operation, nodeId)
+  if (operations.length === 0) {
+    throw new Error(
+      'combine_nodes needs two or more rectangles, ellipses or paths that share a parent'
+    )
+  }
+  // The operations come from core; the schema is the edge every batch to a file passes.
+  await applyOperationsToFile(
+    context.dataDirectory,
+    input.fileId,
+    operationBatchSchema.parse(operations),
+    context.generateId
+  )
+  return { nodeId }
 }
 
 /**

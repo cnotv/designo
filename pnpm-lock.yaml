@@ -85,7 +85,11 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      paper:
+        specifier: ^0.17.0
+        version: 0.17.0
 
   packages/editor:
     dependencies:
@@ -2162,6 +2166,10 @@ packages:
 
   pako@0.2.9:
     resolution: {integrity: sha512-NUcwaKxUxWrZLpDG+z/xZaCgQITkA/Dv4V/T6bw7VON6l1Xz/VnrBqrYjZQ12TamKHzITTfOEIYUj48y2KXImA==}
+
+  paper@0.17.0:
+    resolution: {integrity: sha512-AWHQVUNScPN/swbCg0wwb2bTerMieraol76Fpn1s+7Zw7R6mMyI0QltMkj/XOS3Jv+9785q0p4eLsYggn63ZQw==}
+    engines: {node: '>=8.0.0'}
 
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
@@ -4476,6 +4484,8 @@ snapshots:
       p-limit: 3.1.0
 
   pako@0.2.9: {}
+
+  paper@0.17.0: {}
 
   parent-module@1.0.1:
     dependencies:

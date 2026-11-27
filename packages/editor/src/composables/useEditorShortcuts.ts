@@ -10,6 +10,9 @@ const TOOL_BY_KEY: Record<string, Tool> = {
   f: 'frame',
   r: 'rectangle',
   o: 'ellipse',
+  l: 'line',
+  p: 'pen',
+  y: 'polygon',
   t: 'text'
 }
 
@@ -96,13 +99,38 @@ const handleArrowKey = (editor: Editor, event: KeyboardEvent): boolean => {
   return true
 }
 
-const handleEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
+// A path in progress takes Enter to finish and Escape to leave, keeping what is drawn.
+const handlePathKey = (editor: Editor, event: KeyboardEvent): boolean => {
+  if (!editor.pathDraft.value) return false
+  if (event.key === 'Enter') editor.finishPathDraft()
+  else if (event.key === 'Escape') editor.finishPathDraft(false)
+  else return false
+  return true
+}
+
+// In path edit mode Delete removes the picked anchor and Escape leaves the edit, keeping the path
+// selected.
+const handlePathEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
+  if (!editor.pathEdit.value) return false
+  if (event.key === 'Delete' || event.key === 'Backspace') editor.removePathAnchor()
+  else if (event.key === 'Escape' || event.key === 'Enter') editor.stopPathEdit()
+  else return false
+  return true
+}
+
+// Enter edits what is selected: the words of a text, or the anchors of a path.
+const handleEnterKey = (editor: Editor, event: KeyboardEvent): boolean => {
   const [selectedId] = editor.selection.value
   const selected = selectedId ? editor.document.value?.nodes[selectedId] : undefined
-  if (event.key === 'Enter' && editor.selection.value.length === 1 && selected?.type === 'text') {
-    editor.startTextEdit(selected.id, false)
-    return true
-  }
+  if (event.key !== 'Enter' || editor.selection.value.length !== 1) return false
+  if (selected?.type === 'text') editor.startTextEdit(selected.id, false)
+  else if (selected?.type === 'path') editor.startPathEdit(selected.id)
+  else return false
+  return true
+}
+
+const handleEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
+  if (handleEnterKey(editor, event)) return true
   if (event.key === 'Delete' || event.key === 'Backspace') {
     editor.deleteSelection()
     return true
@@ -128,7 +156,14 @@ const handleToolKey = (editor: Editor, event: KeyboardEvent): boolean => {
   return true
 }
 
-const PLAIN_KEY_HANDLERS = [handleArrowKey, handleEditKey, handleZoomKey, handleToolKey]
+const PLAIN_KEY_HANDLERS = [
+  handlePathKey,
+  handlePathEditKey,
+  handleArrowKey,
+  handleEditKey,
+  handleZoomKey,
+  handleToolKey
+]
 
 const handlePlainKey = (editor: Editor, event: KeyboardEvent): boolean =>
   PLAIN_KEY_HANDLERS.some((handler) => handler(editor, event))

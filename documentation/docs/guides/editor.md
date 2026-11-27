@@ -46,11 +46,38 @@ files to switch between and delete; they come back when the page reloads.
 | Frame     | F   | Draw a frame; shapes drawn inside it belong to it |
 | Rectangle | R   | Draw a rectangle                                  |
 | Ellipse   | O   | Draw an ellipse                                   |
+| Line      | L   | Drag to draw a line                               |
+| Pen       | P   | Click points; drag a point out to curve the path  |
+| Polygon   | Y   | Click corner points; click the first to close it  |
 | Text      | T   | Click to place text, then type it on the canvas   |
 | Image     |     | The **Add image** button opens a file chooser     |
 
-Drag to draw; a click without a drag draws at a default size. Hold Shift for a square or a
+The shape tools (Rectangle, Ellipse, Line, Pen and Polygon) share one toolbar button with a menu; the
+button shows the shape used last. Drag to draw; a click without a drag draws at a default size. Hold Shift for a square or a
 circle. After drawing, the editor returns to Move.
+
+## Paths and boolean operations
+
+A path is a node drawn from an outline: the Line tool drags out a stroked line, the Pen places
+points by click (drag a point out and its curve bends along the handle), and the Polygon tool places
+corners. Click the first point of a path with three or more points to close it, or press Enter or
+double-click to finish; Escape finishes a pen line open and leaves what is drawn. Switching tool
+keeps the path too, and the whole path is one undo step. A closed path has a fill; an open one has
+a stroke. Shift on the Line tool snaps the direction to 45 degrees.
+
+**Editing a path.** Double-click a path, or select it and press Enter, to show its anchors as
+squares. Click an anchor to show its two bezier handles as circles, then drag an anchor or a handle
+to reshape the curve; dragging one handle of a smooth point turns the other along the same line.
+Double-click an anchor to switch it between a corner and a smooth point, double-click a handle to
+remove that arm, double-click the outline to add an anchor there, and press Delete to remove the picked anchor. Escape, Enter or selecting
+something else ends the edit. A turned path has its turn baked into its outline when editing starts.
+
+Select two or more rectangles, ellipses or paths that share a parent and choose **Union**,
+**Subtract**, **Intersect** or **Exclude** from the context menu. They are replaced by one path
+that keeps its curves and takes the paint of the back-most shape; Subtract cuts every later shape
+from it. A path's outline is drawn the same in the canvas, SVG, PNG and PDF exports. Resizing a path
+stretches its outline with its box. Paths take a fill and a stroke, but not yet a gradient, blur or
+shadow.
 
 ## Selecting and editing
 
@@ -359,24 +386,25 @@ same PDF through `export_pdf`.
 
 ## Shortcuts
 
-| Keys                     | Does                |
-| ------------------------ | ------------------- |
-| Ctrl/Cmd Z               | Undo                |
-| Shift Ctrl/Cmd Z, Ctrl Y | Redo                |
-| Ctrl/Cmd A               | Select all          |
-| Ctrl/Cmd D               | Duplicate           |
-| Ctrl/Cmd C, X, V         | Copy, cut, paste    |
-| Ctrl/Cmd G               | Group               |
-| Shift Ctrl/Cmd G         | Ungroup             |
-| Ctrl/Cmd ], [            | Forward, backward   |
-| Shift Ctrl/Cmd ], [      | To front, to back   |
-| Escape                   | Deselect            |
-| Scroll                   | Pan                 |
-| Space-drag, middle-drag  | Pan                 |
-| Ctrl/Cmd scroll, pinch   | Zoom at the pointer |
-| Shift 1                  | Zoom to fit         |
-| Shift 0                  | Zoom to 100%        |
-| Shift Ctrl/Cmd E         | Export again        |
+| Keys                     | Does                                               |
+| ------------------------ | -------------------------------------------------- |
+| Ctrl/Cmd Z               | Undo                                               |
+| Shift Ctrl/Cmd Z, Ctrl Y | Redo                                               |
+| Ctrl/Cmd A               | Select all                                         |
+| Ctrl/Cmd D               | Duplicate                                          |
+| Ctrl/Cmd C, X, V         | Copy, cut, paste                                   |
+| Ctrl/Cmd G               | Group                                              |
+| Shift Ctrl/Cmd G         | Ungroup                                            |
+| Ctrl/Cmd ], [            | Forward, backward                                  |
+| Shift Ctrl/Cmd ], [      | To front, to back                                  |
+| Enter                    | Finish a path, or edit the selected path's anchors |
+| Escape                   | Deselect                                           |
+| Scroll                   | Pan                                                |
+| Space-drag, middle-drag  | Pan                                                |
+| Ctrl/Cmd scroll, pinch   | Zoom at the pointer                                |
+| Shift 1                  | Zoom to fit                                        |
+| Shift 0                  | Zoom to 100%                                       |
+| Shift Ctrl/Cmd E         | Export again                                       |
 
 Undo covers your own edits. If an agent changed a layer since, a step that no longer applies is
 skipped rather than half-applied.
