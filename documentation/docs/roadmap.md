@@ -71,8 +71,8 @@ The order follows how much each item improves what a person sees, per week of wo
 **Render parity** runs alongside step 2. Designo draws with three renderers: WebGL in the editor, resvg for
 screenshots and a PDF writer later. The screenshot is the only way an agent sees its work, so one file is
 rendered by every renderer and compared, and each new effect lands with that comparison, not after it.
-The effects of #50 were compared by eye, the editor in a browser against resvg; an automated pixel
-comparison needs a headless GL context and is still to do.
+The effects of #50 were compared by eye at first; now `pnpm test:parity` compares the pixels of
+every effect in CI (#121), with WebGL drawn by SwiftShader in headless Chromium.
 
 ## Risks
 
