@@ -195,15 +195,17 @@ browser font handling stay in `packages/editor/src/rendering/text/`.
   same files: each file is registered as a `FontFace` from the bytes the shaper loaded, with its
   range as `unicode-range`, under a `designo-` name so the app's own Inter is untouched.
 - **Screenshots.** `get_screenshot` finds fonts the same way and keeps the files in a cache folder.
-  Fixed-width text wraps where the editor wraps it: the server runs the `@designo/text` engine over
-  the same fonts (kept in a `layout` folder of the cache, unrenamed because HarfBuzz reads the real
-  file) and hands the exporter each line's range of the text. `measure_text` asks the same engine.
-  resvg picks one font per family name and, for a missing character, reshapes the whole text with
-  another font and keeps the result only when the glyph count matches, so each downloaded file is
-  renamed to a family of its own (`designo-` and a hash), a text is drawn with the file that has
-  most of its characters, and the files with the rest are loaded for resvg's fallback. Naming a
-  font per run of text does not work: resvg shapes the whole line with every run's font and drops
-  the text when their glyph counts differ. Lines sit on the alphabetic baseline the editor computes
+  The server runs the `@designo/text` engine over the same fonts (kept in a `layout` folder of the
+  cache, unrenamed because HarfBuzz reads the real file), and the exporter draws every text as the
+  outlines of its shaped glyphs (`getTextGlyphs`), each from the font that has it, so one line can
+  mix fallback fonts. `measure_text` asks the same engine. A text the engine cannot lay out, as
+  when no font loads, falls back to SVG text, for which resvg picks one font per family name and,
+  for a missing character, reshapes the whole text with another font and keeps the result only
+  when the glyph count matches, so each downloaded file is renamed to a family of its own
+  (`designo-` and a hash), a text is drawn with the file that has most of its characters, and the
+  files with the rest are loaded for resvg's fallback. Naming a font per run of text does not work:
+  resvg shapes the whole line with every run's font and drops the text when their glyph counts
+  differ. Lines sit on the alphabetic baseline the editor computes
   from the first family's metrics, read from the file, so mixed fonts share it.
 - **Limits.** Bidi is a subset (no explicit embeddings or isolates); there is no CJK or colour emoji
   in the glyph path; text has one font size, weight and colour per node; the glyph path does not

@@ -142,6 +142,7 @@ const effectOperations = (): DesignOperation[] => [
 ]
 
 const PAGE_FRAME_SIZE = 380
+const MIXED_SCRIPT_TEXT = 'Hello, שלום, مرحبا, नमस्ते in one line'
 const PAGE_FRAME_LEFT = 700
 const PAGE_FRAME_GAP = 40
 
@@ -262,6 +263,26 @@ const printColorOperations = (): DesignOperation[] => {
     }
   ]
 }
+
+// On page 2, one line in four scripts, so its glyphs come from several fallback fonts; a screenshot
+// draws it as glyph outlines, with no missing-glyph boxes.
+const mixedScriptOperations = (): DesignOperation[] => [
+  {
+    kind: 'create',
+    id: 'page-2-mixed-scripts',
+    type: 'text',
+    parentId: 'page-2',
+    properties: {
+      x: PAGE_FRAME_LEFT + (PAGE_FRAME_SIZE + PAGE_FRAME_GAP) + SWATCH_LEFT,
+      y: 312,
+      width: PAGE_FRAME_SIZE - SWATCH_LEFT * 2,
+      text: MIXED_SCRIPT_TEXT,
+      textWrap: true,
+      fontSize: 16,
+      fill: '#111111'
+    }
+  }
+]
 
 // On page 1, for the ATS check: a contact line a parser reads as it is, and a blurred line, which a
 // PDF draws as an image, so no parser can read it and the check fails it.
@@ -458,6 +479,7 @@ export const createPaletteDocument = (): DesignDocument => {
     ...pageFrameOperations(1),
     ...formattedTextOperations(),
     ...printColorOperations(),
+    ...mixedScriptOperations(),
     ...atsOperations(),
     ...masterOperations(),
     { kind: 'update', id: 'page-1', patch: { masterId: 'master' } },

@@ -13,7 +13,8 @@ import {
   type ImageFit,
   type TextAlign
 } from '@designo/core'
-import type { Bounds, SvgExportOptions, TextLineRange } from './types.ts'
+import { groupGlyphOutlinesByFill } from './glyphOutlines.ts'
+import type { Bounds, OutlinedGlyph, SvgExportOptions, TextLineRange } from './types.ts'
 import { boundsOverlap, getPaintReach, intersectBounds, toNodeSpace } from './visibleRegion.ts'
 
 // Where a line is anchored across the node's width. Left sets no attribute, so a left-aligned
@@ -371,7 +372,21 @@ const textAnchorAttributes = (node: DesignNode): string[] => {
   return attribute === undefined ? [] : [`text-anchor="${attribute}"`]
 }
 
+// A span's colour is a path of its own; the rest takes the node's paint from the group.
+const renderTextOutlines = (node: DesignNode, glyphs: readonly OutlinedGlyph[]): string => {
+  const paths = [...groupGlyphOutlinesByFill(glyphs, node)]
+    .filter(([, pathData]) => pathData !== '')
+    .map(([fill, pathData]) =>
+      fill === undefined
+        ? `<path d="${pathData}"/>`
+        : `<path d="${pathData}" fill="${escapeXml(fill)}"/>`
+    )
+  return `<g ${joinAttributes([paintAttributes(node), ...presentationAttributes(node)])}>${paths.join('')}</g>`
+}
+
 const renderText = (node: DesignNode, options: SvgExportOptions): string => {
+  const glyphs = options.getTextGlyphs?.(node)
+  if (glyphs) return renderTextOutlines(node, glyphs)
   const { firstLine, hanging } = lineOffsets(node, options)
   return `<text ${joinAttributes([
     `x="${formatNumber(getTextAnchorX(node))}"`,
@@ -473,7 +488,8 @@ const renderNode = (
  * Draws a node and everything inside it as a standalone SVG. Coordinates stay absolute on the
  * page and the viewBox is the node's bounds (for a page, the bounds of its visible content).
  * Text is plain SVG text without shaping, so it will not match the canvas exactly: lines follow
- * `textAlign` and `lineHeight`. A fixed-width text node wraps where `getTextLines` says, and is
+ * `textAlign` and `lineHeight`. Given `getTextGlyphs`, a text is drawn as its shaped glyphs'
+ * outlines instead. A fixed-width text node wraps where `getTextLines` says, and is
  * drawn line by line as written without it.
  * @param document - The document to read.
  * @param nodeId - The page, frame or any node to export.

@@ -216,7 +216,7 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 | `get_node`          | Reads one node with every property                                                                                                                   |
 | `get_styles`        | Lists the variables and text styles of the file                                                                                                      |
 | `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                                          |
-| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                                                                |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text; `textAsPaths` draws text as glyph outlines                                                    |
 | `check_ats`         | Reports pass, warn or fail for what an applicant tracking system could read from a file's PDF export, or from a PDF given as `pdfBase64`             |
 | `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                                           |
 | `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                                        |
@@ -257,18 +257,21 @@ file's first bytes, never from a name, and refuses anything that is not one of t
 Prefer `apply_ops` for layouts: give `create` operations your own ids and later operations in
 the same batch can nest inside them. If any operation fails, nothing is saved.
 
-`get_screenshot` lets an agent check its own work. It draws SVG in Node with resvg, no browser, so
-text is plain SVG text and differs slightly from the editor's canvas, though a fixed-width text wraps where the editor wraps it. Its fonts
+`get_screenshot` lets an agent check its own work. It draws SVG in Node with resvg, no browser.
+Text is shaped by the editor's own layout engine and drawn as the outlines of its glyphs, so it
+wraps, aligns and spaces as on the canvas, and a line that needs several fonts, such as Latin with
+Hebrew and Arabic, draws each glyph from the font that has it. Its fonts
 come from the same place as the editor's: for each `fontFamily` on the page the server asks the
 [Fontsource](https://fontsource.org) API for the families, downloads the files the characters need
 into a cache folder (`designo-fonts` in the system's temporary folder) and draws each text with the
 file that has most of its characters, on the baseline the editor uses. Any family the API has
 works, Georgia and the other fonts it cannot have draw in their open stand-ins (Gelasio for
-Georgia), and the first screenshot of a new font takes a second or two longer. A line that needs
-more than one fallback font at once, such as an arrow and a Polish letter in a Georgia sentence,
-can draw boxes for them, because resvg keeps only one font per text; a script on a line of its own
-draws right. When the API cannot be reached the
-screenshot is still drawn, with whatever fonts the machine has (DejaVu in the Docker image).
+Georgia), and the first screenshot of a new font takes a second or two longer. When the API cannot
+be reached, a text the layout cannot shape is drawn as SVG text with whatever fonts the machine has
+(DejaVu in the Docker image).
+
+`export_svg` keeps text as SVG text, selectable and searchable. Pass `textAsPaths: true` to draw it
+as glyph outlines instead, as the screenshot does, so the file looks the same without the fonts.
 
 ### Components and instances
 
