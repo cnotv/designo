@@ -654,4 +654,40 @@ describe('exportNodeToSvg', () => {
       expect(svg).not.toContain('onload="alert(1)"')
     })
   })
+
+  it('draws a text as its glyph outlines when they are given, in the node paint and span colours', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'mixed',
+        type: 'text',
+        parentId: 'page',
+        properties: { x: 10, y: 20, text: 'Aא', fill: '#222222', opacity: 0.5 }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'mixed', {
+      getTextGlyphs: () => [
+        { pathData: 'M0,0L100,0L50,100Z', x: 0, y: 16, scale: 0.1 },
+        { pathData: 'M0,0L100,0Z', x: 12, y: 16, scale: 0.1, fill: '#ff0000' }
+      ]
+    })
+    expect(svg).not.toContain('<text')
+    expect(svg).toContain(
+      '<g fill="#222222" opacity="0.5"><path d="M10,36L20,36L15,26Z"/><path d="M22,36L32,36Z" fill="#ff0000"/></g>'
+    )
+  })
+
+  it('keeps a text as SVG text when no glyphs are given for it', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'plain',
+        type: 'text',
+        parentId: 'page',
+        properties: { text: 'Selectable' }
+      }
+    ])
+    const svg = exportNodeToSvg(document, 'plain', { getTextGlyphs: () => undefined })
+    expect(svg).toContain('>Selectable</text>')
+  })
 })

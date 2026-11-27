@@ -21,6 +21,19 @@ export interface TextLineRange {
   end: number
 }
 
+/** One glyph of a laid-out text: its outline in font units, y up, and where it sits. */
+export interface OutlinedGlyph {
+  /** The outline as SVG path data in font units, y up, as HarfBuzz draws it. */
+  pathData: string
+  /** The glyph origin on its baseline, from the top left corner of the text box. */
+  x: number
+  y: number
+  /** Units of the text box per font unit. */
+  scale: number
+  /** The colour of the span the glyph is in; undefined follows the node's fill. */
+  fill?: string
+}
+
 export interface SvgExportOptions {
   /**
    * Where a fixed-width text node breaks its lines, from the layout engine the editor draws with.
@@ -44,6 +57,12 @@ export interface SvgExportOptions {
    * or when it returns undefined, the node draws as its fill, a placeholder.
    */
   getImageHref?: (assetId: string) => string | undefined
+  /**
+   * The shaped glyphs of a text. Given them, the text is drawn as their outlines instead of SVG
+   * text, so a line that mixes fonts draws every glyph from its own font and the renderer needs
+   * none. Without it, or when it returns undefined, the text stays SVG text, selectable.
+   */
+  getTextGlyphs?: (node: DesignNode) => readonly OutlinedGlyph[] | undefined
 }
 
 /** Cyan, magenta, yellow and black, each from 0 to 100, as pdfkit takes a DeviceCMYK colour. */

@@ -1,6 +1,6 @@
 import { checkAts, checkPdfAts, type AtsReport, type PdfFacts } from '@designo/ats'
 import { extractPdfFacts } from '@designo/ats/extract'
-import { exportNodeToSvg, type TextLineRange } from '@designo/exporter'
+import { exportNodeToSvg, type OutlinedGlyph, type TextLineRange } from '@designo/exporter'
 import { exportDocumentToPdf } from '@designo/exporter/pdf'
 import {
   DEFAULT_NODE_PROPERTIES,
@@ -31,7 +31,7 @@ import {
   type OperationInput,
   type UploadedFontSummary
 } from '@designo/storage'
-import { toTextLayoutRequest } from '@designo/text'
+import { toTextLayoutRequest, type TextLayout } from '@designo/text'
 import { findTextBoxFits, inferFixedWidth } from './fitTextBoxes.ts'
 import { findOutsideParentWarnings } from './outsideParentWarnings.ts'
 import { loadDocumentImages, loadSubtreeImages, toImageLookups } from './images.ts'
@@ -39,6 +39,7 @@ import { rasterizeSvgToPng } from './rasterize.ts'
 import { getAccountFonts, listUploadedFonts } from './uploadedFonts.ts'
 import type {
   DesignoToolContext,
+  GetGlyphOutline,
   LayoutText,
   PdfExportInput,
   PdfFile,
@@ -281,20 +282,72 @@ const findTextLines = async (
   return (node) => layouts.get(node.id)?.lines
 }
 
+const getGlyphOutlineLookup = async (context: DesignoToolContext): Promise<GetGlyphOutline> =>
+  context.getGlyphOutline ??
+  (await getAccountFonts(context.dataDirectory)).layoutText.getGlyphOutline
+
+// Every glyph of a layout with its outline, or undefined when one outline is missing, so the
+// text is drawn as SVG text rather than with a gap.
+const toOutlinedGlyphs = (
+  layout: TextLayout,
+  getGlyphOutline: GetGlyphOutline
+): OutlinedGlyph[] | undefined => {
+  const glyphs = layout.lines.flatMap((line) => line.glyphs)
+  const outlines = glyphs.map((glyph) => getGlyphOutline(glyph.fontId, glyph.glyphId))
+  if (outlines.some((outline) => outline === undefined)) return undefined
+  return glyphs.map((glyph, index) => ({
+    pathData: outlines[index]?.pathData ?? '',
+    x: glyph.x,
+    y: glyph.y,
+    scale: glyph.scale,
+    ...(glyph.fill === undefined ? {} : { fill: glyph.fill })
+  }))
+}
+
+// Shapes every text of the subtree with the editor's engine, so each glyph is drawn from the font
+// that has it, however many fonts one line needs.
+const findTextGlyphs = async (
+  context: DesignoToolContext,
+  document: DesignDocument,
+  nodeId: string
+): Promise<(node: DesignNode) => readonly OutlinedGlyph[] | undefined> => {
+  const texts = getSubtreeIds(document, nodeId).flatMap((id) => {
+    const node = document.nodes[id]
+    return node?.type === 'text' && node.text !== '' ? [node] : []
+  })
+  const [layoutText, getGlyphOutline] = await Promise.all([
+    getLayoutText(context),
+    getGlyphOutlineLookup(context)
+  ])
+  const glyphs = new Map(
+    await Promise.all(
+      texts.map(async (node) => {
+        const layout = await layoutText(toTextLayoutRequest(node))
+        return [node.id, layout && toOutlinedGlyphs(layout, getGlyphOutline)] as const
+      })
+    )
+  )
+  return (node) => glyphs.get(node.id)
+}
+
 /**
  * Draws a node (the page by default) as standalone SVG text.
  * @param context - Where files live and how ids are made.
- * @param input - The file and an optional node.
+ * @param input - The file, an optional node, and whether text is drawn as glyph outlines rather
+ *   than selectable SVG text.
  * @returns The SVG source.
  */
 export const exportSvgTool = async (
   context: DesignoToolContext,
-  input: { fileId: string; nodeId?: string }
+  input: { fileId: string; nodeId?: string; textAsPaths?: boolean }
 ): Promise<string> => {
   const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
   const nodeId = input.nodeId ?? document.rootId
   return exportNodeToSvg(document, nodeId, {
     getTextLines: await findTextLines(context, document, nodeId),
+    ...(input.textAsPaths
+      ? { getTextGlyphs: await findTextGlyphs(context, document, nodeId) }
+      : {}),
     getImageHref: toImageLookups(await loadSubtreeImages(context.dataDirectory, document, nodeId))
       .getImageHref
   })
@@ -421,6 +474,7 @@ export const getScreenshotTool = async (
     resolveFontFamily: fonts.resolveFontFamily,
     getFontMetrics: fonts.getFontMetrics,
     getTextLines: await findTextLines(context, document, nodeId),
+    getTextGlyphs: await findTextGlyphs(context, document, nodeId),
     getImageHref: toImageLookups(await loadSubtreeImages(context.dataDirectory, document, nodeId))
       .getImageHref
   })

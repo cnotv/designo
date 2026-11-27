@@ -2,7 +2,7 @@ import type { TextFace } from '@designo/core'
 import type { FontLineMetrics, PdfColorSpace } from '@designo/exporter'
 import type { FontFetch, UploadedFont } from '@designo/fonts'
 import type { GenerateId } from '@designo/storage'
-import type { TextLayout, TextLayoutRequest } from '@designo/text'
+import type { GlyphOutline, TextLayout, TextLayoutRequest } from '@designo/text'
 
 /** The outcome of rasterizing: the PNG, or one sentence an agent can act on. */
 export type RasterizeOutcome = { ok: true; png: Buffer } | { ok: false; message: string }
@@ -83,6 +83,8 @@ export interface DesignoToolContext {
   layoutText?: LayoutText
   /** The bytes of a font file by id, which `export_pdf` embeds; the default has the files the layout loaded. */
   getFontBytes?: (fontId: string) => Uint8Array | undefined
+  /** Glyph outlines, which a screenshot draws text with; the default has the fonts the layout loaded. */
+  getGlyphOutline?: GetGlyphOutline
 }
 
 export interface ScreenshotImage {
@@ -114,9 +116,13 @@ export interface TextMeasurement {
   lines: string[]
 }
 
-/** The layout, and the bytes of every font file it has loaded, which a PDF embeds. */
+/** An outline of a glyph of a font the layout has loaded; undefined for a font it has not. */
+export type GetGlyphOutline = (fontId: string, glyphId: number) => GlyphOutline | undefined
+
+/** The layout, and the bytes and outlines of every font file it has loaded. */
 export type NodeLayoutText = LayoutText & {
   getFontBytes: (fontId: string) => Uint8Array | undefined
+  getGlyphOutline: GetGlyphOutline
 }
 
 /** The text layout and screenshot fonts one account works with, its uploaded fonts included. */

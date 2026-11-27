@@ -74,7 +74,9 @@ export const createNodeLayoutText = ({
   })
   const runtime = { library, engine: createTextEngine({ library }) }
   return Object.assign((request: Parameters<LayoutText>[0]) => loadTextLayout(runtime, request), {
-    getFontBytes: library.getFontBytes
+    getFontBytes: library.getFontBytes,
+    getGlyphOutline: (fontId: string, glyphId: number) =>
+      library.getFont(fontId)?.getGlyphOutline(glyphId)
   })
 }
 

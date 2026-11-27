@@ -120,7 +120,7 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
     'get_screenshot',
     {
       description:
-        'Render the page, or one node, to a PNG image so you can see the design. Fixed-width text wraps where the editor wraps it; other text is drawn without shaping, so it differs slightly. scale is pixels per design unit (default 1).',
+        "Render the page, or one node, to a PNG image so you can see the design. Text is shaped by the editor's layout engine and drawn as glyph outlines, so it wraps, aligns and spaces as on the canvas, and a line that mixes scripts draws each glyph from the font that has it. scale is pixels per design unit (default 1).",
       inputSchema: {
         fileId: fileIdSchema,
         nodeId: nodeIdSchema.optional(),
@@ -153,12 +153,19 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
     },
     (input) => toToolResult(() => measureTextTool(context, input))
   )
+}
+
+const registerExportTools = (server: McpServer, context: DesignoToolContext): void => {
   server.registerTool(
     'export_svg',
     {
       description:
-        'Export the page, or one node, as standalone SVG text. Fixed-width text is broken into lines where the editor wraps it. Coordinates are absolute on the page and the viewBox is the node bounds.',
-      inputSchema: { fileId: fileIdSchema, nodeId: nodeIdSchema.optional() },
+        'Export the page, or one node, as standalone SVG text. Fixed-width text is broken into lines where the editor wraps it. Coordinates are absolute on the page and the viewBox is the node bounds. Text stays selectable SVG text unless textAsPaths is true, which draws each text as the outlines of its shaped glyphs, as get_screenshot does, so it looks the same without the fonts.',
+      inputSchema: {
+        fileId: fileIdSchema,
+        nodeId: nodeIdSchema.optional(),
+        textAsPaths: z.boolean().optional()
+      },
       annotations: READ_ONLY
     },
     async (input) => {
@@ -349,6 +356,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
 export const createDesignoServer = (context: DesignoToolContext): McpServer => {
   const server = new McpServer({ name: 'designo', version: SERVER_VERSION })
   registerReadTools(server, context)
+  registerExportTools(server, context)
   registerFontTools(server, context)
   registerStyleTools(server, context)
   registerAtsTools(server, context)
