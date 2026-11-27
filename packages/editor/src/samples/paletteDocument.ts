@@ -264,18 +264,20 @@ const printColorOperations = (): DesignOperation[] => {
   ]
 }
 
-// On page 2, one line in four scripts, so its glyphs come from several fallback fonts; a screenshot
+// On page 1, one line in four scripts, so its glyphs come from several fallback fonts; a screenshot
 // draws it as glyph outlines, with no missing-glyph boxes.
 const mixedScriptOperations = (): DesignOperation[] => [
   {
     kind: 'create',
-    id: 'page-2-mixed-scripts',
+    id: 'page-1-mixed-scripts',
     type: 'text',
-    parentId: 'page-2',
+    parentId: 'page-1',
     properties: {
-      x: PAGE_FRAME_LEFT + (PAGE_FRAME_SIZE + PAGE_FRAME_GAP) + SWATCH_LEFT,
-      y: 312,
+      name: 'Mixed scripts',
+      x: PAGE_FRAME_LEFT + SWATCH_LEFT,
+      y: 200,
       width: PAGE_FRAME_SIZE - SWATCH_LEFT * 2,
+      height: 24,
       text: MIXED_SCRIPT_TEXT,
       textWrap: true,
       fontSize: 16,
