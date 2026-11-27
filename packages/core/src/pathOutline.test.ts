@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getPathArea, getPathBounds } from './booleans.ts'
 import { DEFAULT_NODE_PROPERTIES } from './defaults.ts'
-import { getBooleanResult, getWorldOutline } from './pathOutline.ts'
+import { getBooleanResult, getPathBox, getWorldOutline } from './pathOutline.ts'
 import type { DesignNode } from './types.ts'
 
 const makeNode = (overrides: Partial<DesignNode>): DesignNode => ({
@@ -83,5 +83,23 @@ describe('getBooleanResult', () => {
 
   it('refuses a node that has no outline', () => {
     expect(() => getBooleanResult('union', [rectangle, makeNode({ type: 'text' })])).toThrow()
+  })
+})
+
+describe('getPathBox', () => {
+  it('moves an outline to the origin and reports where it was', () => {
+    const box = getPathBox('M10,20 L30,20 L30,60 L10,60 Z')
+    expect([box.x, box.y, box.width, box.height]).toEqual([10, 20, 20, 40])
+    expect(getPathBounds(box.pathData)).toEqual({ x: 0, y: 0, width: 20, height: 40 })
+  })
+
+  it('covers the whole of a curve, not only its points', () => {
+    const box = getPathBox('M0,0 C0,10 10,10 10,0')
+    expect(box.height).toBeCloseTo(7.5)
+  })
+
+  it('keeps a straight line as a box with no height', () => {
+    const box = getPathBox('M0,5 L10,5')
+    expect([box.width, box.height]).toEqual([10, 0])
   })
 })

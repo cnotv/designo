@@ -5,7 +5,10 @@ import {
   Github,
   ImagePlus,
   Maximize,
+  Minus,
   MousePointer2,
+  Pentagon,
+  PenTool,
   PanelLeft,
   PanelRight,
   Redo2,
@@ -52,6 +55,9 @@ const tools: { tool: Tool; label: string; shortcut: string; icon: Component }[] 
   { tool: 'frame', label: 'Frame', shortcut: 'F', icon: Frame },
   { tool: 'rectangle', label: 'Rectangle', shortcut: 'R', icon: Square },
   { tool: 'ellipse', label: 'Ellipse', shortcut: 'O', icon: Circle },
+  { tool: 'line', label: 'Line', shortcut: 'L', icon: Minus },
+  { tool: 'pen', label: 'Pen', shortcut: 'P', icon: PenTool },
+  { tool: 'polygon', label: 'Polygon', shortcut: 'Y', icon: Pentagon },
   { tool: 'text', label: 'Text', shortcut: 'T', icon: Type }
 ]
 

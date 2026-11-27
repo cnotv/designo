@@ -47,6 +47,21 @@ export const getWorldOutline = (node: DesignNode): string => {
 }
 
 /**
+ * Fits an outline in page coordinates to its own box: the box it covers, and the outline moved so
+ * that it starts at the box's corner, as a path node stores it.
+ * @param pathData - SVG path data in page coordinates.
+ * @returns The box and the outline relative to it.
+ */
+export const getPathBox = (pathData: string): BooleanResult => {
+  const outline = paperScope.PathItem.create(pathData)
+  const { x, y, width, height } = outline.bounds
+  outline.translate(new paperScope.Point(-x, -y))
+  const result = { x, y, width, height, pathData: outline.pathData }
+  outline.remove()
+  return result
+}
+
+/**
  * Combines nodes into the box and outline of one path node. The first node is the base, so a
  * subtraction cuts the later ones from it.
  * @param operation - How the outlines merge.
@@ -58,10 +73,5 @@ export const getBooleanResult = (
   nodes: readonly DesignNode[]
 ): BooleanResult => {
   if (nodes.length < 2) throw new Error('A boolean operation needs at least two nodes')
-  const combined = paperScope.PathItem.create(combinePaths(operation, nodes.map(getWorldOutline)))
-  const { x, y, width, height } = combined.bounds
-  combined.translate(new paperScope.Point(-x, -y))
-  const { pathData } = combined
-  combined.remove()
-  return { x, y, width, height, pathData }
+  return getPathBox(combinePaths(operation, nodes.map(getWorldOutline)))
 }

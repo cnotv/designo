@@ -1,6 +1,7 @@
 import { applyOperations, type DesignDocument, type DesignOperation } from '@designo/core'
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import { boundsFromPoints, getNodeBounds } from '../editing/geometry.ts'
+import { createPathDraftOperation, isPathTool } from '../editing/pathTools.ts'
 import {
   createDrawOperation,
   createMoveOperations,
@@ -35,6 +36,8 @@ import { panBy, screenToWorld, worldToScreen, zoomAt } from '../editing/viewport
 import type { CanvasInteraction, Editor } from './types.ts'
 
 const HANDLE_HIT_RADIUS = 6
+// A pen point dragged less than this, in world units, stays a corner.
+const PEN_DRAG_THRESHOLD = 3
 const ROTATE_ZONE_RADIUS = 22
 const WHEEL_ZOOM_SPEED = 0.002
 const MIDDLE_BUTTON = 1
@@ -217,6 +220,12 @@ const startDrag = (
   }
   const tool = editor.tool.value
   if (tool === 'select') return startSelectToolDrag(editor, document, index, event, world)
+  if (isPathTool(tool)) {
+    const parentId =
+      editor.pathDraft.value?.parentId ?? findContainerAtPoint(document, index, world)
+    editor.addPathPoint(world, parentId, editor.viewport.value.scale)
+    return { kind: 'placingPoint', startWorld: world, currentWorld: world }
+  }
   const parentId = findContainerAtPoint(document, index, world)
   const nodeId = createNodeId(tool)
   return { kind: 'drawing', tool, nodeId, parentId, startWorld: world, currentWorld: world }
@@ -244,24 +253,60 @@ const useHitIndex = (editor: Editor) =>
     return document ? indexDocument(document) : undefined
   })
 
+// While a path is being drawn it is shown as an open outline that ends at the pointer.
+const draftOperations = (editor: Editor, pending: Point | undefined): DesignOperation[] => {
+  const draft = editor.pathDraft.value
+  return draft ? [createPathDraftOperation(draft, { closed: false, pending })] : []
+}
+
 const usePreview = (
   editor: Editor,
   interaction: Ref<Interaction>,
   shiftHeld: Ref<boolean>,
-  snapThreshold: ComputedRef<number | undefined>
+  snapThreshold: ComputedRef<number | undefined>,
+  pendingPoint: Ref<Point | undefined>
 ) =>
   computed(() => {
     const document = editor.document.value
     if (!document) return undefined
-    const operations = previewOperations(
-      document,
-      interaction.value,
-      shiftHeld.value,
-      snapThreshold.value
-    )
+    const operations = [
+      ...previewOperations(document, interaction.value, shiftHeld.value, snapThreshold.value),
+      ...draftOperations(editor, pendingPoint.value)
+    ]
     if (operations.length === 0) return document
     const result = applyOperations(document, operations)
     return result.ok ? result.document : document
+  })
+
+const findHoveredId = (
+  editor: Editor,
+  index: SpatialIndex | undefined,
+  world: Point
+): string | undefined => {
+  const document = editor.document.value
+  const canHover = document && index && editor.tool.value === 'select'
+  return canHover ? findNodeAtPoint(document, index, world)?.id : undefined
+}
+
+// Dragging a pen point out of where it was placed bends the curve that leaves it.
+const dragPenHandle = (editor: Editor, state: Interaction, world: Point): void => {
+  const isPenDrag =
+    state.kind === 'placingPoint' &&
+    editor.tool.value === 'pen' &&
+    distanceBetween(state.startWorld, world) >= PEN_DRAG_THRESHOLD
+  if (isPenDrag) editor.setPathPointHandle(world)
+}
+
+const useGuides = (
+  editor: Editor,
+  interaction: Ref<Interaction>,
+  snapThreshold: ComputedRef<number | undefined>
+) =>
+  computed(() => {
+    const document = editor.document.value
+    return document
+      ? (resolveSnap(document, interaction.value, snapThreshold.value)?.guides ?? [])
+      : []
   })
 
 const zoomOrPan = (editor: Editor, event: WheelEvent): void => {
@@ -288,6 +333,8 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
   const spaceHeld = ref(false)
   const shiftHeld = ref(false)
   const snapDisabled = ref(false)
+  // Where the pointer is while a path is being drawn, which the outline runs on to.
+  const pendingPoint = ref<Point>()
   // The threshold is a screen distance, so it shrinks in world units as the view zooms in.
   const snapThreshold = computed(() =>
     snapDisabled.value ? undefined : SNAP_THRESHOLD_PX / editor.viewport.value.scale
@@ -299,11 +346,8 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     screenToWorld(editor.viewport.value, pointerOnCanvas(event))
 
   const updateHover = (event: PointerEvent): void => {
-    const document = editor.document.value
     hoveredHandle.value = findHandleAt(editor, pointerOnCanvas(event))?.target
-    const index = hitIndex.value
-    const canHover = document && index && editor.tool.value === 'select'
-    hoveredId.value = canHover ? findNodeAtPoint(document, index, worldAt(event))?.id : undefined
+    hoveredId.value = findHoveredId(editor, hitIndex.value, worldAt(event))
   }
 
   const onPointerMove = (event: PointerEvent): void => {
@@ -311,6 +355,7 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     snapDisabled.value = event.ctrlKey || event.metaKey
     const state = interaction.value
     const document = editor.document.value
+    pendingPoint.value = editor.pathDraft.value ? worldAt(event) : undefined
     if (state.kind === 'idle') {
       updateHover(event)
       return
@@ -321,6 +366,7 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
       return
     }
     interaction.value = followPointer(state, worldAt(event))
+    dragPenHandle(editor, state, worldAt(event))
     const index = hitIndex.value
     if (state.kind === 'marquee' && document && index) {
       const marquee = boundsFromPoints(state.startWorld, worldAt(event))
@@ -344,6 +390,10 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
   }
 
   const onDoubleClick = (event: MouseEvent): void => {
+    if (editor.pathDraft.value) {
+      editor.finishPathDraft()
+      return
+    }
     const document = editor.document.value
     const index = hitIndex.value
     const hit = document && index && findNodeAtPoint(document, index, worldAt(event))
@@ -353,13 +403,8 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
   }
 
   return {
-    shownDocument: usePreview(editor, interaction, shiftHeld, snapThreshold),
-    guides: computed(() => {
-      const document = editor.document.value
-      return document
-        ? (resolveSnap(document, interaction.value, snapThreshold.value)?.guides ?? [])
-        : []
-    }),
+    shownDocument: usePreview(editor, interaction, shiftHeld, snapThreshold, pendingPoint),
+    guides: useGuides(editor, interaction, snapThreshold),
     hoveredId,
     marquee: computed(() =>
       interaction.value.kind === 'marquee'

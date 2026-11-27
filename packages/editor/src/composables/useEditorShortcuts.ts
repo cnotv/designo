@@ -10,6 +10,9 @@ const TOOL_BY_KEY: Record<string, Tool> = {
   f: 'frame',
   r: 'rectangle',
   o: 'ellipse',
+  l: 'line',
+  p: 'pen',
+  y: 'polygon',
   t: 'text'
 }
 
@@ -96,6 +99,15 @@ const handleArrowKey = (editor: Editor, event: KeyboardEvent): boolean => {
   return true
 }
 
+// A path in progress takes Enter to finish and Escape to leave, keeping what is drawn.
+const handlePathKey = (editor: Editor, event: KeyboardEvent): boolean => {
+  if (!editor.pathDraft.value) return false
+  if (event.key === 'Enter') editor.finishPathDraft()
+  else if (event.key === 'Escape') editor.finishPathDraft(false)
+  else return false
+  return true
+}
+
 const handleEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
   const [selectedId] = editor.selection.value
   const selected = selectedId ? editor.document.value?.nodes[selectedId] : undefined
@@ -128,7 +140,13 @@ const handleToolKey = (editor: Editor, event: KeyboardEvent): boolean => {
   return true
 }
 
-const PLAIN_KEY_HANDLERS = [handleArrowKey, handleEditKey, handleZoomKey, handleToolKey]
+const PLAIN_KEY_HANDLERS = [
+  handlePathKey,
+  handleArrowKey,
+  handleEditKey,
+  handleZoomKey,
+  handleToolKey
+]
 
 const handlePlainKey = (editor: Editor, event: KeyboardEvent): boolean =>
   PLAIN_KEY_HANDLERS.some((handler) => handler(editor, event))

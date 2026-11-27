@@ -20,6 +20,8 @@ import type {
   GateScreen,
   HistoryState,
   LayerOrderMode,
+  PathDraft,
+  Point,
   SnapGuide,
   TextBoxMeasurer,
   TextEditSession,
@@ -72,6 +74,15 @@ export interface Editor {
   /** Ends the edit with the typed text: one update, or a delete for a new node left empty. */
   commitTextEdit: (draftText: string) => void
   select: (nodeIds: readonly string[]) => void
+  /** The path the pen or polygon tool is drawing, before it is committed. */
+  pathDraft: Ref<PathDraft | undefined>
+  /** Places the next point of the path, starting one on the first click; a click on the first point closes it. */
+  addPathPoint: (point: Point, parentId: string, scale: number) => void
+  /** Sets the handle the last point's curve leaves along, as a pen point is dragged out. */
+  setPathPointHandle: (handleOut: Point) => void
+  /** Commits the path as one node; a polygon closes, a pen line stays open unless asked to close. */
+  finishPathDraft: (closed?: boolean) => void
+  cancelPathDraft: () => void
   setTool: (tool: Tool) => void
   setCanvasSize: (size: { width: number; height: number }) => void
   updateNode: (nodeId: string, patch: DesignNodePatch) => void

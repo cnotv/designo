@@ -27,9 +27,28 @@ export interface Viewport {
   scale: number
 }
 
-export type DrawingTool = 'frame' | 'rectangle' | 'ellipse' | 'text'
+export type DrawingTool = 'frame' | 'rectangle' | 'ellipse' | 'text' | 'line'
 
-export type Tool = 'select' | DrawingTool
+/** Tools that build a path point by point, with clicks, rather than by dragging out a box. */
+export type PathTool = 'pen' | 'polygon'
+
+export type Tool = 'select' | DrawingTool | PathTool
+
+/**
+ * A point of a path being drawn, in world units. A pen point dragged out when it was placed has a
+ * `handleOut`, the control point its curve leaves along; the curve arrives mirrored.
+ */
+export interface PenPoint extends Point {
+  handleOut?: Point
+}
+
+/** A path the pen or polygon tool is drawing: the points placed so far, before it is committed. */
+export interface PathDraft {
+  tool: PathTool
+  nodeId: string
+  parentId: string
+  points: readonly PenPoint[]
+}
 
 export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
@@ -63,6 +82,8 @@ export type Interaction =
       startWorld: Point
       currentWorld: Point
     }
+  /** A pen or polygon point just placed; dragging it out sets the handle of a pen curve. */
+  | { kind: 'placingPoint'; startWorld: Point; currentWorld: Point }
   | {
       kind: 'marquee'
       startWorld: Point
