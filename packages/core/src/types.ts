@@ -402,3 +402,14 @@ export type FontVariant = Pick<DesignNodeProperties, 'fontWeight' | 'fontStyle'>
 
 /** Everything that picks the font file a text is drawn with. */
 export type TextFace = FontVariant & Pick<DesignNodeProperties, 'fontFamily'>
+
+/** How `combinePaths` merges outlines: add them, cut the later ones from the first, keep what they share, or keep what they do not. */
+export type BooleanOperation = 'union' | 'subtract' | 'intersect' | 'exclude'
+
+/** A box in the same space as a path outline. */
+export interface PathBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}

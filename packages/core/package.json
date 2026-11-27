@@ -10,5 +10,8 @@
   },
   "scripts": {
     "type-check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "paper": "^0.17.0"
   }
 }
