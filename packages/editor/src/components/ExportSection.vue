@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Download } from 'lucide-vue-next'
+import { Download, ScanSearch } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
 import { computed } from 'vue'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -15,12 +16,15 @@ import {
 } from '@/components/ui/select'
 import { useEditorContext } from '../composables/editorContext.ts'
 import { clampExportScale, EXPORT_SCALES, getExportTargetIds } from '../editing/export.ts'
+import { describeFindingPlace, sortFindingsBySeverity } from '../editing/atsReport.ts'
 import { createMetadataOperations } from '../editing/pdfMetadata.ts'
 import type { ExportFormat } from '../editing/types.ts'
 import type { DocumentMetadata } from '@designo/core'
 
 const { editor, exporter } = useEditorContext()
-const { settings, isExporting, error } = exporter
+const { settings, isExporting, error, atsReport, isCheckingAts } = exporter
+
+const STATUS_VARIANT = { fail: 'destructive', warn: 'secondary', pass: 'outline' } as const
 
 const FORMATS: { value: ExportFormat; label: string }[] = [
   { value: 'svg', label: 'SVG' },
@@ -44,8 +48,15 @@ const targetLabel = computed(() => {
 const METADATA_FIELDS: { field: keyof DocumentMetadata; label: string }[] = [
   { field: 'title', label: 'Title' },
   { field: 'author', label: 'Author' },
-  { field: 'subject', label: 'Subject' }
+  { field: 'subject', label: 'Subject' },
+  { field: 'language', label: 'Language' }
 ]
+
+// Read in the template, so the title's hint follows the open file.
+const getPlaceholder = (field: keyof DocumentMetadata): string =>
+  ({ title: editor.document.value?.name ?? '', author: '', subject: '', language: 'en or de-DE' })[
+    field
+  ]
 
 const setMetadata = (field: keyof DocumentMetadata, event: Event): void => {
   if (editor.document.value)
@@ -108,7 +119,7 @@ const setScale = (value: AcceptableValue): void => {
         <Input
           :id="`pdf-${item.field}`"
           :model-value="editor.document.value.metadata?.[item.field] ?? ''"
-          :placeholder="item.field === 'title' ? editor.document.value.name : ''"
+          :placeholder="getPlaceholder(item.field)"
           class="h-7 text-xs"
           @change="setMetadata(item.field, $event)"
         />
@@ -128,6 +139,39 @@ const setScale = (value: AcceptableValue): void => {
         Text set as a heading, paragraph or list item is tagged for screen readers, in the order of
         its frame's layers.
       </p>
+    </div>
+    <div v-if="settings.format === 'pdf' && editor.document.value" class="flex flex-col gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        :disabled="isCheckingAts || !editor.document.value"
+        @click="exporter.checkAts"
+      >
+        <ScanSearch /> {{ isCheckingAts ? 'Checking...' : 'Check for ATS' }}
+      </Button>
+      <section v-if="atsReport" class="flex flex-col gap-1.5" aria-label="ATS report">
+        <p class="text-muted-foreground">
+          {{ atsReport.summary.fail }} failed, {{ atsReport.summary.warn }} warnings,
+          {{ atsReport.summary.pass }} passed. Read with pdf.js and Designo's own rules, not a real
+          ATS.
+        </p>
+        <ul class="flex flex-col gap-1.5">
+          <li
+            v-for="(finding, index) in sortFindingsBySeverity(atsReport.findings)"
+            :key="index"
+            class="flex items-start gap-2"
+          >
+            <Badge :variant="STATUS_VARIANT[finding.status]">{{ finding.status }}</Badge>
+            <span>
+              <span class="font-medium">{{ finding.rule }}</span><template
+                v-if="describeFindingPlace(editor.document.value, finding)"
+              >
+                ({{ describeFindingPlace(editor.document.value, finding) }})</template
+              >: {{ finding.message }}
+            </span>
+          </li>
+        </ul>
+      </section>
     </div>
     <Button size="sm" :disabled="isExporting || !editor.document.value" @click="exporter.run">
       <Download /> Export {{ settings.format.toUpperCase() }}

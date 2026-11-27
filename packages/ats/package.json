@@ -1,0 +1,23 @@
+{
+  "name": "@designo/ats",
+  "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "description": "Checks what an applicant tracking system can read from an exported PDF. The checks are pure; the extractor reads a PDF with pdf.js.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./extract": "./src/extractPdfFacts.ts"
+  },
+  "scripts": {
+    "type-check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@designo/core": "workspace:*",
+    "pdfjs-dist": "^6.5.438"
+  },
+  "devDependencies": {
+    "@designo/exporter": "workspace:*",
+    "@designo/text": "workspace:*"
+  }
+}

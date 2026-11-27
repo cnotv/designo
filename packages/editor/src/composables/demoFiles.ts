@@ -1,6 +1,7 @@
 import type { DesignDocument } from '@designo/core'
 import type { DocumentSummary } from '@designo/storage'
 import { ref, type Ref } from 'vue'
+import { createCvDocument } from '../samples/cvDocument.ts'
 import { createPaletteDocument } from '../samples/paletteDocument.ts'
 import { createScratchDocument } from '../samples/scratchDocument.ts'
 
@@ -40,7 +41,7 @@ export const createDemoFiles = (state: {
 
   return {
     start: (): void => {
-      documents.value = [createPaletteDocument(), createScratchDocument()]
+      documents.value = [createPaletteDocument(), createCvDocument(), createScratchDocument()]
       open(documents.value[0]?.id)
     },
     select: (fileId: string): void => {

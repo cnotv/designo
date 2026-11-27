@@ -1,0 +1,64 @@
+- generic [ref=f1e3]:
+    - banner [ref=f1e4]:
+        - button "Toggle left panel" [pressed] [ref=f1e5]
+        - generic [ref=f1e6]: Designo
+        - group "Tools" [ref=f1e7]:
+            - button "Move" [pressed] [ref=f1e8]
+            - button "Frame" [ref=f1e9]
+            - button "Rectangle" [ref=f1e10]
+            - button "Ellipse" [ref=f1e11]
+            - button "Text" [ref=f1e12]
+        - button "Add image" [ref=f1e13]
+        - button "Undo" [disabled]
+        - button "Redo" [disabled]
+        - generic [ref=f1e14]:
+            - button "Zoom to fit" [ref=f1e15]:
+                - generic [ref=f1e16]: 100%
+            - link "Designo on GitHub" [ref=f1e17] [cursor=pointer]:
+                - /url: https://github.com/cnotv/designo
+            - button "Toggle right panel" [pressed] [ref=f1e18]
+    - complementary [ref=f1e19]:
+        - navigation "Files" [ref=f1e20]:
+            - heading "Files" [level=2] [ref=f1e21]
+            - paragraph [ref=f1e22]:
+                - text: No files yet. Ask an agent to call
+                - code [ref=f1e23]: create_file
+                - text: through the Designo MCP server.
+        - region "Pages" [ref=f1e24]:
+            - generic [ref=f1e25]:
+                - heading "Pages" [level=2] [ref=f1e26]
+                - generic [ref=f1e27]:
+                    - button "Add page from a template" [ref=f1e28]
+                    - button "Add page" [ref=f1e29]
+            - list [ref=f1e30]
+        - region "Layers" [ref=f1e31]:
+            - heading "Layers" [level=2] [ref=f1e32]
+            - generic [ref=f1e35]:
+                - paragraph [ref=f1e36]: Draw with the toolbar, or ask an agent through the MCP server.
+                - list [ref=f1e37]
+        - region "Styles" [ref=f1e38]:
+            - generic [ref=f1e39]:
+                - heading "Styles" [level=2] [ref=f1e40]
+                - generic [ref=f1e41]:
+                    - button "Add colour variable" [ref=f1e42]
+                    - button "Add number variable" [ref=f1e43]
+                    - button "Add text style from the selected text" [disabled]
+            - paragraph [ref=f1e44]: No variables or text styles yet.
+            - list [ref=f1e45]
+    - main [ref=f1e46]
+    - complementary [ref=f1e49]:
+        - region "Properties" [ref=f1e50]:
+            - paragraph [ref=f1e51]: Select a layer to edit its properties.
+            - region "Export" [ref=f1e52]:
+                - heading "Export" [level=2] [ref=f1e53]
+                - generic [ref=f1e54]:
+                    - generic [ref=f1e55]:
+                        - generic [ref=f1e56]: Format
+                        - combobox "Format" [ref=f1e57]:
+                            - generic: SVG
+                    - generic [ref=f1e58]:
+                        - generic [ref=f1e59]: Scale
+                        - combobox "Scale" [disabled] [ref=f1e60]:
+                            - generic: 2x
+                - button "Export SVG" [disabled]
+                - paragraph [ref=f1e61]: Exports the whole page.

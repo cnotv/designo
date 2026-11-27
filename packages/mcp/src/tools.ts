@@ -1,3 +1,5 @@
+import { checkAts, type AtsReport } from '@designo/ats'
+import { extractPdfFacts } from '@designo/ats/extract'
 import { exportNodeToSvg, type TextLineRange } from '@designo/exporter'
 import { exportDocumentToPdf } from '@designo/exporter/pdf'
 import {
@@ -255,17 +257,10 @@ export const exportSvgTool = async (
 // A blurred node is an image in the PDF, so it is drawn at the density a print needs.
 const PDF_RASTER_SCALE = 3
 
-/**
- * Writes the file as a PDF, a page for each page in it, in order. Text is set in the fonts the
- * editor lays it out with, embedded in the file; guides are never drawn.
- * @param context - Where files live and how text is laid out.
- * @param input - The file.
- * @returns The PDF as base64 with its MIME type.
- */
-export const exportPdfTool = async (
+const buildPdf = async (
   context: DesignoToolContext,
   input: { fileId: string; trimMarks?: boolean }
-): Promise<PdfFile> => {
+): Promise<{ document: DesignDocument; bytes: Uint8Array }> => {
   const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
   const layoutText = context.layoutText ?? layoutTextWithFontsourceFonts
   const layouts = new Map(
@@ -290,7 +285,36 @@ export const exportPdfTool = async (
       return outcome.ok ? outcome.png : undefined
     }
   })
+  return { document, bytes }
+}
+
+/**
+ * Writes the file as a PDF, a page for each page in it, in order. Text is set in the fonts the
+ * editor lays it out with, embedded in the file; guides are never drawn.
+ * @param context - Where files live and how text is laid out.
+ * @param input - The file.
+ * @returns The PDF as base64 with its MIME type.
+ */
+export const exportPdfTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string; trimMarks?: boolean }
+): Promise<PdfFile> => {
+  const { bytes } = await buildPdf(context, input)
   return { mimeType: 'application/pdf', data: Buffer.from(bytes).toString('base64') }
+}
+
+/**
+ * Exports the file as a PDF and reports what an applicant tracking system could read from it.
+ * @param context - Where files live and how text is laid out.
+ * @param input - The file.
+ * @returns Each rule's finding as pass, warn or fail, with a count of each.
+ */
+export const checkAtsTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string }
+): Promise<AtsReport> => {
+  const { document, bytes } = await buildPdf(context, input)
+  return checkAts(document, await extractPdfFacts(bytes))
 }
 
 const collectTexts = (document: DesignDocument, nodeId: string): ScreenshotText[] =>
