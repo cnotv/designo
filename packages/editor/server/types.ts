@@ -11,6 +11,7 @@ import type {
   ReplayGuard
 } from '@designo/auth'
 import type { Rasterize } from '@designo/mcp'
+import type { SyncHub } from '@designo/sync/server'
 
 export type RequestHandler = (request: IncomingMessage, response: ServerResponse) => void
 
@@ -53,6 +54,8 @@ export interface AuthContext {
   registrationLimiter: RateLimiter
   tokenLimiter: RateLimiter
   rasterize?: Rasterize
+  /** The live rooms of open files: the files API and remote agents write through them. */
+  syncHub: SyncHub
 }
 
 /** What the consent page shows and sends back. */

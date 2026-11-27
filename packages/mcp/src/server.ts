@@ -22,6 +22,7 @@ import {
   textSpansSchema
 } from '@designo/storage'
 import { addImageTool } from './addImage.ts'
+import { addCommentTool, getCommentsTool, getSelectionTool } from './liveTools.ts'
 import {
   applyOperationsTool,
   checkAtsTool,
@@ -51,6 +52,7 @@ const MAX_FONT_FAMILY_LENGTH = 200
 const MAX_LOCATION_LENGTH = 4096
 const MAX_IMAGE_BASE64_LENGTH = 28_000_000
 const MAX_PDF_BASE64_LENGTH = 28_000_000
+const MAX_COMMENT_LENGTH = 10_000
 
 const toToolResult = async (work: () => Promise<unknown>): Promise<CallToolResult> => {
   try {
@@ -338,7 +340,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
     'apply_ops',
     {
       description:
-        'Apply a batch of create, createPage, reorderPage, update, setVariable (variable with id, name, kind color or number, and a value), deleteVariable, setTextStyle (style with id, name, fontFamily, fontSize, fontWeight, fontStyle, lineHeight, letterSpacing), deleteTextStyle, updateMetadata (patch with title, author, subject, language for the PDF; an empty string clears one), delete, move, createInstance, detachInstance and resetOverrides operations as one change: if one fails, nothing is saved. Variables and text styles: bind a property by setting `bindings` on create or update, for example {"fill": "ink"}; set `textStyleId` on a text; a property set directly on a node ends its binding, or stays the text own against its style. Components: update a frame or group with patch isComponent true to make it a component; createInstance (componentId, parentId, x, y) places a copy that follows the component, named `<instance id>:<component node id>` for each node inside it; editing a property of an instance node keeps it as an override; resetOverrides drops them; detachInstance turns the instance into plain nodes. createPage adds a page after the others (or at order), reorderPage gives a page a new order, and nodes can then be created inside it by its id; export_pdf prints each page, or the frames given a pdfPage. Master pages: update a frame with isMaster true to make it a master; update a page frame with masterId set to the id of the master and the children of the master are drawn on it, behind its own nodes, in screenshots, SVG and PDF; a text with {page} shows the number of its page (its pdfPage, else its place among the frames that use a master); masterHidden lists master child ids a page leaves out. Give create operations your own ids to nest nodes inside each other in the same batch. The order of a move puts the node in front of a sibling that holds the same order (that sibling and the ones above it shift up by one), so order 0 inserts at the front. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
+        'Apply a batch of create, createPage, reorderPage, update, setVariable (variable with id, name, kind color or number, and a value), deleteVariable, setTextStyle (style with id, name, fontFamily, fontSize, fontWeight, fontStyle, lineHeight, letterSpacing), deleteTextStyle, updateMetadata (patch with title, author, subject, language for the PDF; an empty string clears one), delete, move, createInstance, detachInstance, resetOverrides, setComment (comment with id, nodeId or null, x, y, text, author, createdAt, resolved) and deleteComment operations as one change: if one fails, nothing is saved. Variables and text styles: bind a property by setting `bindings` on create or update, for example {"fill": "ink"}; set `textStyleId` on a text; a property set directly on a node ends its binding, or stays the text own against its style. Components: update a frame or group with patch isComponent true to make it a component; createInstance (componentId, parentId, x, y) places a copy that follows the component, named `<instance id>:<component node id>` for each node inside it; editing a property of an instance node keeps it as an override; resetOverrides drops them; detachInstance turns the instance into plain nodes. createPage adds a page after the others (or at order), reorderPage gives a page a new order, and nodes can then be created inside it by its id; export_pdf prints each page, or the frames given a pdfPage. Master pages: update a frame with isMaster true to make it a master; update a page frame with masterId set to the id of the master and the children of the master are drawn on it, behind its own nodes, in screenshots, SVG and PDF; a text with {page} shows the number of its page (its pdfPage, else its place among the frames that use a master); masterHidden lists master child ids a page leaves out. Give create operations your own ids to nest nodes inside each other in the same batch. The order of a move puts the node in front of a sibling that holds the same order (that sibling and the ones above it shift up by one), so order 0 inserts at the front. Coordinates are absolute on the page. The result warns about each node left outside its parent frame. Prefer this over single-node tools when building a layout.',
       inputSchema: {
         fileId: fileIdSchema,
         operations: operationBatchSchema
@@ -366,6 +368,44 @@ const registerCodeTools = (server: McpServer, context: DesignoToolContext): void
   )
 }
 
+const registerLiveTools = (server: McpServer, context: DesignoToolContext): void => {
+  server.registerTool(
+    'get_selection',
+    {
+      description:
+        'Tell who has the file open in the editor and what each person has selected, with the node names and types, and where their pointer is on the page. Use it to act on "this" or "the selected" when a person asks. Empty when nobody has the file open.',
+      inputSchema: { fileId: fileIdSchema },
+      annotations: READ_ONLY
+    },
+    (input) => toToolResult(() => getSelectionTool(context, input))
+  )
+  server.registerTool(
+    'get_comments',
+    {
+      description:
+        'List the comments people and agents left on a file, oldest first. Resolved comments are left out unless includeResolved is true.',
+      inputSchema: { fileId: fileIdSchema, includeResolved: z.boolean().optional() },
+      annotations: READ_ONLY
+    },
+    (input) => toToolResult(() => getCommentsTool(context, input))
+  )
+  server.registerTool(
+    'add_comment',
+    {
+      description:
+        "Leave a comment on the design. With nodeId the pin follows that node, x and y measured from its top left; without it x and y are on the page. Resolve or delete a comment with apply_ops setComment (resolved true) or deleteComment. Returns the comment's id.",
+      inputSchema: {
+        fileId: fileIdSchema,
+        text: z.string().min(1).max(MAX_COMMENT_LENGTH),
+        nodeId: nodeIdSchema.optional(),
+        x: z.number().optional(),
+        y: z.number().optional()
+      }
+    },
+    (input) => toToolResult(() => addCommentTool(context, input))
+  )
+}
+
 /**
  * Builds the Designo MCP server with every tool registered.
  * @param context - Where files live and how ids are made.
@@ -381,5 +421,6 @@ export const createDesignoServer = (context: DesignoToolContext): McpServer => {
   registerWriteTools(server, context)
   registerShapeTools(server, context)
   registerCodeTools(server, context)
+  registerLiveTools(server, context)
   return server
 }

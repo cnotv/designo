@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { SyncHub } from '@designo/sync/server'
 import {
-  applyOperationsToFile,
   createShortId,
   deleteDocument,
   fileIdSchema,
@@ -34,9 +34,12 @@ const OPERATIONS_SUFFIX = '/operations'
 
 const operationsBodySchema = z.object({ operations: operationBatchSchema })
 
+/** Applies a batch to a file: through its live room when it is open, else to the file itself. */
+export type ApplyBatch = SyncHub['applyOperations']
+
 const handleOperationsPost = async (
   dataDirectory: string,
-  fileId: string,
+  target: { fileId: string; applyBatch: ApplyBatch },
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
@@ -59,12 +62,9 @@ const handleOperationsPost = async (
     sendError(response, HTTP_BAD_REQUEST, z.prettifyError(parsed.error))
     return
   }
-  const applied = await applyOperationsToFile(
-    dataDirectory,
-    fileId,
-    parsed.data.operations,
-    createShortId
-  ).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))))
+  const applied = await target
+    .applyBatch(dataDirectory, target.fileId, parsed.data.operations, createShortId)
+    .catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))))
   if (applied instanceof Error) {
     const missing = 'code' in applied && applied.code === 'ENOENT'
     sendError(
@@ -114,13 +114,13 @@ const handleRead = async (
 
 const routeFileRequest = async (
   dataDirectory: string,
-  target: { fileId: string; isOperations: boolean },
+  target: { fileId: string; isOperations: boolean; applyBatch: ApplyBatch },
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
   const { fileId, isOperations } = target
   if (isOperations && request.method === 'POST') {
-    await handleOperationsPost(dataDirectory, fileId, request, response)
+    await handleOperationsPost(dataDirectory, target, request, response)
   } else if (!isOperations && fileId !== '' && request.method === 'DELETE') {
     await handleDelete(dataDirectory, fileId, request, response)
   } else if (isOperations || request.method !== 'GET') {
@@ -138,13 +138,16 @@ const routeFileRequest = async (
  * @param request - The incoming request.
  * @param response - Where the JSON answer goes.
  * @param pathAfterRoute - The request path with the files route already removed.
+ * @param applyBatch - How a batch of operations reaches the file: the sync hub's, so the people
+ *   who have the file open see it at once.
  * @returns Resolves once the answer is sent.
  */
 export const handleFilesRequest = async (
   dataDirectory: string,
   request: IncomingMessage,
   response: ServerResponse,
-  pathAfterRoute: string
+  pathAfterRoute: string,
+  applyBatch: ApplyBatch
 ): Promise<void> => {
   const path = (pathAfterRoute.split('?')[0] ?? '').replace(/^\/+/, '')
   // `assets` is the picture store's path, so a file cannot be reached under that name.
@@ -163,5 +166,5 @@ export const handleFilesRequest = async (
     sendError(response, HTTP_NOT_FOUND, 'Unknown file')
     return
   }
-  await routeFileRequest(dataDirectory, { fileId, isOperations }, request, response)
+  await routeFileRequest(dataDirectory, { fileId, isOperations, applyBatch }, request, response)
 }

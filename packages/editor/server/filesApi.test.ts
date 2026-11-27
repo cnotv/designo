@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createDocument } from '@designo/core'
-import { readDocument, writeDocument } from '@designo/storage'
+import { applyOperationsToFile, readDocument, writeDocument } from '@designo/storage'
 import { readFile } from 'node:fs/promises'
 import { renameFontFamily } from '@designo/fonts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -22,7 +22,8 @@ beforeEach(async () => {
       dataDirectory,
       request,
       response,
-      (request.url ?? '').slice(FILES_ROUTE.length)
+      (request.url ?? '').slice(FILES_ROUTE.length),
+      applyOperationsToFile
     )
   })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))

@@ -1,7 +1,8 @@
 import type { TextFace } from '@designo/core'
 import type { FontLineMetrics, PdfColorSpace } from '@designo/exporter'
 import type { FontFetch, UploadedFont } from '@designo/fonts'
-import type { GenerateId } from '@designo/storage'
+import type { AppliedBatch, GenerateId, OperationInput } from '@designo/storage'
+import type { PresenceEntry } from '@designo/sync'
 import type { GlyphOutline, TextLayout, TextLayoutRequest } from '@designo/text'
 
 /** The outcome of rasterizing: the PNG, or one sentence an agent can act on. */
@@ -72,6 +73,30 @@ export interface TextLayoutFetchers {
   uploadedFonts?: readonly UploadedFont[]
 }
 
+/** The live-editing hub of the server the tools run in, when it has one. */
+export interface DesignoLiveSync {
+  /** Applies a batch through the file's live room, so people editing it see it at once. */
+  applyOperations: (
+    dataDirectory: string,
+    fileId: string,
+    operations: readonly OperationInput[],
+    generateId: GenerateId
+  ) => Promise<AppliedBatch>
+  /** Everyone on the file now. */
+  getPresence: (dataDirectory: string, fileId: string) => PresenceEntry[]
+}
+
+/** One person or agent on a file, as `get_selection` reports them. */
+export interface SelectionReport {
+  name: string
+  kind: 'person' | 'agent'
+  color: string
+  /** The selected nodes, with their names and types. */
+  selection: { id: string; name: string; type: string }[]
+  /** The pointer on the page, in design units; null when it is off the canvas. */
+  cursor: { x: number; y: number } | null
+}
+
 export interface DesignoToolContext {
   dataDirectory: string
   generateId: GenerateId
@@ -85,6 +110,13 @@ export interface DesignoToolContext {
   getFontBytes?: (fontId: string) => Uint8Array | undefined
   /** Glyph outlines, which a screenshot draws text with; the default has the fonts the layout loaded. */
   getGlyphOutline?: GetGlyphOutline
+  /**
+   * The server's live-editing hub. Without it, as in the stdio server, writes go to the file,
+   * which the hub of a running editor picks up, and presence is read from the file it writes.
+   */
+  sync?: DesignoLiveSync
+  /** The name a comment an agent adds is signed with. */
+  authorName?: string
 }
 
 export interface ScreenshotImage {

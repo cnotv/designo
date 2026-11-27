@@ -34,6 +34,7 @@ import {
   operationBatchSchema,
   readDocument,
   writeDocument,
+  type AppliedBatch,
   type DocumentSummary,
   type OperationInput,
   type UploadedFontSummary
@@ -74,6 +75,26 @@ export const listFilesTool = (context: DesignoToolContext): Promise<DocumentSumm
  */
 export const listFontsTool = (context: DesignoToolContext): Promise<UploadedFontSummary[]> =>
   listUploadedFonts(context.dataDirectory)
+
+/**
+ * Applies a batch through the live room when the server has one, so the people on the file see
+ * the change at once and the hub is the only writer; straight to the file otherwise.
+ * @param context - Where files live, how ids are made, and the live hub if any.
+ * @param fileId - The file to change.
+ * @param operations - The changes, in order, already validated.
+ * @returns The saved document and the ids of the nodes the batch created.
+ */
+export const applyBatch = (
+  context: DesignoToolContext,
+  fileId: string,
+  operations: readonly OperationInput[]
+): Promise<AppliedBatch> =>
+  (context.sync?.applyOperations ?? applyOperationsToFile)(
+    context.dataDirectory,
+    fileId,
+    operations,
+    context.generateId
+  )
 
 /**
  * Creates an empty file with one page.
@@ -156,12 +177,9 @@ export const setPageSetupTool = async (
   if (node.type !== 'frame') {
     throw new Error(`Node ${input.nodeId} is a ${node.type}; a page setup belongs to a frame`)
   }
-  await applyOperationsToFile(
-    context.dataDirectory,
-    input.fileId,
-    [{ kind: 'update', id: input.nodeId, patch: getPageSetupPatch(node, input.setup) }],
-    context.generateId
-  )
+  await applyBatch(context, input.fileId, [
+    { kind: 'update', id: input.nodeId, patch: getPageSetupPatch(node, input.setup) }
+  ])
   return { nodeId: input.nodeId }
 }
 
@@ -185,12 +203,7 @@ export const combineNodesTool = async (
     )
   }
   // The operations come from core; the schema is the edge every batch to a file passes.
-  await applyOperationsToFile(
-    context.dataDirectory,
-    input.fileId,
-    operationBatchSchema.parse(operations),
-    context.generateId
-  )
+  await applyBatch(context, input.fileId, operationBatchSchema.parse(operations))
   return { nodeId }
 }
 
@@ -207,12 +220,7 @@ export const applyOperationsTool = async (
 ): Promise<{ createdNodeIds: string[]; warnings: string[] }> => {
   const before = await readDocument(context.dataDirectory, input.fileId)
   const operations = inferFixedWidth(input.operations, before)
-  const applied = await applyOperationsToFile(
-    context.dataDirectory,
-    input.fileId,
-    operations,
-    context.generateId
-  )
+  const applied = await applyBatch(context, input.fileId, operations)
   const { document, warnings: fitWarnings } = await fitTextBoxesUntilSettled(
     context,
     input.fileId,
@@ -255,12 +263,7 @@ const fitTextBoxesUntilSettled = async (
   if (updates.length === 0 || round >= MAX_FIT_ROUNDS) {
     return { document: applied.document, warnings: allWarnings }
   }
-  const fitted = await applyOperationsToFile(
-    context.dataDirectory,
-    fileId,
-    updates,
-    context.generateId
-  )
+  const fitted = await applyBatch(context, fileId, updates)
   return fitTextBoxesUntilSettled(
     context,
     fileId,
