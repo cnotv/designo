@@ -18,7 +18,7 @@ import { useEditorContext } from '../composables/editorContext.ts'
 import { clampExportScale, EXPORT_SCALES, getExportTargetIds } from '../editing/export.ts'
 import { describeFindingPlace, sortFindingsBySeverity } from '../editing/atsReport.ts'
 import { createMetadataOperations } from '../editing/pdfMetadata.ts'
-import type { ExportFormat } from '../editing/types.ts'
+import type { ExportFormat, ExportSettings } from '../editing/types.ts'
 import type { DocumentMetadata } from '@designo/core'
 
 const { editor, exporter } = useEditorContext()
@@ -40,6 +40,11 @@ const FORMATS: { value: ExportFormat; label: string }[] = [
   { value: 'svg', label: 'SVG' },
   { value: 'png', label: 'PNG' },
   { value: 'pdf', label: 'PDF' }
+]
+
+const COLOR_SPACES: { value: ExportSettings['colorSpace']; label: string }[] = [
+  { value: 'rgb', label: 'RGB, for screens' },
+  { value: 'cmyk', label: 'CMYK, for print' }
 ]
 
 const targetCount = computed(() =>
@@ -82,6 +87,9 @@ const setMetadata = (field: keyof DocumentMetadata, event: Event): void => {
 const setFormat = (value: AcceptableValue): void => {
   if (value === 'svg' || value === 'png' || value === 'pdf')
     settings.value = { ...settings.value, format: value }
+}
+const setColorSpace = (value: AcceptableValue): void => {
+  if (value === 'rgb' || value === 'cmyk') settings.value = { ...settings.value, colorSpace: value }
 }
 const setScale = (value: AcceptableValue): void => {
   settings.value = { ...settings.value, scale: clampExportScale(Number(value)) }
@@ -134,6 +142,19 @@ const setScale = (value: AcceptableValue): void => {
           @change="setMetadata(item.field, $event)"
         />
       </div>
+      <div class="flex flex-col gap-1.5">
+        <Label for="pdf-color-space">Colour</Label>
+        <Select :model-value="settings.colorSpace" @update:model-value="setColorSpace">
+          <SelectTrigger id="pdf-color-space" size="sm" class="w-full text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="space in COLOR_SPACES" :key="space.value" :value="space.value">
+              {{ space.label }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <div class="flex items-center gap-2">
         <Checkbox
           id="pdf-trim-marks"
@@ -144,6 +165,7 @@ const setScale = (value: AcceptableValue): void => {
       </div>
       <p class="text-muted-foreground">
         A page with bleed gets a bleed box and a trim box. Trim marks add room beyond the bleed.
+        CMYK converts shapes, gradients and text without a colour profile; images stay as they are.
       </p>
       <p class="text-muted-foreground">
         Text set as a heading, paragraph or list item is tagged for screen readers, in the order of

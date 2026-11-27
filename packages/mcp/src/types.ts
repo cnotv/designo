@@ -1,5 +1,5 @@
 import type { TextFace } from '@designo/core'
-import type { FontLineMetrics } from '@designo/exporter'
+import type { FontLineMetrics, PdfColorSpace } from '@designo/exporter'
 import type { FontFetch } from '@designo/fonts'
 import type { GenerateId } from '@designo/storage'
 import type { TextLayout, TextLayoutRequest } from '@designo/text'
@@ -88,6 +88,13 @@ export interface ScreenshotImage {
 }
 
 /** What `export_pdf` answers. */
+/** What export_pdf is asked for: the file, and how its pages are prepared for print. */
+export interface PdfExportInput {
+  fileId: string
+  trimMarks?: boolean
+  colorSpace?: PdfColorSpace
+}
+
 export interface PdfFile {
   mimeType: 'application/pdf'
   /** Base64-encoded PDF bytes. */

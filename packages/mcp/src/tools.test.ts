@@ -1,5 +1,6 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { inflateSync } from 'node:zlib'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -549,6 +550,36 @@ describe('export tools', () => {
     expect(plain).toContain('/TrimBox [9 9 209 109]')
     expect(plain).toContain('/BleedBox [0 0 218 118]')
     expect(await readBoxes(true)).toContain('/MediaBox [0 0 254 154]')
+  })
+
+  it('export_pdf writes vector colour as DeviceCMYK when colorSpace is cmyk', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Inks' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          type: 'rectangle',
+          parentId: pageId,
+          properties: { width: 50, height: 50, fill: '#ff0000' }
+        }
+      ]
+    })
+    const readContent = async (colorSpace?: 'rgb' | 'cmyk'): Promise<string> => {
+      const pdf = Buffer.from((await exportPdfTool(context, { fileId, colorSpace })).data, 'base64')
+      return [...pdf.toString('latin1').matchAll(/stream\r?\n([\S\s]*?)\r?\nendstream/g)]
+        .map((match) => {
+          // The XMP metadata is a stream too, written uncompressed.
+          try {
+            return inflateSync(Buffer.from(match[1] ?? '', 'latin1')).toString('latin1')
+          } catch {
+            return ''
+          }
+        })
+        .join('\n')
+    }
+    expect(await readContent()).toContain('/DeviceRGB cs')
+    expect(await readContent('cmyk')).toMatch(/\/DeviceCMYK cs\s+0 1 1 0 scn/)
   })
 
   it('export_pdf makes a page of each frame given a pdfPage, in that order', async () => {

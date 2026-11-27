@@ -189,6 +189,15 @@ on every side. Its MediaBox and BleedBox are that larger box, its TrimBox is the
 and the frame's fill and clip reach the bleed edge so the artwork bleeds. `trimMarks: true` adds a
 slug of 18 points beyond the bleed with crop marks at the corners of the trim box.
 
+`colorSpace: "cmyk"` writes fills, strokes, gradients, text and trim marks as DeviceCMYK, for a
+print shop that asks for CMYK; `"rgb"`, the default, keeps the colours as designed. The conversion
+is the device formula with no colour profile: black is what the brightest channel lacks
+(`K = 1 - max(R, G, B)`), each ink makes up what its channel lacks beyond that
+(`C = (1 - R - K) / (1 - K)`, and so on), and each value is rounded to a tenth of a percent. Pure
+black is black ink alone. The result is not colour managed: saturated blues and greens print duller
+than the screen shows, and a rich black needs inks the formula never adds. Images, and layers with
+blur or a shadow drawn as images, stay RGB, since no ICC profile is embedded to convert them.
+
 The PDF's title, author and subject come from an `updateMetadata` operation in `apply_ops`
 (`patch` with any of `title`, `author` and `subject`; an empty string clears a field), written to
 the info dictionary and the XMP. The title falls back to the file name. A text node with a `pdfTag`

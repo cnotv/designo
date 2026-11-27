@@ -23,14 +23,14 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/storage`  | built   | Validated, atomic file reads and writes; the picture store; the operation schema; applying a batch to a file           |
 | `@designo/mcp`      | built   | MCP server for agents (stdio)                                                                                          |
 | `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP                                      |
-| `@designo/exporter` | built   | Pure SVG export of a node, and a PDF of a document (pdfkit, `@designo/exporter/pdf`)                                   |
+| `@designo/exporter` | built   | Pure SVG export of a node, and a PDF of a document in RGB or CMYK (pdfkit, `@designo/exporter/pdf`)                    |
 | `@designo/ats`      | built   | Pure ATS checks over a document and the facts of its PDF, and a pdf.js reader for those facts (`@designo/ats/extract`) |
 | `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files                                 |
 | `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it                              |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI                                          |
 | `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11)                                       |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                                                          |
-| `exporter` (rest)   | phase 4 | Vue/HTML code, PDF bleed, trim and CMYK                                                                                |
+| `exporter` (rest)   | phase 4 | Vue/HTML code                                                                                                          |
 
 ## Document model
 

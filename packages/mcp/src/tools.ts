@@ -39,6 +39,7 @@ import { rasterizeSvgToPng } from './rasterize.ts'
 import { loadScreenshotFonts } from './screenshotFonts.ts'
 import type {
   DesignoToolContext,
+  PdfExportInput,
   PdfFile,
   ScreenshotImage,
   ScreenshotText,
@@ -291,7 +292,7 @@ const PDF_RASTER_SCALE = 3
 
 const buildPdf = async (
   context: DesignoToolContext,
-  input: { fileId: string; trimMarks?: boolean }
+  input: PdfExportInput
 ): Promise<{ document: DesignDocument; bytes: Uint8Array }> => {
   const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
   const layoutText = context.layoutText ?? layoutTextWithFontsourceFonts
@@ -306,6 +307,7 @@ const buildPdf = async (
   const bytes = await exportDocumentToPdf(document, {
     ...lookups,
     trimMarks: input.trimMarks,
+    colorSpace: input.colorSpace,
     getTextLayout: (node) => layouts.get(node.id),
     getFontBytes: context.getFontBytes ?? layoutTextWithFontsourceFonts.getFontBytes,
     rasterizeNode: async (nodeId) => {
@@ -324,12 +326,12 @@ const buildPdf = async (
  * Writes the file as a PDF, a page for each page in it, in order. Text is set in the fonts the
  * editor lays it out with, embedded in the file; guides are never drawn.
  * @param context - Where files live and how text is laid out.
- * @param input - The file.
+ * @param input - The file, and whether it gets trim marks and CMYK colour.
  * @returns The PDF as base64 with its MIME type.
  */
 export const exportPdfTool = async (
   context: DesignoToolContext,
-  input: { fileId: string; trimMarks?: boolean }
+  input: PdfExportInput
 ): Promise<PdfFile> => {
   const { bytes } = await buildPdf(context, input)
   return { mimeType: 'application/pdf', data: Buffer.from(bytes).toString('base64') }

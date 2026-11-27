@@ -12,8 +12,9 @@ import {
   type PdfTag
 } from '@designo/core'
 import type { LaidOutLine, PlacedGlyph } from '@designo/text'
+import { hexToCmyk } from './cmyk.ts'
 import { getExportBounds, hasFilter } from './svg.ts'
-import type { PdfExportOptions } from './types.ts'
+import type { CmykColor, PdfColorSpace, PdfExportOptions } from './types.ts'
 
 type Pdf = InstanceType<typeof PDFDocument>
 
@@ -71,18 +72,36 @@ interface GraphicsState {
 }
 
 interface Paint {
-  color: string
+  /** `#rrggbb` for DeviceRGB, four ink percentages for DeviceCMYK. */
+  color: string | CmykColor
   alpha: number
 }
 
 // Colours are `#rrggbb` or `#rrggbbaa`; the PDF takes the alpha apart from the colour.
-const parsePaint = (hex: string): Paint => ({
-  color: hex.slice(0, HEX_COLOR_LENGTH),
-  alpha:
-    hex.length > HEX_COLOR_LENGTH
-      ? Number.parseInt(hex.slice(HEX_COLOR_LENGTH), 16) / ALPHA_DIVISOR
-      : 1
-})
+const parsePaint = (hex: string, colorSpace: PdfColorSpace | undefined): Paint => {
+  const color = hex.slice(0, HEX_COLOR_LENGTH)
+  return {
+    color: colorSpace === 'cmyk' ? hexToCmyk(color) : color,
+    alpha:
+      hex.length > HEX_COLOR_LENGTH
+        ? Number.parseInt(hex.slice(HEX_COLOR_LENGTH), 16) / ALPHA_DIVISOR
+        : 1
+  }
+}
+
+const parseContextPaint = ({ options }: ExportContext, hex: string): Paint =>
+  parsePaint(hex, options.colorSpace)
+
+// pdfkit picks the gradient's colour space from its first stop, so every stop is in the same one.
+// It reads four numbers as CMYK there as it does in a fill, but its types list only the string, so
+// the call goes through Reflect rather than a cast.
+const addGradientStop = (
+  paint: ReturnType<Pdf['linearGradient']>,
+  offset: number,
+  { color, alpha }: Paint
+): void => {
+  Reflect.apply(paint.stop, paint, [offset, color, alpha])
+}
 
 const createGraphicsState = (
   pdf: Pdf,
@@ -185,10 +204,9 @@ const fillLinearGradient = (
     node.x + line.endX,
     node.y + line.endY
   )
-  stops.forEach((stop) => {
-    const { color, alpha } = parsePaint(stop.color)
-    paint.stop(stop.offset, color, alpha)
-  })
+  stops.forEach((stop) =>
+    addGradientStop(paint, stop.offset, parseContextPaint(context, stop.color))
+  )
   traceShape(context, node)
   pdf.fill(paint)
 }
@@ -208,10 +226,9 @@ const fillRadialGradient = (
   pdf.translate(node.x + node.width / 2, node.y + node.height / 2)
   pdf.scale(node.width, node.height)
   const paint = pdf.radialGradient(0, 0, 0, 0, 0, RADIAL_UNIT_RADIUS)
-  stops.forEach((stop) => {
-    const { color, alpha } = parsePaint(stop.color)
-    paint.stop(stop.offset, color, alpha)
-  })
+  stops.forEach((stop) =>
+    addGradientStop(paint, stop.offset, parseContextPaint(context, stop.color))
+  )
   pdf.rect(-RADIAL_UNIT_RADIUS, -RADIAL_UNIT_RADIUS, 1, 1).fill(paint)
   pdf.restore()
 }
@@ -226,7 +243,7 @@ const paintFill = (context: ExportContext, node: DesignNode, opacity: number): v
     return
   }
   if (node.fill === null) return
-  const { color, alpha } = parsePaint(node.fill)
+  const { color, alpha } = parseContextPaint(context, node.fill)
   setGraphicsState(context, opacity * alpha, hasLayerEffects(node) ? node.blendMode : 'normal')
   traceShape(context, node)
   pdf.fill(color)
@@ -235,7 +252,7 @@ const paintFill = (context: ExportContext, node: DesignNode, opacity: number): v
 const paintStroke = (context: ExportContext, node: DesignNode, opacity: number): void => {
   if (node.stroke === null || node.strokeWidth <= 0) return
   const { pdf } = context
-  const { color, alpha } = parsePaint(node.stroke)
+  const { color, alpha } = parseContextPaint(context, node.stroke)
   setGraphicsState(context, opacity * alpha, hasLayerEffects(node) ? node.blendMode : 'normal')
   traceShape(context, node)
   pdf.lineWidth(node.strokeWidth).stroke(color)
@@ -324,7 +341,7 @@ const getLineRuns = (text: string, line: LaidOutLine): TextRun[] =>
   }, [])
 
 const setPaint = (context: ExportContext, fill: string, opacity: number): void => {
-  const paint = parsePaint(fill)
+  const paint = parseContextPaint(context, fill)
   setGraphicsState(context, opacity * paint.alpha, 'normal')
   context.pdf.fillColor(paint.color)
 }
@@ -631,7 +648,11 @@ const writePageBoxes = (pdf: Pdf, { width, height, bleed, inset }: PageGeometry)
 
 // Eight lines, two at each corner of the trim box, in the slug beyond the bleed so none lands on art.
 // Each runs along a trim edge's extension, from the page edge inwards by the mark length.
-const drawTrimMarks = (pdf: Pdf, { width, height, inset }: Omit<PageGeometry, 'bleed'>): void => {
+const drawTrimMarks = (
+  pdf: Pdf,
+  { width, height, inset }: Omit<PageGeometry, 'bleed'>,
+  colorSpace: PdfColorSpace | undefined
+): void => {
   const pageWidth = width + inset * 2
   const pageHeight = height + inset * 2
   const sides = [
@@ -643,7 +664,7 @@ const drawTrimMarks = (pdf: Pdf, { width, height, inset }: Omit<PageGeometry, 'b
     { edge: pageHeight, inward: pageHeight - TRIM_MARK_LENGTH }
   ]
   pdf.save()
-  pdf.lineWidth(TRIM_MARK_WIDTH).strokeColor('#000000')
+  pdf.lineWidth(TRIM_MARK_WIDTH).strokeColor(parsePaint('#000000', colorSpace).color)
   ;[inset, inset + height].forEach((y) =>
     sides.forEach((side) => pdf.moveTo(side.edge, y).lineTo(side.inward, y).stroke())
   )
@@ -662,7 +683,8 @@ const drawTrimMarks = (pdf: Pdf, { width, height, inset }: Omit<PageGeometry, 'b
  * A text, rectangle or frame with a `link` is clickable in the PDF: an annotation over its box,
  * or over each line of a wrapped text. A page frame with bleed makes a page grown by the bleed on
  * every side, with a BleedBox and a TrimBox, and its fill and clip reach the bleed edge; `trimMarks`
- * adds crop marks in a slug beyond it. Layout guides are not part of a document's nodes, so none
+ * adds crop marks in a slug beyond it. `colorSpace: 'cmyk'` writes vector colour as DeviceCMYK, for
+ * print; images stay as they are. Layout guides are not part of a document's nodes, so none
  * is drawn.
  * @param document - The document to write.
  * @param options - How text is laid out, where its fonts are, and how blurred nodes are drawn.
@@ -711,7 +733,7 @@ export const exportDocumentToPdf = async (
       1
     )
     pdf.restore()
-    if (options.trimMarks) drawTrimMarks(pdf, { width, height, inset })
+    if (options.trimMarks) drawTrimMarks(pdf, { width, height, inset }, options.colorSpace)
   })
   addStructureTree(context)
   pdf.end()

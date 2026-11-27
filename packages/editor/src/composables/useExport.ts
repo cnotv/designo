@@ -8,7 +8,12 @@ import type { ExportSettings } from '../editing/types.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 import type { Editor, ExportController } from './types.ts'
 
-const DEFAULT_SETTINGS: ExportSettings = { format: 'svg', scale: 2, trimMarks: false }
+const DEFAULT_SETTINGS: ExportSettings = {
+  format: 'svg',
+  scale: 2,
+  trimMarks: false,
+  colorSpace: 'rgb'
+}
 
 const downloadBlob = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob)
@@ -64,7 +69,7 @@ const PDF_RASTER_SCALE = 3
 
 const exportPdf = async (
   exportedDocument: NonNullable<Editor['document']['value']>,
-  trimMarks: boolean
+  { trimMarks, colorSpace }: Pick<ExportSettings, 'trimMarks' | 'colorSpace'>
 ): Promise<Blob> => {
   const runtime = getSharedTextRuntime()
   const layouts = new Map(
@@ -81,6 +86,7 @@ const exportPdf = async (
   const { exportDocumentToPdf } = await import('@designo/exporter/pdf')
   const bytes = await exportDocumentToPdf(exportedDocument, {
     trimMarks,
+    colorSpace,
     getTextLayout: (node) => layouts.get(node.id),
     getFontBytes: runtime.library.getFontBytes,
     rasterizeNode: async (nodeId) => {
@@ -146,7 +152,7 @@ export const useExport = (editor: Editor): ExportController => {
     if (!storedDocument) return
     const currentDocument = resolveMasters(storedDocument)
     await runAtsCheck(async (ats) => {
-      const pdf = await exportPdf(currentDocument, false)
+      const pdf = await exportPdf(currentDocument, { trimMarks: false, colorSpace: 'rgb' })
       return ats.checkAts(
         currentDocument,
         await ats.extractPdfFacts(new Uint8Array(await pdf.arrayBuffer()))
@@ -184,7 +190,7 @@ export const useExport = (editor: Editor): ExportController => {
     try {
       if (settings.value.format === 'pdf') {
         downloadBlob(
-          await exportPdf(currentDocument, settings.value.trimMarks),
+          await exportPdf(currentDocument, settings.value),
           buildExportFileName(currentDocument.name, 'pdf', settings.value.scale)
         )
         return

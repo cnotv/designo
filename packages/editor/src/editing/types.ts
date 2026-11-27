@@ -1,3 +1,4 @@
+import type { PdfColorSpace } from '@designo/exporter'
 import type {
   DesignNode,
   DesignOperation,
@@ -201,6 +202,8 @@ export interface ExportSettings {
   scale: number
   /** PDF only: crop marks at the corners of each page's trim box. */
   trimMarks: boolean
+  /** PDF only: vector colour as designed (`rgb`) or converted to print inks (`cmyk`). */
+  colorSpace: PdfColorSpace
 }
 
 export interface PixelSize {
