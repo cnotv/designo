@@ -232,6 +232,20 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 | `get_selection`     | Tells who has the file open in the editor, what each has selected (ids, names, types) and where their pointer is                                                              |
 | `get_comments`      | Lists the open comments, oldest first; `includeResolved` adds the resolved ones                                                                                               |
 | `add_comment`       | Leaves a comment on the page, or pinned to `nodeId` at `x`, `y` from its top left                                                                                             |
+| `get_skill`         | Lists Designo's own agent skills, or returns one (`name`) or one of its reference files (`file`)                                                                              |
+
+### Agent skills
+
+The server carries its own skills, so an agent needs no outside skill pack to build with Designo.
+`get_skill` with no arguments lists them; with a `name` it returns that skill, and with a `file`
+one of the references it lists. The server instructions tell the agent to load the matching skill
+before it builds. Today there is one: `designo-template`, for artist and stationery templates (a
+picture book, zine, card, poster series or letterhead set).
+
+The built-in skill covers a short style brief, so it works alone. For deeper design craft (style
+directions, layout, colour, review), add a design skill pack next to it; the
+[agent-base](https://github.com/cnotv/agent-base) plugin has `visual-design-craft` and a router
+that loads Designo's skill for you. Designo needs neither.
 
 ### Working with people live
 

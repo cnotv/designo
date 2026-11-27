@@ -162,3 +162,19 @@ export interface AccountFonts {
   layoutText: NodeLayoutText
   loadScreenshotFonts: LoadScreenshotFonts
 }
+
+/** An agent skill the server carries: what it is for and the files it holds. */
+export interface SkillSummary {
+  name: string
+  description: string
+  /** Paths inside the skill folder, SKILL.md first among them by name order. */
+  files: string[]
+}
+
+/** One file of a skill, with the other files the skill holds. */
+export interface SkillContent {
+  name: string
+  file: string
+  content: string
+  files: string[]
+}

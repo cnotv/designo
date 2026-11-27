@@ -40,10 +40,14 @@ import {
   measureTextTool,
   setPageSetupTool
 } from './tools.ts'
+import { BUNDLED_SKILLS_FOLDER, getSkillTool, listSkillsTool } from './skills.ts'
 import { MAX_SCREENSHOT_SCALE, MIN_SCREENSHOT_SCALE } from './rasterize.ts'
 import type { DesignoToolContext, PdfFile, ScreenshotImage } from './types.ts'
 
 const SERVER_VERSION = '0.0.0'
+// Designo carries its own skills so an agent needs no outside skill pack to build with it.
+const SERVER_INSTRUCTIONS =
+  'Designo is a design tool. Before building a template, a picture book, a zine, a card or a stationery set, call get_skill with no arguments to list the skills, then get_skill with the matching name and follow it. The skill states what this version of the tools supports.'
 const MAX_TREE_DEPTH = 50
 const MAX_COMBINED_NODES = 100
 const MAX_MEASURED_TEXT_LENGTH = 100_000
@@ -368,6 +372,27 @@ const registerCodeTools = (server: McpServer, context: DesignoToolContext): void
   )
 }
 
+const registerSkillTools = (server: McpServer): void => {
+  server.registerTool(
+    'get_skill',
+    {
+      description:
+        "Designo's own agent skills: how to build with Designo, for example an artist template. With no arguments it lists the skills and what each is for. With name it returns that skill's SKILL.md; with file as well, one of the reference files the skill lists. Load the matching skill before building.",
+      inputSchema: {
+        name: z.string().min(1).max(200).optional(),
+        file: z.string().max(500).optional()
+      },
+      annotations: READ_ONLY
+    },
+    ({ name, file }) =>
+      toToolResult(() =>
+        name === undefined
+          ? listSkillsTool(BUNDLED_SKILLS_FOLDER)
+          : getSkillTool(BUNDLED_SKILLS_FOLDER, { name, file })
+      )
+  )
+}
+
 const registerLiveTools = (server: McpServer, context: DesignoToolContext): void => {
   server.registerTool(
     'get_selection',
@@ -412,7 +437,10 @@ const registerLiveTools = (server: McpServer, context: DesignoToolContext): void
  * @returns The server, ready to connect to a transport.
  */
 export const createDesignoServer = (context: DesignoToolContext): McpServer => {
-  const server = new McpServer({ name: 'designo', version: SERVER_VERSION })
+  const server = new McpServer(
+    { name: 'designo', version: SERVER_VERSION },
+    { instructions: SERVER_INSTRUCTIONS }
+  )
   registerReadTools(server, context)
   registerExportTools(server, context)
   registerFontTools(server, context)
@@ -421,6 +449,7 @@ export const createDesignoServer = (context: DesignoToolContext): McpServer => {
   registerWriteTools(server, context)
   registerShapeTools(server, context)
   registerCodeTools(server, context)
+  registerSkillTools(server)
   registerLiveTools(server, context)
   return server
 }

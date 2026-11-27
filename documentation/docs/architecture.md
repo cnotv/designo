@@ -439,6 +439,27 @@ draws the node's fill. The SVG exporter takes
 a `getImageHref` option and the PDF exporter a `getImageBytes` one; the MCP server fills both from
 the store, and the editor draws from `/api/files/assets` through an in-memory cache.
 
+## Agent skills
+
+Designo owns the knowledge of its own tools. The skills that say how to build with it live in
+`packages/mcp/skills/`, one folder each with a `SKILL.md` and its references, and the MCP server
+hands them out through `get_skill`. Its instructions tell an agent to load the matching skill
+first. The skill is read from the same checkout as the tools, so it always describes the version the
+agent is connected to, and someone who runs only Designo needs nothing else.
+
+```
+agent ──▶ designo MCP ──▶ get_skill ──▶ packages/mcp/skills/<name>/SKILL.md
+                 ▲
+skill packs elsewhere (for example agent-base): tool neutral craft, plus a thin router skill that
+says "building in Designo? load Designo's skill first"
+```
+
+The dependency runs one way. A skill pack may point at Designo's skills; a Designo skill never
+names a skill pack, and only the documentation suggests one, as an optional extra. A skill pack carries what is true of any tool (style, workflow, review), and
+Designo carries what is true only of Designo (its operations, its limits, its print specs).
+Calling an agent outside Designo, such as from another editor, goes through the router, which
+fetches the skill from a connected Designo server; with none connected it says so and stops.
+
 ## Decisions
 
 - **UI library:** shadcn-vue, on Reka UI, with Tailwind CSS v4. Its components are copied into
