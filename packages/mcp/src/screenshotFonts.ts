@@ -11,6 +11,7 @@ import {
   readLineMetrics,
   renameFontFamily,
   resolveFontFamilies,
+  withUploadedFonts,
   type FontFile
 } from '@designo/fonts'
 import {
@@ -18,6 +19,7 @@ import {
   createCachingFetch,
   fetchFontBytes,
   fetchWithTimeout,
+  readLocalOrFetch,
   writeAtomically
 } from './fontNetwork.ts'
 import type {
@@ -140,8 +142,9 @@ const chooseDrawingFile = (assignment: Assignment): LocalFontFile | undefined =>
  * Builds the loader `get_screenshot` uses to find fonts. For each family list on the page it asks
  * the font API for the families, then downloads, once, the subset files its characters need,
  * checking each file has the glyphs. The text is drawn with the file that has most of them, and
- * the renderer falls back to the others for the rest. Nothing ships with Designo; a family the API
- * cannot reach is left out, and its text is drawn with the page's other fonts.
+ * the renderer falls back to the others for the rest. An account's uploaded fonts are found first.
+ * Nothing ships with Designo; a family the API cannot reach is left out, and its text is drawn
+ * with the page's other fonts.
  * @param options - How to fetch, and the cache folder.
  * @returns The loader.
  */
@@ -149,12 +152,14 @@ export const createScreenshotFontLoader = ({
   fetchJson = fetchWithTimeout,
   fetchBytes = fetchFontBytes,
   cacheDirectory = DEFAULT_FONT_CACHE_DIRECTORY,
-  warn = (message) => console.error(message)
+  warn = (message) => console.error(message),
+  uploadedFonts = []
 }: ScreenshotFontLoaderOptions = {}): LoadScreenshotFonts => {
-  const resolveFamily = createFontsourceResolver({
-    fetch: createCachingFetch(fetchJson, cacheDirectory)
-  })
-  const loadLocal = createLocalFileLoader(cacheDirectory, fetchBytes, warn)
+  const resolveFamily = withUploadedFonts(
+    () => Promise.resolve(uploadedFonts),
+    createFontsourceResolver({ fetch: createCachingFetch(fetchJson, cacheDirectory) })
+  )
+  const loadLocal = createLocalFileLoader(cacheDirectory, readLocalOrFetch(fetchBytes), warn)
 
   const findListFonts = async ([key, { face, text }]: [string, FaceText]): Promise<
     [string, ListFonts]

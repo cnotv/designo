@@ -10,6 +10,7 @@ import {
 } from '@designo/storage'
 import { z } from 'zod'
 import { handleAssetsRequest, isAssetsPath } from './assetsApi.ts'
+import { handleFontsRequest, isFontsPath } from './fontsApi.ts'
 import {
   MAX_BODY_BYTES,
   crossSiteProblem,
@@ -132,7 +133,7 @@ const routeFileRequest = async (
 /**
  * Answers a request under the files route. GET lists files or reads one; DELETE removes one; POST to
  * `<file id>/operations` applies a batch of operations to that file; `assets` stores and serves
- * pictures.
+ * pictures, and `fonts` the account's uploaded fonts.
  * @param dataDirectory - Where Designo files live.
  * @param request - The incoming request.
  * @param response - Where the JSON answer goes.
@@ -149,6 +150,11 @@ export const handleFilesRequest = async (
   // `assets` is the picture store's path, so a file cannot be reached under that name.
   if (isAssetsPath(path)) {
     await handleAssetsRequest(dataDirectory, request, response, path)
+    return
+  }
+  // Likewise `fonts` is the font store's.
+  if (isFontsPath(path)) {
+    await handleFontsRequest(dataDirectory, request, response, path)
     return
   }
   const isOperations = path.endsWith(OPERATIONS_SUFFIX)

@@ -3,7 +3,8 @@ import type { z } from 'zod'
 import type {
   fontsourceFamilyListSchema,
   fontsourceFamilySchema,
-  operationInputSchema
+  operationInputSchema,
+  uploadedFontSummarySchema
 } from './schemas.ts'
 
 export interface DocumentSummary {
@@ -36,3 +37,6 @@ export type FontsourceFamily = z.infer<typeof fontsourceFamilySchema>
 
 /** A family in the Fontsource list: its id, its name and its category, such as `serif`. */
 export type FontsourceFamilySummary = z.infer<typeof fontsourceFamilyListSchema>[number]
+
+/** An uploaded font: its id in the account's font store, and the family, weight and style it declares. */
+export type UploadedFontSummary = z.infer<typeof uploadedFontSummarySchema>

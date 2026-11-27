@@ -28,23 +28,28 @@ import {
   readDocument,
   writeDocument,
   type DocumentSummary,
-  type OperationInput
+  type OperationInput,
+  type UploadedFontSummary
 } from '@designo/storage'
 import { toTextLayoutRequest } from '@designo/text'
-import { layoutTextWithFontsourceFonts } from './textLayout.ts'
 import { findTextBoxFits, inferFixedWidth } from './fitTextBoxes.ts'
 import { findOutsideParentWarnings } from './outsideParentWarnings.ts'
 import { loadDocumentImages, loadSubtreeImages, toImageLookups } from './images.ts'
 import { rasterizeSvgToPng } from './rasterize.ts'
-import { loadScreenshotFonts } from './screenshotFonts.ts'
+import { getAccountFonts, listUploadedFonts } from './uploadedFonts.ts'
 import type {
   DesignoToolContext,
+  LayoutText,
   PdfExportInput,
   PdfFile,
   ScreenshotImage,
   ScreenshotText,
   TextMeasurement
 } from './types.ts'
+
+// A host or a test that brings its own layout keeps it; otherwise the account's fonts decide.
+const getLayoutText = async (context: DesignoToolContext): Promise<LayoutText> =>
+  context.layoutText ?? (await getAccountFonts(context.dataDirectory)).layoutText
 
 /**
  * Lists the files an agent can open.
@@ -53,6 +58,14 @@ import type {
  */
 export const listFilesTool = (context: DesignoToolContext): Promise<DocumentSummary[]> =>
   listDocuments(context.dataDirectory)
+
+/**
+ * Lists the fonts the account uploaded, which a text can name in its `fontFamily`.
+ * @param context - Where the account's files live.
+ * @returns Each font's id, family, weight and style.
+ */
+export const listFontsTool = (context: DesignoToolContext): Promise<UploadedFontSummary[]> =>
+  listUploadedFonts(context.dataDirectory)
 
 /**
  * Creates an empty file with one page.
@@ -228,7 +241,7 @@ const fitTextBoxesUntilSettled = async (
     before,
     operations,
     applied.createdNodeIds,
-    context.layoutText ?? layoutTextWithFontsourceFonts
+    await getLayoutText(context)
   )
   const allWarnings = [...new Set([...seenWarnings, ...warnings])]
   if (updates.length === 0 || round >= MAX_FIT_ROUNDS) {
@@ -259,7 +272,7 @@ const findTextLines = async (
     const node = document.nodes[id]
     return node?.type === 'text' && node.textWrap && node.text !== '' ? [node] : []
   })
-  const layoutText = context.layoutText ?? layoutTextWithFontsourceFonts
+  const layoutText = await getLayoutText(context)
   const layouts = new Map(
     await Promise.all(
       wrapped.map(async (node) => [node.id, await layoutText(toTextLayoutRequest(node))] as const)
@@ -295,7 +308,7 @@ const buildPdf = async (
   input: PdfExportInput
 ): Promise<{ document: DesignDocument; bytes: Uint8Array }> => {
   const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
-  const layoutText = context.layoutText ?? layoutTextWithFontsourceFonts
+  const layoutText = await getLayoutText(context)
   const layouts = new Map(
     await Promise.all(
       Object.values(document.nodes)
@@ -309,7 +322,9 @@ const buildPdf = async (
     trimMarks: input.trimMarks,
     colorSpace: input.colorSpace,
     getTextLayout: (node) => layouts.get(node.id),
-    getFontBytes: context.getFontBytes ?? layoutTextWithFontsourceFonts.getFontBytes,
+    getFontBytes:
+      context.getFontBytes ??
+      (await getAccountFonts(context.dataDirectory)).layoutText.getFontBytes,
     rasterizeNode: async (nodeId) => {
       const outcome = await (context.rasterize ?? rasterizeSvgToPng)(
         exportNodeToSvg(document, nodeId, { getImageHref: lookups.getImageHref }),
@@ -398,9 +413,10 @@ export const getScreenshotTool = async (
 ): Promise<ScreenshotImage> => {
   const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
   const nodeId = input.nodeId ?? document.rootId
-  const fonts = await (context.loadScreenshotFonts ?? loadScreenshotFonts)(
-    collectTexts(document, nodeId)
-  )
+  const fonts = await (
+    context.loadScreenshotFonts ??
+    (await getAccountFonts(context.dataDirectory)).loadScreenshotFonts
+  )(collectTexts(document, nodeId))
   const svg = exportNodeToSvg(document, nodeId, {
     resolveFontFamily: fonts.resolveFontFamily,
     getFontMetrics: fonts.getFontMetrics,
@@ -455,7 +471,9 @@ export const measureTextTool = async (
   context: DesignoToolContext,
   input: TextMeasureInput
 ): Promise<TextMeasurement> => {
-  const layout = await (context.layoutText ?? layoutTextWithFontsourceFonts)({
+  const layout = await (
+    await getLayoutText(context)
+  )({
     text: input.text,
     ...toMeasuredFace(input),
     ...toMeasuredBox(input)

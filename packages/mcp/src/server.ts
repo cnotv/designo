@@ -34,6 +34,7 @@ import {
   getScreenshotTool,
   getStylesTool,
   listFilesTool,
+  listFontsTool,
   measureTextTool,
   setPageSetupTool
 } from './tools.ts'
@@ -182,6 +183,18 @@ const registerReadTools = (server: McpServer, context: DesignoToolContext): void
       annotations: READ_ONLY
     },
     (input) => toPdfResult(() => exportPdfTool(context, input))
+  )
+}
+
+const registerFontTools = (server: McpServer, context: DesignoToolContext): void => {
+  server.registerTool(
+    'list_fonts',
+    {
+      description:
+        "List the fonts this account uploaded in the editor (Font picker, Upload a font), with each file's family, fontWeight and fontStyle. Name the family in a text's fontFamily to use one: it is drawn with the uploaded file in the editor, get_screenshot and export_pdf, ahead of any font API family of the same name. Families not listed here come from the Fontsource API.",
+      annotations: READ_ONLY
+    },
+    () => toToolResult(() => listFontsTool(context))
   )
 }
 
@@ -336,6 +349,7 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
 export const createDesignoServer = (context: DesignoToolContext): McpServer => {
   const server = new McpServer({ name: 'designo', version: SERVER_VERSION })
   registerReadTools(server, context)
+  registerFontTools(server, context)
   registerStyleTools(server, context)
   registerAtsTools(server, context)
   registerWriteTools(server, context)

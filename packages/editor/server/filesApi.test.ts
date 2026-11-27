@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createDocument } from '@designo/core'
 import { readDocument, writeDocument } from '@designo/storage'
+import { readFile } from 'node:fs/promises'
+import { renameFontFamily } from '@designo/fonts'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { FILES_ROUTE, handleFilesRequest } from './filesApi.ts'
 
@@ -145,5 +147,52 @@ describe('files API', () => {
       expect((await fetch(`${baseUrl}/assets/${'a'.repeat(64)}.png`)).status).toBe(404)
       expect((await fetch(`${baseUrl}/assets/..%2Fsecret.png`)).status).toBe(404)
     })
+  })
+})
+
+describe('fonts', () => {
+  const uploadFont = async (body: BodyInit, headers: Record<string, string> = {}) =>
+    fetch(`${baseUrl}/fonts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'font/ttf', ...headers },
+      body
+    })
+  // A copy, as fetch takes only bytes backed by a plain ArrayBuffer.
+  const studioSans = async (): Promise<Uint8Array<ArrayBuffer>> =>
+    new Uint8Array(
+      renameFontFamily(
+        new Uint8Array(
+          await readFile(
+            new URL('../../text/src/fixtures/Inter-Regular.subset.ttf', import.meta.url)
+          )
+        ),
+        'Studio Sans'
+      )
+    )
+
+  it('stores an uploaded font, lists it and serves its file', async () => {
+    const bytes = await studioSans()
+    const stored = await (await uploadFont(bytes)).json()
+    expect(stored).toMatchObject({ family: 'Studio Sans', fontWeight: 400, fontStyle: 'normal' })
+    expect(await (await fetch(`${baseUrl}/fonts`)).json()).toEqual([stored])
+    const served = await fetch(`${baseUrl}/fonts/${stored.id}`)
+    expect(served.headers.get('content-type')).toBe('font/ttf')
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(bytes)
+  })
+
+  it('refuses a file that is not a font, one sent as a form, and one from another site', async () => {
+    expect((await uploadFont('<svg onload="alert(1)">')).status).toBe(400)
+    expect((await uploadFont(await studioSans(), { 'Content-Type': 'text/plain' })).status).toBe(
+      415
+    )
+    expect((await uploadFont(await studioSans(), { Origin: 'https://evil.example' })).status).toBe(
+      403
+    )
+    expect(await (await fetch(`${baseUrl}/fonts`)).json()).toEqual([])
+  })
+
+  it('reports an unknown font and a malformed id', async () => {
+    expect((await fetch(`${baseUrl}/fonts/${'a'.repeat(64)}.ttf`)).status).toBe(404)
+    expect((await fetch(`${baseUrl}/fonts/..%2Fstore.json`)).status).toBe(404)
   })
 })

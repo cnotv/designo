@@ -21,7 +21,13 @@ const HTTP_PAYLOAD_TOO_LARGE = 413
 const HTTP_UNSUPPORTED_MEDIA_TYPE = 415
 const ONE_YEAR_SECONDS = 31_536_000
 
-const readLimitedBytes = (
+/**
+ * Reads a request body, giving up once it passes a size, so an upload cannot fill the memory.
+ * @param request - The incoming request.
+ * @param maxBytes - The most bytes accepted.
+ * @returns The body; undefined when it is larger than allowed.
+ */
+export const readLimitedBytes = (
   request: IncomingMessage,
   maxBytes: number
 ): Promise<Uint8Array | undefined> =>
