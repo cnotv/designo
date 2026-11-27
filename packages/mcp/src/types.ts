@@ -1,6 +1,6 @@
 import type { TextFace } from '@designo/core'
 import type { FontLineMetrics, PdfColorSpace } from '@designo/exporter'
-import type { FontFetch } from '@designo/fonts'
+import type { FontFetch, UploadedFont } from '@designo/fonts'
 import type { GenerateId } from '@designo/storage'
 import type { TextLayout, TextLayoutRequest } from '@designo/text'
 
@@ -41,6 +41,8 @@ export interface ScreenshotFontLoaderOptions {
   cacheDirectory?: string
   /** Hears why a font was left out. */
   warn?: (message: string) => void
+  /** The account's uploaded fonts, found before the font API's families of the same name. */
+  uploadedFonts?: readonly UploadedFont[]
 }
 
 export interface RenderLimits {
@@ -66,6 +68,8 @@ export interface TextLayoutFetchers {
   fetchJson?: FontFetch
   fetchBytes?: (url: string) => Promise<Uint8Array>
   cacheDirectory?: string
+  /** The account's uploaded fonts, found before the font API's families of the same name. */
+  uploadedFonts?: readonly UploadedFont[]
 }
 
 export interface DesignoToolContext {
@@ -108,4 +112,15 @@ export interface TextMeasurement {
   lineCount: number
   /** The text of each line, as it breaks. */
   lines: string[]
+}
+
+/** The layout, and the bytes of every font file it has loaded, which a PDF embeds. */
+export type NodeLayoutText = LayoutText & {
+  getFontBytes: (fontId: string) => Uint8Array | undefined
+}
+
+/** The text layout and screenshot fonts one account works with, its uploaded fonts included. */
+export interface AccountFonts {
+  layoutText: NodeLayoutText
+  loadScreenshotFonts: LoadScreenshotFonts
 }

@@ -1,4 +1,5 @@
 import type { FontVariant } from '@designo/core'
+import type { UploadedFontSummary } from '@designo/storage'
 
 /** One font file: a family's characters in one subset, such as Latin or Cyrillic. */
 export interface FontFile extends FontVariant {
@@ -44,4 +45,15 @@ export interface FontLineMetrics {
   unitsPerEm: number
   ascender: number
   descender: number
+}
+
+/** The family, weight and style a font file declares about itself. */
+export interface FontDescription extends FontVariant {
+  family: string
+}
+
+/** A font an account uploaded, with where its file is read from. */
+export interface UploadedFont extends UploadedFontSummary {
+  /** The file's address: an API path in the browser, a `file:` URL in Node. */
+  url: string
 }

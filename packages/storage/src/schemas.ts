@@ -116,6 +116,23 @@ export const assetIdSchema = z
   .string()
   .regex(/^[\da-f]{64}\.(?:png|jpg|webp|gif)$/, 'An asset id, as add_image returns it')
 
+/** An uploaded font's id: the SHA-256 of its bytes, then `ttf` for TrueType or `otf` for CFF outlines. */
+export const fontIdSchema = z
+  .string()
+  .regex(/^[\da-f]{64}\.(?:ttf|otf)$/, 'A font id, as list_fonts returns it')
+
+/** An uploaded font as the server lists it: the family, weight and style its file declares. */
+export const uploadedFontSummarySchema = z
+  .object({
+    id: fontIdSchema,
+    family: z.string().min(1),
+    fontWeight: z.number().int().min(1).max(1000),
+    fontStyle: z.enum(FONT_STYLES)
+  })
+  .strict()
+
+export const uploadedFontListSchema = z.array(uploadedFontSummarySchema)
+
 const pdfTagSchema = z
   .enum(PDF_TAGS)
   .nullable()

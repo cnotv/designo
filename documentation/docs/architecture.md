@@ -20,7 +20,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | Package             | Status  | Role                                                                                                                   |
 | ------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `@designo/core`     | built   | Document model, operations, queries. Pure: no DOM, no I/O                                                              |
-| `@designo/storage`  | built   | Validated, atomic file reads and writes; the picture store; the operation schema; applying a batch to a file           |
+| `@designo/storage`  | built   | Validated, atomic file reads and writes; the picture and font stores; the operation schema; applying a batch to a file |
 | `@designo/mcp`      | built   | MCP server for agents (stdio)                                                                                          |
 | `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP                                      |
 | `@designo/exporter` | built   | Pure SVG export of a node, and a PDF of a document in RGB or CMYK (pdfkit, `@designo/exporter/pdf`)                    |
@@ -134,6 +134,14 @@ browser font handling stay in `packages/editor/src/rendering/text/`.
   loaded its own glyphs decide, because a subset can lack a character its range names. Letters go
   to the first file that has them; a space, digit or punctuation mark stays with the file of the
   text around it.
+- **Uploaded fonts.** An account's own TrueType and OpenType files live in its folder under
+  `fonts/<sha256>.ttf|otf` (`@designo/storage`, checked by signature); `readFontDescription` in
+  `@designo/fonts` reads the family, weight and style from the `name` and `OS/2` tables, and
+  `withUploadedFonts` puts them in front of the Fontsource lookup. The file claims every character
+  until it loads, then its character map decides. The editor reads the list from
+  `/api/files/fonts` and loads files from there; the MCP server reads them from disk as `file:`
+  URLs, and keeps one layout and one screenshot font loader per account, made again when its fonts
+  change.
 - **Layout.** `layoutText` breaks lines with `Intl.Segmenter` and shaped advances, orders
   mixed-direction lines with a subset of the Unicode bidirectional algorithm, aligns them and
   returns every glyph's position. The `TextEngine` wraps it: it loads the fonts a text needs, asks

@@ -1,6 +1,6 @@
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { createFontsourceResolver } from '@designo/fonts'
+import { createFontsourceResolver, withUploadedFonts } from '@designo/fonts'
 import {
   createFontLibrary,
   createFontStore,
@@ -14,10 +14,11 @@ import {
   createCachingFetch,
   fetchFontBytes,
   fetchWithTimeout,
+  readLocalOrFetch,
   writeAtomically
 } from './fontNetwork.ts'
 import { DEFAULT_FONT_CACHE_DIRECTORY } from './screenshotFonts.ts'
-import type { LayoutText, TextLayoutFetchers } from './types.ts'
+import type { LayoutText, NodeLayoutText, TextLayoutFetchers } from './types.ts'
 
 // Font files the layout reads are kept apart from the renamed copies a screenshot draws with, which
 // HarfBuzz would shape with another family name.
@@ -35,37 +36,39 @@ const createCachingBytesLoader =
     return bytes
   }
 
-/** The layout, and the bytes of every font file it has loaded, which a PDF embeds. */
-export type NodeLayoutText = LayoutText & {
-  getFontBytes: (fontId: string) => Uint8Array | undefined
-}
-
 /**
  * Makes the text layout the MCP server wraps and measures text with. It is the editor's engine,
  * fed fonts from the Fontsource API through a disk cache, so a line breaks where the canvas
- * breaks it.
- * @param options - How to fetch, and where the API's answers and the font files are kept between
- *   calls; the network and a folder in the system's temporary folder by default.
+ * breaks it. An account's uploaded fonts come first, read from its own store.
+ * @param options - How to fetch, where the API's answers and the font files are kept between
+ *   calls (the network and a folder in the system's temporary folder by default), and the
+ *   account's uploaded fonts.
  * @returns A function that lays one text out, or answers undefined when it cannot.
  */
 export const createNodeLayoutText = ({
   fetchJson = fetchWithTimeout,
   fetchBytes = fetchFontBytes,
-  cacheDirectory = DEFAULT_FONT_CACHE_DIRECTORY
+  cacheDirectory = DEFAULT_FONT_CACHE_DIRECTORY,
+  uploadedFonts = []
 }: TextLayoutFetchers = {}): NodeLayoutText => {
   const cachingFetch = createCachingFetch(fetchJson, cacheDirectory)
+  const cachingBytes = createCachingBytesLoader(cacheDirectory, fetchBytes)
   const library = createFontLibrary({
-    resolveFamily: memoizeFontFamilyResolver(
-      createFontsourceResolver({
-        // The cache folder may not exist yet, and a failed write would lose the whole layout.
-        fetch: async (url) => {
-          await mkdir(cacheDirectory, { recursive: true })
-          return cachingFetch(url)
-        }
-      })
+    resolveFamily: withUploadedFonts(
+      () => Promise.resolve(uploadedFonts),
+      memoizeFontFamilyResolver(
+        createFontsourceResolver({
+          // The cache folder may not exist yet, and a failed write would lose the whole layout.
+          fetch: async (url) => {
+            await mkdir(cacheDirectory, { recursive: true })
+            return cachingFetch(url)
+          }
+        })
+      )
     ),
     store: createFontStore({
-      loadBytes: createCachingBytesLoader(cacheDirectory, fetchBytes),
+      // An uploaded font is read from the account's store, never copied into the cache.
+      loadBytes: readLocalOrFetch(cachingBytes),
       createShapingFont: createHarfBuzzShapingFont
     })
   })

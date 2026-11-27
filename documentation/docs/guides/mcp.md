@@ -210,6 +210,7 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 | Tool                | Does                                                                                                                                                 |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `list_files`        | Lists files with their ids and names                                                                                                                 |
+| `list_fonts`        | Lists the fonts the account uploaded: each file's `id`, `family`, `fontWeight` and `fontStyle`                                                       |
 | `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                                                                   |
 | `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                                                                   |
 | `get_node`          | Reads one node with every property                                                                                                                   |
@@ -226,6 +227,12 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 | `delete_node`       | Deletes a node and everything inside it                                                                                                              |
 | `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                                                      |
 | `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, updateMetadata, variable, text style, delete, move and component operations as one change |
+
+`list_fonts` answers the fonts uploaded in the editor (the Font field's **Upload a font**). Name a
+listed family in a text's `fontFamily` to use one: it is found before any Fontsource family of the
+same name, so `measure_text`, `get_screenshot` and `export_pdf` draw it with the uploaded file and
+the PDF embeds it. Each account sees its own fonts only. Fonts are uploaded by a person, who
+answers for their licence; see the editor guide.
 
 A `path` node draws SVG path data: give `pathData` (`M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A` and
 `Z`) in the node's own space, where 0,0 is the top left of its box, and set `width` and `height` to the

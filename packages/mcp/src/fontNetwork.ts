@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { FontFetch } from '@designo/fonts'
 import { z } from 'zod'
 
@@ -79,3 +80,14 @@ export const fetchFontBytes = async (url: string): Promise<Uint8Array> => {
   if (!response.ok) throw new Error(`The font file host answered ${response.status} for ${url}`)
   return new Uint8Array(await response.arrayBuffer())
 }
+
+/**
+ * Lets a font loader read an uploaded font from disk: a `file:` address is the account's own
+ * stored file, anything else goes to the network as before.
+ * @param fetchBytes - Downloads a font file.
+ * @returns A loader that reads `file:` addresses from disk.
+ */
+export const readLocalOrFetch =
+  (fetchBytes: (url: string) => Promise<Uint8Array>) =>
+  async (url: string): Promise<Uint8Array> =>
+    url.startsWith('file:') ? new Uint8Array(await readFile(fileURLToPath(url))) : fetchBytes(url)
