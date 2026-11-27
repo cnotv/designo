@@ -1,6 +1,6 @@
 #cloud-config
-# First-boot setup for a Designo server on Hetzner Cloud (Ubuntu 24.04). Replace the key below
-# with the public half of the key the deploy workflow uses (the HETZNER_SSH_KEY secret).
+# First-boot setup for a Designo server (any Ubuntu 24.04 host that reads cloud-init). Replace the
+# key below with the public half of the key the deploy workflow uses (the DEPLOY_SSH_KEY secret).
 package_update: true
 package_upgrade: true
 packages:
