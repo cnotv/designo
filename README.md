@@ -49,6 +49,13 @@ server up from `.mcp.json`.
 - **`@designo/editor`:** a Vue 3 viewer that draws files on a canvas and follows edits live.
   Editing tools come in phase 1.
 
+## Agent skills
+
+The MCP server carries its own skills, served by `get_skill`, so an agent that connects to Designo
+learns how to build with it (artist and stationery templates today) without any outside skill pack.
+Skill packs elsewhere point at these skills, never the other way round. See
+[Agent skills](https://cnotv.github.io/designo/architecture#agent-skills) in the architecture.
+
 ## Development
 
 ```sh
