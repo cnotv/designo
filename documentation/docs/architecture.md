@@ -28,6 +28,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files                                 |
 | `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it                              |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI                                          |
+| `@designo/parity`   | built   | Draws effect cases with WebGL, resvg and the PDF writer in CI, and fails on pixel drift                                |
 | `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11)                                       |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                                                          |
 | `exporter` (rest)   | phase 4 | Vue/HTML code                                                                                                          |
@@ -119,6 +120,10 @@ top, always Canvas 2D, carries selection, guides and the marquee and takes the p
 - **Text** is drawn from a glyph atlas, and described in its own section below.
 - **Fallback.** Without WebGL2, or with `?renderer=canvas2d`, the same scene is painted with
   Canvas 2D. A lost WebGL context is rebuilt when the browser restores it.
+- **Parity.** `@designo/parity` draws one small document per effect three ways: the SVG export
+  through resvg (the reference), the editor's WebGL renderer in headless Chromium, and the PDF
+  export through pdf.js. CI fails when either drifts past the tolerance in
+  `packages/parity/src/tolerances.ts`; see [Render parity](guides/render-parity.md).
 
 ## Text
 

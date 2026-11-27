@@ -1,0 +1,21 @@
+{
+  "name": "@designo/parity",
+  "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "description": "Draws one document with the editor's WebGL renderer, resvg and the PDF writer, and compares the pixels.",
+  "scripts": {
+    "parity": "node src/run.ts",
+    "type-check": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@designo/core": "workspace:*",
+    "@designo/editor": "workspace:*",
+    "@designo/exporter": "workspace:*",
+    "@resvg/resvg-js": "^2.6.2",
+    "pdfjs-dist": "^6.5.438",
+    "playwright": "1.63.0",
+    "vite": "^7.3.8"
+  }
+}

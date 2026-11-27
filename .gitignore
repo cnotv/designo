@@ -11,3 +11,5 @@ coverage
 documentation/build
 documentation/.docusaurus
 .env
+packages/parity/report/
+parity-report/

@@ -21,6 +21,7 @@
     "format:check": "prettier --check .",
     "test:unit": "vitest run",
     "test:watch": "vitest",
+    "test:parity": "pnpm --filter @designo/parity parity",
     "start": "pnpm --filter @designo/editor start",
     "docs": "pnpm --dir documentation start",
     "docs:build": "pnpm --dir documentation build",
