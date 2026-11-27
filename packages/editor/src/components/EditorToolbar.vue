@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import {
   ChevronDown,
   Circle,
@@ -30,7 +31,8 @@ import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useEditorContext } from '../composables/editorContext.ts'
+import { useEditorStore } from '../stores/editor.ts'
+import { useFilesStore } from '../stores/files.ts'
 import { useImageInsertion } from '../composables/useImageInsertion.ts'
 import type { SignedInAccount, Tool } from '../editing/types.ts'
 import AccountMenu from './AccountMenu.vue'
@@ -40,8 +42,9 @@ const emit = defineEmits<{ signOut: []; accessRefused: [] }>()
 const isLeftPanelOpen = defineModel<boolean>('leftPanelOpen', { required: true })
 const isRightPanelOpen = defineModel<boolean>('rightPanelOpen', { required: true })
 
-const { editor, files } = useEditorContext()
-const { isDemo, saveError } = files
+const editor = useEditorStore()
+const files = useFilesStore()
+const { isDemo, saveError } = storeToRefs(files)
 
 const PERCENT = 100
 const REPOSITORY_URL = 'https://github.com/cnotv/designo'
@@ -86,25 +89,23 @@ const tools = [...moveTools, ...shapeTools, ...textTools]
 // The button shows the shape drawn last, as drawing apps do, so repeating it is one click.
 const lastShape = ref(shapeTools[0])
 watch(
-  () => editor.tool.value,
+  () => editor.tool,
   (tool) => {
     lastShape.value = shapeTools.find((entry) => entry.tool === tool) ?? lastShape.value
   }
 )
-const isShapeToolActive = computed(() =>
-  shapeTools.some((entry) => entry.tool === editor.tool.value)
-)
+const isShapeToolActive = computed(() => shapeTools.some((entry) => entry.tool === editor.tool))
 
 const isTool = (value: unknown): value is Tool => tools.some((entry) => entry.tool === value)
 
 const selectedTool = computed({
-  get: () => editor.tool.value,
+  get: () => editor.tool,
   set: (value: unknown) => {
     if (isTool(value)) editor.setTool(value)
   }
 })
 
-const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PERCENT)}%`)
+const zoomLabel = computed(() => `${Math.round(editor.viewport.scale * PERCENT)}%`)
 </script>
 
 <template>
@@ -204,7 +205,7 @@ const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PER
           variant="ghost"
           size="icon-sm"
           aria-label="Undo"
-          :disabled="!editor.canUndo.value"
+          :disabled="!editor.canUndo"
           @click="editor.undo"
         >
           <Undo2 />
@@ -218,7 +219,7 @@ const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PER
           variant="ghost"
           size="icon-sm"
           aria-label="Redo"
-          :disabled="!editor.canRedo.value"
+          :disabled="!editor.canRedo"
           @click="editor.redo"
         >
           <Redo2 />

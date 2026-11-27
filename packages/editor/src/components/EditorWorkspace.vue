@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { File, Trash2 } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,16 +21,12 @@ import PagesPanel from './PagesPanel.vue'
 import StylesPanel from './StylesPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import TextEditOverlay from './TextEditOverlay.vue'
-import { provideEditorContext } from '../composables/editorContext.ts'
-import { useCanvasInteraction } from '../composables/useCanvasInteraction.ts'
-import { useDesignoFiles } from '../composables/useDesignoFiles.ts'
-import { useEditor } from '../composables/useEditor.ts'
-import { measureFallbackTextBox } from '../rendering/fallbackText.ts'
-import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
-import { createTextBoxMeasurer } from '../rendering/text/textBoxMeasurer.ts'
-import { useTextBoxFitting } from '../composables/useTextBoxFitting.ts'
-import { useExport } from '../composables/useExport.ts'
 import { useEditorShortcuts } from '../composables/useEditorShortcuts.ts'
+import { useCanvasInteractionStore } from '../stores/canvasInteraction.ts'
+import { useEditorStore } from '../stores/editor.ts'
+import { useExportStore } from '../stores/export.ts'
+import { useFilesStore } from '../stores/files.ts'
+import { disposeWorkspaceStores } from '../stores/workspace.ts'
 import type { SignedInAccount } from '../editing/types.ts'
 
 const DOCS_SELF_HOSTING_URL = 'https://cnotv.github.io/designo/guides/self-hosting'
@@ -37,18 +34,21 @@ const DOCS_SELF_HOSTING_URL = 'https://cnotv.github.io/designo/guides/self-hosti
 defineProps<{ account?: SignedInAccount }>()
 const emit = defineEmits<{ accessRefused: []; signOut: [] }>()
 
-const files = useDesignoFiles(() => emit('accessRefused'))
-const editor = useEditor(
-  files,
-  createTextBoxMeasurer(getSharedTextRuntime().engine, measureFallbackTextBox)
+const files = useFilesStore()
+const editor = useEditorStore()
+const interaction = useCanvasInteractionStore()
+const exporter = useExportStore()
+useEditorShortcuts(editor, toRef(interaction, 'spaceHeld'), exporter.run)
+watch(
+  () => files.accessRefused,
+  (refused) => {
+    if (refused) emit('accessRefused')
+  }
 )
-useTextBoxFitting(files, getSharedTextRuntime().engine)
-const interaction = useCanvasInteraction(editor)
-const exporter = useExport(editor)
-useEditorShortcuts(editor, interaction.spaceHeld, exporter.run)
-provideEditorContext({ files, editor, interaction, exporter })
+onBeforeUnmount(disposeWorkspaceStores)
 
-const { documentSummaries, selectedFileId, isDemo, selectFile, deleteFile } = files
+const { documentSummaries, selectedFileId, isDemo } = storeToRefs(files)
+const { selectFile, deleteFile } = files
 
 const isLeftPanelOpen = ref(true)
 const isRightPanelOpen = ref(true)

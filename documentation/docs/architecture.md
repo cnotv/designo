@@ -65,7 +65,7 @@ Every edit, whoever makes it, is a batch of `DesignOperation`s:
 
 ```mermaid
 flowchart LR
-  pointer[Pointer, keys, panels] --> editor[useEditor.commit]
+  pointer[Pointer, keys, panels] --> editor[editor store commit]
   editor -->|applyOperations| local[Document in the tab]
   editor -->|invertOperations| history[Undo stack]
   editor -->|POST /api/files/:id/operations| api[filesApi]
@@ -79,6 +79,13 @@ flowchart LR
 - **Pure parts** live in `packages/editor/src/editing/`: viewport maths, hit testing and marquee
   selection, the operations a move, resize or draw produces, history stacks and layer rows. They
   are unit tested without a browser.
+- **Shared state** lives in Pinia setup stores in `packages/editor/src/stores/`: `files` (the list,
+  the open file, saving and polling), `editor` (page, selection, tool, view, history), and
+  `canvasInteraction` and `export` over it, plus `uploadedFonts` and `fontFamilyList`. Each store's
+  setup is the composable of the same concern in `composables/`, which reads the stores it builds
+  on (`editor.document`, not a ref). The workspace disposes its four stores, state included, when
+  it closes on a sign-out, so the next account starts empty. State that belongs to one component
+  (the access gate, account administration, connected agents) stays in its composable.
 - **A drag** previews its operations on a copy of the document and commits once on pointer up, so
   it is one undo step and one save.
 - **Undo** applies the inverse batch `invertOperations` worked out before the edit. When an agent

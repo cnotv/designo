@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { resolveMasters } from '@designo/core'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
-import { useEditorContext } from '../composables/editorContext.ts'
+import { useEditorStore } from '../stores/editor.ts'
+import { useCanvasInteractionStore } from '../stores/canvasInteraction.ts'
+import { useFilesStore } from '../stores/files.ts'
 import { useImageInsertion } from '../composables/useImageInsertion.ts'
 import { isPictureType } from '../editing/images.ts'
 import { getPathEditHandles } from '../editing/pathEditing.ts'
@@ -16,15 +18,17 @@ import type { SceneRenderer } from '../rendering/types.ts'
 import { createWebglRenderer } from '../rendering/webgl/webglRenderer.ts'
 import EditorContextMenu from './EditorContextMenu.vue'
 
-const { editor, interaction, files } = useEditorContext()
+const editor = useEditorStore()
+const interaction = useCanvasInteractionStore()
+const files = useFilesStore()
 const { insertImageFile } = useImageInsertion(editor, files)
 
 // Dropping a picture on the canvas places it under the pointer; the demo has no picture store.
 const onDragOver = (event: DragEvent): void => {
-  if (!files.isDemo.value) event.preventDefault()
+  if (!files.isDemo) event.preventDefault()
 }
 const onDrop = (event: DragEvent): void => {
-  if (files.isDemo.value) return
+  if (files.isDemo) return
   event.preventDefault()
   const box = (event.currentTarget as HTMLElement).getBoundingClientRect()
   const point = { x: event.clientX - box.left, y: event.clientY - box.top }
@@ -60,7 +64,7 @@ const atlasStats = ref<{ pages: number; glyphs: number }>()
 
 // The index and paint order are rebuilt only when the document changes, not on pan or zoom.
 const sceneSource = computed(() => {
-  const shown = interaction.shownDocument.value
+  const shown = interaction.shownDocument
   // Masters are drawn from a resolved copy; picking and selection still use the stored nodes.
   const document = shown ? resolveMasters(shown) : undefined
   return document ? createSceneSource(document, indexDocument(document)) : undefined
@@ -73,11 +77,11 @@ const drawScene = (): void => {
   void fontsLoaded.value
   void imageLoads.value
   const source = sceneSource.value
-  const size = editor.canvasSize.value
+  const size = editor.canvasSize
   if (!renderer.value || !source || size.width === 0) return
-  const viewport = editor.viewport.value
+  const viewport = editor.viewport
   renderer.value.render({
-    items: buildScene(source, viewport, size, editor.editingText.value?.nodeId),
+    items: buildScene(source, viewport, size, editor.editingText?.nodeId),
     viewport,
     size,
     pixelRatio: window.devicePixelRatio
@@ -86,16 +90,16 @@ const drawScene = (): void => {
 }
 
 const pathEditHandles = computed(() => {
-  const session = editor.pathEdit.value
-  const node = session && interaction.shownDocument.value?.nodes[session.nodeId]
+  const session = editor.pathEdit
+  const node = session && interaction.shownDocument?.nodes[session.nodeId]
   return node ? getPathEditHandles(node, session.selected) : []
 })
 
 const drawMarks = (): void => {
   const canvas = overlayCanvas.value
   const context = canvas?.getContext('2d')
-  const document = interaction.shownDocument.value
-  const size = editor.canvasSize.value
+  const document = interaction.shownDocument
+  const size = editor.canvasSize
   if (!canvas || !context || size.width === 0) return
   const pixelRatio = window.devicePixelRatio
   prepareCanvas(canvas, size, pixelRatio)
@@ -104,16 +108,15 @@ const drawMarks = (): void => {
   if (!document) return
   // While text is edited in place, the editor box is the selection: the node keeps its old height
   // until the edit commits, so its outline and size label would sit over the growing text.
-  drawOverlay(context, document, editor.viewport.value, {
-    selection: editor.editingText.value ? [] : editor.selection.value,
-    hoveredId: interaction.hoveredId.value,
-    marquee: interaction.marquee.value,
-    showHandles:
-      editor.selection.value.length === 1 && !interaction.isBusy.value && !editor.pathEdit.value,
+  drawOverlay(context, document, editor.viewport, {
+    selection: editor.editingText ? [] : editor.selection,
+    hoveredId: interaction.hoveredId,
+    marquee: interaction.marquee,
+    showHandles: editor.selection.length === 1 && !interaction.isBusy && !editor.pathEdit,
     pathHandles: pathEditHandles.value,
-    pathSelected: editor.pathEdit.value?.selected,
+    pathSelected: editor.pathEdit?.selected,
     color: readCssColor(canvas, '--selection', '#0d99ff'),
-    guides: interaction.guides.value,
+    guides: interaction.guides,
     guideColor: readCssColor(canvas, '--guide', '#f24822')
   })
 }
@@ -121,7 +124,7 @@ const drawMarks = (): void => {
 // The browser's own tooltip shows where a linked node leads when the pointer rests on it.
 const hoveredLink = computed(() => {
   const { hoveredId } = interaction
-  return hoveredId.value ? interaction.shownDocument.value?.nodes[hoveredId.value]?.link : undefined
+  return hoveredId ? interaction.shownDocument?.nodes[hoveredId]?.link : undefined
 })
 
 const resizeObserver = new ResizeObserver(([entry]) => {
@@ -191,7 +194,7 @@ watchEffect(drawMarks)
       <canvas
         ref="overlayCanvas"
         class="absolute inset-0 block size-full touch-none select-none"
-        :style="{ cursor: interaction.cursor.value }"
+        :style="{ cursor: interaction.cursor }"
         :title="hoveredLink ?? undefined"
         data-testid="design-canvas"
         @pointerdown="interaction.onPointerDown"

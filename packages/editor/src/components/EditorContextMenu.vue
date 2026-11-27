@@ -8,15 +8,15 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
-import { useEditorContext } from '../composables/editorContext.ts'
-import type { Editor } from '../composables/types.ts'
+import { useEditorStore } from '../stores/editor.ts'
+import type { EditorStore } from '../stores/types.ts'
 
-const { editor } = useEditorContext()
+const editor = useEditorStore()
 
 interface MenuEntry {
   label: string
   shortcut: string
-  run: (editor: Editor) => void
+  run: (editor: EditorStore) => void
   destructive?: boolean
 }
 
@@ -87,7 +87,7 @@ const MENU_SECTIONS: readonly (readonly MenuEntry[])[] = [
   ]
 ]
 
-const hasSelection = computed(() => editor.selection.value.length > 0)
+const hasSelection = computed(() => editor.selection.length > 0)
 </script>
 
 <template>

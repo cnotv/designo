@@ -16,11 +16,11 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utilities'
 import EditorContextMenu from './EditorContextMenu.vue'
-import { useEditorContext } from '../composables/editorContext.ts'
+import { useEditorStore } from '../stores/editor.ts'
 import { getLayerRows } from '../editing/layers.ts'
 import { toggleInSelection } from '../editing/selection.ts'
 
-const { editor } = useEditorContext()
+const editor = useEditorStore()
 
 const INDENT_PIXELS = 12
 const BASE_PADDING_PIXELS = 8
@@ -36,15 +36,15 @@ const ICON_BY_TYPE: Record<DesignNodeType, Component> = {
   image: ImageIcon
 }
 
-const rows = computed(() => (editor.document.value ? getLayerRows(editor.document.value) : []))
+const rows = computed(() => (editor.document ? getLayerRows(editor.document) : []))
 
 // A right-click acts on the layer under it, unless it is already part of the selection.
 const selectForMenu = (nodeId: string): void => {
-  if (!editor.selection.value.includes(nodeId)) editor.select([nodeId])
+  if (!editor.selection.includes(nodeId)) editor.select([nodeId])
 }
 
 const selectLayer = (nodeId: string, event: MouseEvent): void => {
-  editor.select(event.shiftKey ? toggleInSelection(editor.selection.value, nodeId) : [nodeId])
+  editor.select(event.shiftKey ? toggleInSelection(editor.selection, nodeId) : [nodeId])
 }
 </script>
 
@@ -64,12 +64,12 @@ const selectLayer = (nodeId: string, event: MouseEvent): void => {
               :class="
                 cn(
                   'h-7 flex-1 justify-start font-normal',
-                  editor.selection.value.includes(node.id) && 'bg-primary/15 hover:bg-primary/20',
+                  editor.selection.includes(node.id) && 'bg-primary/15 hover:bg-primary/20',
                   !node.visible && 'text-muted-foreground'
                 )
               "
               :style="{ paddingLeft: `${BASE_PADDING_PIXELS + depth * INDENT_PIXELS}px` }"
-              :aria-pressed="editor.selection.value.includes(node.id)"
+              :aria-pressed="editor.selection.includes(node.id)"
               @click="selectLayer(node.id, $event)"
             >
               <component :is="ICON_BY_TYPE[node.type]" class="text-muted-foreground" />

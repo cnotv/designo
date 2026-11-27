@@ -9,7 +9,7 @@ import type { Point } from '../editing/types.ts'
 import { screenToWorld } from '../editing/viewport.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
 import { uploadImage } from '../lib/uploadImage.ts'
-import type { DesignoFiles, Editor } from './types.ts'
+import type { EditorStore, FilesStore } from '../stores/types.ts'
 
 const HALF = 2
 
@@ -21,23 +21,23 @@ const HALF = 2
  * (a drop) or the middle of the view,
  * and `replaceImageFile`, which sets another picture on an image node.
  */
-export const useImageInsertion = (editor: Editor, files: DesignoFiles) => {
+export const useImageInsertion = (editor: EditorStore, files: FilesStore) => {
   const report = (error: unknown): void => {
-    files.saveError.value = error instanceof Error ? error.message : 'The picture was not added'
+    files.reportError(error instanceof Error ? error.message : 'The picture was not added')
   }
 
   const insertImageFile = async (file: File, screenPoint?: Point): Promise<void> => {
-    const document = editor.document.value
+    const document = editor.document
     if (!document) return
     try {
       const assetId = await uploadImage(file)
       const bitmap = await createImageBitmap(file)
       const size = fitImageSize(bitmap, MAX_INSERTED_IMAGE_SIDE)
       const center = screenToWorld(
-        editor.viewport.value,
+        editor.viewport,
         screenPoint ?? {
-          x: editor.canvasSize.value.width / HALF,
-          y: editor.canvasSize.value.height / HALF
+          x: editor.canvasSize.width / HALF,
+          y: editor.canvasSize.height / HALF
         }
       )
       const nodeId = createNodeId('image')

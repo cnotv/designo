@@ -3,7 +3,7 @@ import { Hash, Palette, Trash2, Type } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useEditorContext } from '../composables/editorContext.ts'
+import { useEditorStore } from '../stores/editor.ts'
 import {
   createNewTextStyleOperations,
   createNewVariableOperations,
@@ -14,20 +14,14 @@ import {
 } from '../editing/styleLibrary.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
 
-const { editor } = useEditorContext()
+const editor = useEditorStore()
 
-const variables = computed(() =>
-  editor.document.value ? listVariables(editor.document.value) : []
-)
-const textStyles = computed(() =>
-  editor.document.value ? listTextStyles(editor.document.value) : []
-)
+const variables = computed(() => (editor.document ? listVariables(editor.document) : []))
+const textStyles = computed(() => (editor.document ? listTextStyles(editor.document) : []))
 
 const selectedTextId = computed(() => {
-  const [nodeId] = editor.selection.value
-  return editor.selection.value.length === 1 &&
-    nodeId &&
-    editor.document.value?.nodes[nodeId]?.type === 'text'
+  const [nodeId] = editor.selection
+  return editor.selection.length === 1 && nodeId && editor.document?.nodes[nodeId]?.type === 'text'
     ? nodeId
     : undefined
 })
@@ -35,12 +29,12 @@ const selectedTextId = computed(() => {
 const inputValue = (event: Event): string => (event.target as HTMLInputElement).value
 
 const addVariable = (kind: 'color' | 'number'): void => {
-  const document = editor.document.value
+  const document = editor.document
   if (document) editor.commit(createNewVariableOperations(document, kind, createNodeId('var')))
 }
 
 const addTextStyle = (): void => {
-  const document = editor.document.value
+  const document = editor.document
   if (document && selectedTextId.value) {
     editor.commit(
       createNewTextStyleOperations(document, selectedTextId.value, createNodeId('style'))
@@ -49,12 +43,12 @@ const addTextStyle = (): void => {
 }
 
 const rename = (target: 'variable' | 'textStyle', id: string, event: Event): void => {
-  const document = editor.document.value
+  const document = editor.document
   if (document) editor.commit(createRenameStyleOperations(document, target, id, inputValue(event)))
 }
 
 const setValue = (id: string, event: Event): void => {
-  const document = editor.document.value
+  const document = editor.document
   if (document) editor.commit(createSetVariableValueOperations(document, id, inputValue(event)))
 }
 

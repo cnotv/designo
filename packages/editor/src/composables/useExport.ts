@@ -6,7 +6,8 @@ import type { AtsReport, PdfFacts } from '@designo/ats'
 import { buildExportFileName, getExportTargetIds, getRasterSize } from '../editing/export.ts'
 import type { ExportSettings } from '../editing/types.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
-import type { Editor, ExportController } from './types.ts'
+import type { EditorStore } from '../stores/types.ts'
+import type { ExportController } from './types.ts'
 
 const DEFAULT_SETTINGS: ExportSettings = {
   format: 'svg',
@@ -68,7 +69,7 @@ const renderExport = (svg: string, settings: ExportSettings): Promise<Blob> =>
 const PDF_RASTER_SCALE = 3
 
 const exportPdf = async (
-  exportedDocument: NonNullable<Editor['document']['value']>,
+  exportedDocument: NonNullable<EditorStore['document']>,
   { trimMarks, colorSpace }: Pick<ExportSettings, 'trimMarks' | 'colorSpace'>
 ): Promise<Blob> => {
   const runtime = getSharedTextRuntime()
@@ -107,7 +108,7 @@ type AtsModule = typeof import('@designo/ats') & {
  * @param editor - The editor state.
  * @returns The export settings, progress and the action that runs the export.
  */
-export const useExport = (editor: Editor): ExportController => {
+export const useExport = (editor: EditorStore): ExportController => {
   const settings = ref<ExportSettings>({ ...DEFAULT_SETTINGS })
   const isExporting = ref(false)
   const error = ref<string | undefined>()
@@ -117,9 +118,12 @@ export const useExport = (editor: Editor): ExportController => {
   // A report on the open document is retired by an edit; one on a file from disk has no document
   // to go stale against.
   const isReportOfFile = ref(false)
-  watch(editor.document, () => {
-    if (!isReportOfFile.value) atsReport.value = undefined
-  })
+  watch(
+    () => editor.document,
+    () => {
+      if (!isReportOfFile.value) atsReport.value = undefined
+    }
+  )
 
   const runAtsCheck = async (
     check: (ats: AtsModule) => Promise<AtsReport>,
@@ -148,7 +152,7 @@ export const useExport = (editor: Editor): ExportController => {
   }
 
   const checkAts = async (): Promise<void> => {
-    const storedDocument = editor.document.value
+    const storedDocument = editor.document
     if (!storedDocument) return
     const currentDocument = resolveMasters(storedDocument)
     await runAtsCheck(async (ats) => {
@@ -171,7 +175,7 @@ export const useExport = (editor: Editor): ExportController => {
     }, true)
 
   const exportNode = async (
-    exportedDocument: NonNullable<Editor['document']['value']>,
+    exportedDocument: NonNullable<EditorStore['document']>,
     nodeId: string
   ): Promise<void> => {
     const node = exportedDocument.nodes[nodeId]
@@ -182,7 +186,7 @@ export const useExport = (editor: Editor): ExportController => {
   }
 
   const run = async (): Promise<void> => {
-    const storedDocument = editor.document.value
+    const storedDocument = editor.document
     if (!storedDocument || isExporting.value) return
     const currentDocument = resolveMasters(storedDocument)
     isExporting.value = true
@@ -196,7 +200,7 @@ export const useExport = (editor: Editor): ExportController => {
         return
       }
       // One after another, because browsers drop downloads started in the same instant.
-      await getExportTargetIds(currentDocument, editor.selection.value).reduce(
+      await getExportTargetIds(currentDocument, editor.selection).reduce(
         (previous, nodeId) => previous.then(() => exportNode(currentDocument, nodeId)),
         Promise.resolve()
       )

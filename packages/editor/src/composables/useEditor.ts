@@ -12,7 +12,7 @@ import {
   type DesignOperation,
   type StationeryTemplate
 } from '@designo/core'
-import { computed, ref, watch, type Ref } from 'vue'
+import { computed, ref, toRef, watch, type Ref } from 'vue'
 import { createAlignOperations, createDistributeOperations } from '../editing/alignment.ts'
 import { EMPTY_HISTORY, recordHistoryEntry, takeRedo, takeUndo } from '../editing/history.ts'
 import {
@@ -62,6 +62,7 @@ import {
   zoomAt
 } from '../editing/viewport.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
+import type { FilesStore } from '../stores/types.ts'
 import type { DesignoFiles, Editor } from './types.ts'
 import { useTextEditing } from './useTextEditing.ts'
 
@@ -113,7 +114,7 @@ const useViewport = (document: Readonly<Ref<DesignDocument | undefined>>) => {
  */
 export const applyAndSaveOperations = (
   document: Ref<DesignDocument | undefined>,
-  files: DesignoFiles,
+  files: Pick<DesignoFiles, 'saveOperations'>,
   operations: readonly DesignOperation[]
 ): boolean => {
   const current = document.value
@@ -125,7 +126,10 @@ export const applyAndSaveOperations = (
   return true
 }
 
-const useHistory = (document: Ref<DesignDocument | undefined>, files: DesignoFiles) => {
+const useHistory = (
+  document: Ref<DesignDocument | undefined>,
+  files: Pick<DesignoFiles, 'saveOperations'>
+) => {
   const history = ref<HistoryState>(EMPTY_HISTORY)
 
   const applyAndSave = (operations: readonly DesignOperation[]): boolean =>
@@ -279,15 +283,35 @@ const useSelectionActions = (
   }
 }
 
+// Another file starts on its first page with nothing selected and nothing to undo.
+const resetOnFileChange = (
+  files: FilesStore,
+  state: {
+    chosenPageId: Ref<string | undefined>
+    selection: Ref<string[]>
+    history: Ref<HistoryState>
+  }
+): void => {
+  watch(
+    () => files.selectedFileId,
+    () => {
+      state.chosenPageId.value = undefined
+      state.selection.value = []
+      state.history.value = EMPTY_HISTORY
+    }
+  )
+}
+
 /**
  * Holds the editing state for the open file: selection, tool, viewport and history. Every change
  * goes through `commit`, which applies it locally, records its inverse for undo and saves it.
- * @param files - The open file and how to save it.
+ * It is the editor store's setup.
+ * @param files - The files store: the open file and how to save it.
  * @param measureTextBox - Sizes a text node's box, which edits keep in step with its words.
  * @returns The editor.
  */
-export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer): Editor => {
-  const wholeDocument = files.activeDocument
+export const useEditor = (files: FilesStore, measureTextBox: TextBoxMeasurer): Editor => {
+  const wholeDocument = toRef(files, 'activeDocument')
   const chosenPageId = ref<string>()
   const activePageId = computed(() =>
     wholeDocument.value ? resolveActivePageId(wholeDocument.value, chosenPageId.value) : ''
@@ -331,11 +355,7 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
     if (wholeDocument.value) action(wholeDocument.value)
   }
 
-  watch(files.selectedFileId, () => {
-    chosenPageId.value = undefined
-    selection.value = []
-    history.value = EMPTY_HISTORY
-  })
+  resetOnFileChange(files, { chosenPageId, selection, history })
 
   // Nodes an agent or an undo removed drop out of the selection.
   watch(document, (current) => {
@@ -369,6 +389,9 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
     ...pathActions,
     setCanvasSize: (size: { width: number; height: number }) => {
       canvasSize.value = size
+    },
+    setViewport: (next: Viewport) => {
+      viewport.value = next
     },
     updateNode: (nodeId: string, patch: DesignNodePatch) =>
       withDocument((current) =>

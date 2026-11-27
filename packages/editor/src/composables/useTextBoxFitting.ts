@@ -1,8 +1,8 @@
-import { onScopeDispose, watch } from 'vue'
+import { onScopeDispose, toRef, watch } from 'vue'
 import type { TextEngine } from '@designo/text'
 import { findStaleTextBoxes } from '../editing/textRefit.ts'
 import { applyAndSaveOperations } from './useEditor.ts'
-import type { DesignoFiles } from './types.ts'
+import type { FilesStore } from '../stores/types.ts'
 
 /**
  * Keeps every auto width text the size it is drawn at: when a file loads, whenever it changes,
@@ -12,18 +12,15 @@ import type { DesignoFiles } from './types.ts'
  * @param engine - The engine the canvas draws with.
  */
 export const useTextBoxFitting = (
-  files: DesignoFiles,
+  files: FilesStore,
   engine: Pick<TextEngine, 'getLayout' | 'subscribe'>
 ): void => {
+  const activeDocument = toRef(files, 'activeDocument')
   const fitTextBoxes = (): void => {
-    const document = files.activeDocument.value
+    const document = activeDocument.value
     if (!document) return
-    applyAndSaveOperations(
-      files.activeDocument,
-      files,
-      findStaleTextBoxes(document, engine.getLayout)
-    )
+    applyAndSaveOperations(activeDocument, files, findStaleTextBoxes(document, engine.getLayout))
   }
-  watch(files.activeDocument, fitTextBoxes, { immediate: true })
+  watch(activeDocument, fitTextBoxes, { immediate: true })
   onScopeDispose(engine.subscribe(fitTextBoxes))
 }

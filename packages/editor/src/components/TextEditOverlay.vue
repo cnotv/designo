@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { Textarea } from '@/components/ui/textarea'
-import { useEditorContext } from '../composables/editorContext.ts'
+import { useEditorStore } from '../stores/editor.ts'
 import { getTextOverlayLayout } from '../editing/textEditing.ts'
 import { createBrowserFontStack } from '../rendering/text/fontFamilyList.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 
-const { editor } = useEditorContext()
+const editor = useEditorStore()
 
 const draft = ref('')
 const textareaWrapper = useTemplateRef<InstanceType<typeof Textarea>>('textarea')
 
 const node = computed(() => {
-  const session = editor.editingText.value
-  return session ? editor.document.value?.nodes[session.nodeId] : undefined
+  const session = editor.editingText
+  return session ? editor.document?.nodes[session.nodeId] : undefined
 })
 
 const layout = computed(() =>
   node.value
-    ? getTextOverlayLayout(node.value, editor.viewport.value, draft.value, editor.measureTextBox)
+    ? getTextOverlayLayout(node.value, editor.viewport, draft.value, editor.measureTextBox)
     : undefined
 )
 
@@ -34,7 +34,7 @@ const fontFamily = computed(() =>
 
 // A new node starts empty, as it holds only a placeholder; an existing one starts with its text.
 watch(
-  () => editor.editingText.value,
+  () => editor.editingText,
   async (session) => {
     if (!session) return
     draft.value = session.isNew ? '' : (node.value?.text ?? '')
