@@ -55,11 +55,19 @@ export interface AtsSummary {
   fail: number
 }
 
+/** A rule the report could not run, and why, so that its absence is not read as a pass. */
+export interface AtsNotChecked {
+  rule: string
+  reason: string
+}
+
 export interface AtsReport {
   /** Which reader and rule set produced this; it is not a real ATS. */
   parser: string
   summary: AtsSummary
   findings: readonly AtsFinding[]
+  /** Rules that were not run; empty when the document was there to check against. */
+  notChecked: readonly AtsNotChecked[]
   /** The text a linear reader gets, a line each, page by page. */
   readingOrder: readonly (readonly string[])[]
 }

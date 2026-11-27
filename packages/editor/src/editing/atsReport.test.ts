@@ -32,6 +32,10 @@ describe('describeFindingPlace', () => {
     ).toBe('Name, page 2')
   })
 
+  it('gives only the page when there is no document, as for a PDF from disk', () => {
+    expect(describeFindingPlace(undefined, { ...finding('warn', 'x'), page: 3 })).toBe('page 3')
+  })
+
   it('is empty for a finding on the whole file', () => {
     expect(describeFindingPlace(result.document, finding('pass', 'x'))).toBe('')
   })

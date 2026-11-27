@@ -14,12 +14,15 @@ export const sortFindingsBySeverity = (findings: readonly AtsFinding[]): AtsFind
 
 /**
  * Says where a finding applies, in words the person knows: the layer's name and the page.
- * @param document - The exported document.
+ * @param document - The exported document, or none for a PDF checked on its own.
  * @param finding - One finding.
  * @returns A short place such as `Name, page 1`, or an empty string for a finding on the whole file.
  */
-export const describeFindingPlace = (document: DesignDocument, finding: AtsFinding): string =>
+export const describeFindingPlace = (
+  document: DesignDocument | undefined,
+  finding: AtsFinding
+): string =>
   [
-    ...(finding.nodeId ? [document.nodes[finding.nodeId]?.name ?? finding.nodeId] : []),
+    ...(finding.nodeId ? [document?.nodes[finding.nodeId]?.name ?? finding.nodeId] : []),
     ...(finding.page === undefined ? [] : [`page ${finding.page}`])
   ].join(', ')

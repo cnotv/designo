@@ -11,6 +11,7 @@ const PAGE_HEIGHT = 842
 const MARGIN = 48
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN - MARGIN
 const INK = '#111111'
+const REGULAR_WEIGHT = 400
 
 interface CvLine {
   id: string
@@ -110,7 +111,7 @@ const lineOperation = (line: CvLine): DesignOperation => ({
     text: line.text,
     textWrap: true,
     fontSize: line.fontSize,
-    fontWeight: line.fontWeight ?? 400,
+    fontWeight: line.fontWeight ?? REGULAR_WEIGHT,
     fill: INK,
     pdfTag: line.tag,
     link: line.link ?? null
