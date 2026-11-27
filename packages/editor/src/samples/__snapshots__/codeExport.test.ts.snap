@@ -1,0 +1,1508 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`code export of the sample > writes the auto-layout card as html 1`] = `
+[
+  {
+    "content": "<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CodeCard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="code-card">
+      <h2 class="heading">Export as code</h2>
+      <p class="body">This card is an auto-layout frame, so HTML, Vue, React and JavaScript get flex boxes.</p>
+      <div class="actions">
+        <div class="copy-button">
+          <p class="copy-label">Copy</p>
+        </div>
+        <div class="download-button">
+          <p class="download-label">Download</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+",
+    "path": "index.html",
+  },
+  {
+    "content": ".code-card {
+  position: relative;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 12px;
+  outline: 1px solid #d0d0d0;
+  outline-offset: -0.5px;
+  overflow: hidden;
+}
+
+.heading {
+  flex-shrink: 0;
+  margin: 0;
+  color: #111111;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.body {
+  align-self: stretch;
+  flex-shrink: 0;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre-wrap;
+}
+
+.actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.copy-button {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 8px;
+  box-sizing: border-box;
+  background-color: #2d6a4f;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.copy-label {
+  flex-shrink: 0;
+  margin: 0;
+  color: #ffffff;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.download-button {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 8px;
+  box-sizing: border-box;
+  background-color: #d8f3dc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.download-label {
+  flex-shrink: 0;
+  margin: 0;
+  color: #1b4332;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+",
+    "path": "styles.css",
+  },
+]
+`;
+
+exports[`code export of the sample > writes the auto-layout card as js 1`] = `
+[
+  {
+    "content": "import './CodeCard.css'
+
+const span = (className, text) => {
+  const element = document.createElement('span')
+  element.setAttribute('class', className)
+  element.append(text)
+  return element
+}
+
+export const createCodeCard = () => {
+  const element0 = document.createElement('div')
+  element0.setAttribute('class', 'code-card')
+  const element1 = document.createElement('h2')
+  element1.setAttribute('class', 'heading')
+  element1.append('Export as code')
+  element0.append(element1)
+  const element2 = document.createElement('p')
+  element2.setAttribute('class', 'body')
+  element2.append('This card is an auto-layout frame, so HTML, Vue, React and JavaScript get flex boxes.')
+  element0.append(element2)
+  const element3 = document.createElement('div')
+  element3.setAttribute('class', 'actions')
+  const element4 = document.createElement('div')
+  element4.setAttribute('class', 'copy-button')
+  const element5 = document.createElement('p')
+  element5.setAttribute('class', 'copy-label')
+  element5.append('Copy')
+  element4.append(element5)
+  element3.append(element4)
+  const element6 = document.createElement('div')
+  element6.setAttribute('class', 'download-button')
+  const element7 = document.createElement('p')
+  element7.setAttribute('class', 'download-label')
+  element7.append('Download')
+  element6.append(element7)
+  element3.append(element6)
+  element0.append(element3)
+  return element0
+}
+",
+    "path": "createCodeCard.js",
+  },
+  {
+    "content": ".code-card {
+  position: relative;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 12px;
+  outline: 1px solid #d0d0d0;
+  outline-offset: -0.5px;
+  overflow: hidden;
+}
+
+.heading {
+  flex-shrink: 0;
+  margin: 0;
+  color: #111111;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.body {
+  align-self: stretch;
+  flex-shrink: 0;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre-wrap;
+}
+
+.actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.copy-button {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 8px;
+  box-sizing: border-box;
+  background-color: #2d6a4f;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.copy-label {
+  flex-shrink: 0;
+  margin: 0;
+  color: #ffffff;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.download-button {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 8px;
+  box-sizing: border-box;
+  background-color: #d8f3dc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.download-label {
+  flex-shrink: 0;
+  margin: 0;
+  color: #1b4332;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+",
+    "path": "CodeCard.css",
+  },
+]
+`;
+
+exports[`code export of the sample > writes the auto-layout card as react 1`] = `
+[
+  {
+    "content": "import './CodeCard.css'
+
+export default function CodeCard() {
+  return (
+    <div className="code-card">
+      <h2 className="heading">Export as code</h2>
+      <p className="body">This card is an auto-layout frame, so HTML, Vue, React and JavaScript get flex boxes.</p>
+      <div className="actions">
+        <div className="copy-button">
+          <p className="copy-label">Copy</p>
+        </div>
+        <div className="download-button">
+          <p className="download-label">Download</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+",
+    "path": "CodeCard.jsx",
+  },
+  {
+    "content": ".code-card {
+  position: relative;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 12px;
+  outline: 1px solid #d0d0d0;
+  outline-offset: -0.5px;
+  overflow: hidden;
+}
+
+.heading {
+  flex-shrink: 0;
+  margin: 0;
+  color: #111111;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.body {
+  align-self: stretch;
+  flex-shrink: 0;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre-wrap;
+}
+
+.actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.copy-button {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 8px;
+  box-sizing: border-box;
+  background-color: #2d6a4f;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.copy-label {
+  flex-shrink: 0;
+  margin: 0;
+  color: #ffffff;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.download-button {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 8px;
+  box-sizing: border-box;
+  background-color: #d8f3dc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.download-label {
+  flex-shrink: 0;
+  margin: 0;
+  color: #1b4332;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+",
+    "path": "CodeCard.css",
+  },
+]
+`;
+
+exports[`code export of the sample > writes the auto-layout card as vue 1`] = `
+[
+  {
+    "content": "<template>
+  <div class="code-card">
+    <h2 class="heading">Export as code</h2>
+    <p class="body">This card is an auto-layout frame, so HTML, Vue, React and JavaScript get flex boxes.</p>
+    <div class="actions">
+      <div class="copy-button">
+        <p class="copy-label">Copy</p>
+      </div>
+      <div class="download-button">
+        <p class="download-label">Download</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.code-card {
+  position: relative;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 12px;
+  outline: 1px solid #d0d0d0;
+  outline-offset: -0.5px;
+  overflow: hidden;
+}
+
+.heading {
+  flex-shrink: 0;
+  margin: 0;
+  color: #111111;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.body {
+  align-self: stretch;
+  flex-shrink: 0;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre-wrap;
+}
+
+.actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.copy-button {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 8px;
+  box-sizing: border-box;
+  background-color: #2d6a4f;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.copy-label {
+  flex-shrink: 0;
+  margin: 0;
+  color: #ffffff;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.download-button {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: 8px;
+  box-sizing: border-box;
+  background-color: #d8f3dc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.download-label {
+  flex-shrink: 0;
+  margin: 0;
+  color: #1b4332;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+</style>
+",
+    "path": "CodeCard.vue",
+  },
+]
+`;
+
+exports[`code export of the sample > writes the palette frame, placed absolutely, as html 1`] = `
+[
+  {
+    "content": "<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frame</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="frame">
+      <p class="text">Forest palette</p>
+      <div class="rectangle"></div>
+      <p class="text-2">#1b4332</p>
+      <div class="rectangle-2"></div>
+      <p class="text-3">#2d6a4f</p>
+      <div class="rectangle-3"></div>
+      <p class="text-4">#52b788</p>
+      <div class="rectangle-4"></div>
+      <p class="text-5">#d8f3dc</p>
+      <div class="rectangle-5"></div>
+      <p class="text-6">#f4a261</p>
+      <div class="rectangle-6"></div>
+      <div class="ellipse"></div>
+      <div class="ellipse-2"></div>
+      <div class="rectangle-7"></div>
+      <div class="ellipse-3"></div>
+      <div class="ellipse-4"></div>
+    </div>
+  </body>
+</html>
+",
+    "path": "index.html",
+  },
+  {
+    "content": ".frame {
+  position: relative;
+  width: 640px;
+  height: 380px;
+  background-color: #ffffff;
+  border-radius: 20px;
+  outline: 1px solid #e3e3e3;
+  outline-offset: -0.5px;
+  overflow: hidden;
+}
+
+.text {
+  position: absolute;
+  left: 32px;
+  top: 28px;
+  margin: 0;
+  color: #111111;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 24px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle {
+  position: absolute;
+  left: 32px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #1b4332;
+  border-radius: 12px;
+}
+
+.text-2 {
+  position: absolute;
+  left: 32px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-2 {
+  position: absolute;
+  left: 152px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #2d6a4f;
+  border-radius: 12px;
+}
+
+.text-3 {
+  position: absolute;
+  left: 152px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-3 {
+  position: absolute;
+  left: 272px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #52b788;
+  border-radius: 12px;
+}
+
+.text-4 {
+  position: absolute;
+  left: 272px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-4 {
+  position: absolute;
+  left: 392px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #d8f3dc;
+  border-radius: 12px;
+}
+
+.text-5 {
+  position: absolute;
+  left: 392px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-5 {
+  position: absolute;
+  left: 512px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #f4a261;
+  border-radius: 12px;
+}
+
+.text-6 {
+  position: absolute;
+  left: 512px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-6 {
+  position: absolute;
+  left: 32px;
+  top: 270px;
+  width: 120px;
+  height: 80px;
+  background: linear-gradient(120deg, #ff5a36 0%, #ffd23f 50%, #3b82f6 100%);
+  border-radius: 12px;
+}
+
+.ellipse {
+  position: absolute;
+  left: 168px;
+  top: 270px;
+  width: 120px;
+  height: 80px;
+  background: radial-gradient(closest-side, #ff5a36 0%, #ffd23f 50%, #3b82f6 100%);
+  border-radius: 50%;
+}
+
+.ellipse-2 {
+  position: absolute;
+  left: 304px;
+  top: 270px;
+  width: 110px;
+  height: 80px;
+  background-color: #2563eb;
+  border-radius: 50%;
+  filter: blur(8px);
+}
+
+.rectangle-7 {
+  position: absolute;
+  left: 436px;
+  top: 272px;
+  width: 80px;
+  height: 70px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 6px 8px 12px #000000a0;
+}
+
+.ellipse-3 {
+  position: absolute;
+  left: 530px;
+  top: 268px;
+  width: 70px;
+  height: 70px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+
+.ellipse-4 {
+  position: absolute;
+  left: 566px;
+  top: 296px;
+  width: 60px;
+  height: 60px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+",
+    "path": "styles.css",
+  },
+]
+`;
+
+exports[`code export of the sample > writes the palette frame, placed absolutely, as js 1`] = `
+[
+  {
+    "content": "import './Frame.css'
+
+const span = (className, text) => {
+  const element = document.createElement('span')
+  element.setAttribute('class', className)
+  element.append(text)
+  return element
+}
+
+export const createFrame = () => {
+  const element0 = document.createElement('div')
+  element0.setAttribute('class', 'frame')
+  const element1 = document.createElement('p')
+  element1.setAttribute('class', 'text')
+  element1.append('Forest palette')
+  element0.append(element1)
+  const element2 = document.createElement('div')
+  element2.setAttribute('class', 'rectangle')
+  element0.append(element2)
+  const element3 = document.createElement('p')
+  element3.setAttribute('class', 'text-2')
+  element3.append('#1b4332')
+  element0.append(element3)
+  const element4 = document.createElement('div')
+  element4.setAttribute('class', 'rectangle-2')
+  element0.append(element4)
+  const element5 = document.createElement('p')
+  element5.setAttribute('class', 'text-3')
+  element5.append('#2d6a4f')
+  element0.append(element5)
+  const element6 = document.createElement('div')
+  element6.setAttribute('class', 'rectangle-3')
+  element0.append(element6)
+  const element7 = document.createElement('p')
+  element7.setAttribute('class', 'text-4')
+  element7.append('#52b788')
+  element0.append(element7)
+  const element8 = document.createElement('div')
+  element8.setAttribute('class', 'rectangle-4')
+  element0.append(element8)
+  const element9 = document.createElement('p')
+  element9.setAttribute('class', 'text-5')
+  element9.append('#d8f3dc')
+  element0.append(element9)
+  const element10 = document.createElement('div')
+  element10.setAttribute('class', 'rectangle-5')
+  element0.append(element10)
+  const element11 = document.createElement('p')
+  element11.setAttribute('class', 'text-6')
+  element11.append('#f4a261')
+  element0.append(element11)
+  const element12 = document.createElement('div')
+  element12.setAttribute('class', 'rectangle-6')
+  element0.append(element12)
+  const element13 = document.createElement('div')
+  element13.setAttribute('class', 'ellipse')
+  element0.append(element13)
+  const element14 = document.createElement('div')
+  element14.setAttribute('class', 'ellipse-2')
+  element0.append(element14)
+  const element15 = document.createElement('div')
+  element15.setAttribute('class', 'rectangle-7')
+  element0.append(element15)
+  const element16 = document.createElement('div')
+  element16.setAttribute('class', 'ellipse-3')
+  element0.append(element16)
+  const element17 = document.createElement('div')
+  element17.setAttribute('class', 'ellipse-4')
+  element0.append(element17)
+  return element0
+}
+",
+    "path": "createFrame.js",
+  },
+  {
+    "content": ".frame {
+  position: relative;
+  width: 640px;
+  height: 380px;
+  background-color: #ffffff;
+  border-radius: 20px;
+  outline: 1px solid #e3e3e3;
+  outline-offset: -0.5px;
+  overflow: hidden;
+}
+
+.text {
+  position: absolute;
+  left: 32px;
+  top: 28px;
+  margin: 0;
+  color: #111111;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 24px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle {
+  position: absolute;
+  left: 32px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #1b4332;
+  border-radius: 12px;
+}
+
+.text-2 {
+  position: absolute;
+  left: 32px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-2 {
+  position: absolute;
+  left: 152px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #2d6a4f;
+  border-radius: 12px;
+}
+
+.text-3 {
+  position: absolute;
+  left: 152px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-3 {
+  position: absolute;
+  left: 272px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #52b788;
+  border-radius: 12px;
+}
+
+.text-4 {
+  position: absolute;
+  left: 272px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-4 {
+  position: absolute;
+  left: 392px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #d8f3dc;
+  border-radius: 12px;
+}
+
+.text-5 {
+  position: absolute;
+  left: 392px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-5 {
+  position: absolute;
+  left: 512px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #f4a261;
+  border-radius: 12px;
+}
+
+.text-6 {
+  position: absolute;
+  left: 512px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-6 {
+  position: absolute;
+  left: 32px;
+  top: 270px;
+  width: 120px;
+  height: 80px;
+  background: linear-gradient(120deg, #ff5a36 0%, #ffd23f 50%, #3b82f6 100%);
+  border-radius: 12px;
+}
+
+.ellipse {
+  position: absolute;
+  left: 168px;
+  top: 270px;
+  width: 120px;
+  height: 80px;
+  background: radial-gradient(closest-side, #ff5a36 0%, #ffd23f 50%, #3b82f6 100%);
+  border-radius: 50%;
+}
+
+.ellipse-2 {
+  position: absolute;
+  left: 304px;
+  top: 270px;
+  width: 110px;
+  height: 80px;
+  background-color: #2563eb;
+  border-radius: 50%;
+  filter: blur(8px);
+}
+
+.rectangle-7 {
+  position: absolute;
+  left: 436px;
+  top: 272px;
+  width: 80px;
+  height: 70px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 6px 8px 12px #000000a0;
+}
+
+.ellipse-3 {
+  position: absolute;
+  left: 530px;
+  top: 268px;
+  width: 70px;
+  height: 70px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+
+.ellipse-4 {
+  position: absolute;
+  left: 566px;
+  top: 296px;
+  width: 60px;
+  height: 60px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+",
+    "path": "Frame.css",
+  },
+]
+`;
+
+exports[`code export of the sample > writes the palette frame, placed absolutely, as react 1`] = `
+[
+  {
+    "content": "import './Frame.css'
+
+export default function Frame() {
+  return (
+    <div className="frame">
+      <p className="text">Forest palette</p>
+      <div className="rectangle"></div>
+      <p className="text-2">#1b4332</p>
+      <div className="rectangle-2"></div>
+      <p className="text-3">#2d6a4f</p>
+      <div className="rectangle-3"></div>
+      <p className="text-4">#52b788</p>
+      <div className="rectangle-4"></div>
+      <p className="text-5">#d8f3dc</p>
+      <div className="rectangle-5"></div>
+      <p className="text-6">#f4a261</p>
+      <div className="rectangle-6"></div>
+      <div className="ellipse"></div>
+      <div className="ellipse-2"></div>
+      <div className="rectangle-7"></div>
+      <div className="ellipse-3"></div>
+      <div className="ellipse-4"></div>
+    </div>
+  )
+}
+",
+    "path": "Frame.jsx",
+  },
+  {
+    "content": ".frame {
+  position: relative;
+  width: 640px;
+  height: 380px;
+  background-color: #ffffff;
+  border-radius: 20px;
+  outline: 1px solid #e3e3e3;
+  outline-offset: -0.5px;
+  overflow: hidden;
+}
+
+.text {
+  position: absolute;
+  left: 32px;
+  top: 28px;
+  margin: 0;
+  color: #111111;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 24px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle {
+  position: absolute;
+  left: 32px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #1b4332;
+  border-radius: 12px;
+}
+
+.text-2 {
+  position: absolute;
+  left: 32px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-2 {
+  position: absolute;
+  left: 152px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #2d6a4f;
+  border-radius: 12px;
+}
+
+.text-3 {
+  position: absolute;
+  left: 152px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-3 {
+  position: absolute;
+  left: 272px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #52b788;
+  border-radius: 12px;
+}
+
+.text-4 {
+  position: absolute;
+  left: 272px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-4 {
+  position: absolute;
+  left: 392px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #d8f3dc;
+  border-radius: 12px;
+}
+
+.text-5 {
+  position: absolute;
+  left: 392px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-5 {
+  position: absolute;
+  left: 512px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #f4a261;
+  border-radius: 12px;
+}
+
+.text-6 {
+  position: absolute;
+  left: 512px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-6 {
+  position: absolute;
+  left: 32px;
+  top: 270px;
+  width: 120px;
+  height: 80px;
+  background: linear-gradient(120deg, #ff5a36 0%, #ffd23f 50%, #3b82f6 100%);
+  border-radius: 12px;
+}
+
+.ellipse {
+  position: absolute;
+  left: 168px;
+  top: 270px;
+  width: 120px;
+  height: 80px;
+  background: radial-gradient(closest-side, #ff5a36 0%, #ffd23f 50%, #3b82f6 100%);
+  border-radius: 50%;
+}
+
+.ellipse-2 {
+  position: absolute;
+  left: 304px;
+  top: 270px;
+  width: 110px;
+  height: 80px;
+  background-color: #2563eb;
+  border-radius: 50%;
+  filter: blur(8px);
+}
+
+.rectangle-7 {
+  position: absolute;
+  left: 436px;
+  top: 272px;
+  width: 80px;
+  height: 70px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 6px 8px 12px #000000a0;
+}
+
+.ellipse-3 {
+  position: absolute;
+  left: 530px;
+  top: 268px;
+  width: 70px;
+  height: 70px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+
+.ellipse-4 {
+  position: absolute;
+  left: 566px;
+  top: 296px;
+  width: 60px;
+  height: 60px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+",
+    "path": "Frame.css",
+  },
+]
+`;
+
+exports[`code export of the sample > writes the palette frame, placed absolutely, as vue 1`] = `
+[
+  {
+    "content": "<template>
+  <div class="frame">
+    <p class="text">Forest palette</p>
+    <div class="rectangle"></div>
+    <p class="text-2">#1b4332</p>
+    <div class="rectangle-2"></div>
+    <p class="text-3">#2d6a4f</p>
+    <div class="rectangle-3"></div>
+    <p class="text-4">#52b788</p>
+    <div class="rectangle-4"></div>
+    <p class="text-5">#d8f3dc</p>
+    <div class="rectangle-5"></div>
+    <p class="text-6">#f4a261</p>
+    <div class="rectangle-6"></div>
+    <div class="ellipse"></div>
+    <div class="ellipse-2"></div>
+    <div class="rectangle-7"></div>
+    <div class="ellipse-3"></div>
+    <div class="ellipse-4"></div>
+  </div>
+</template>
+
+<style scoped>
+.frame {
+  position: relative;
+  width: 640px;
+  height: 380px;
+  background-color: #ffffff;
+  border-radius: 20px;
+  outline: 1px solid #e3e3e3;
+  outline-offset: -0.5px;
+  overflow: hidden;
+}
+
+.text {
+  position: absolute;
+  left: 32px;
+  top: 28px;
+  margin: 0;
+  color: #111111;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 24px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle {
+  position: absolute;
+  left: 32px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #1b4332;
+  border-radius: 12px;
+}
+
+.text-2 {
+  position: absolute;
+  left: 32px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-2 {
+  position: absolute;
+  left: 152px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #2d6a4f;
+  border-radius: 12px;
+}
+
+.text-3 {
+  position: absolute;
+  left: 152px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-3 {
+  position: absolute;
+  left: 272px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #52b788;
+  border-radius: 12px;
+}
+
+.text-4 {
+  position: absolute;
+  left: 272px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-4 {
+  position: absolute;
+  left: 392px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #d8f3dc;
+  border-radius: 12px;
+}
+
+.text-5 {
+  position: absolute;
+  left: 392px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-5 {
+  position: absolute;
+  left: 512px;
+  top: 80px;
+  width: 96px;
+  height: 112px;
+  background-color: #f4a261;
+  border-radius: 12px;
+}
+
+.text-6 {
+  position: absolute;
+  left: 512px;
+  top: 204px;
+  margin: 0;
+  color: #555555;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.rectangle-6 {
+  position: absolute;
+  left: 32px;
+  top: 270px;
+  width: 120px;
+  height: 80px;
+  background: linear-gradient(120deg, #ff5a36 0%, #ffd23f 50%, #3b82f6 100%);
+  border-radius: 12px;
+}
+
+.ellipse {
+  position: absolute;
+  left: 168px;
+  top: 270px;
+  width: 120px;
+  height: 80px;
+  background: radial-gradient(closest-side, #ff5a36 0%, #ffd23f 50%, #3b82f6 100%);
+  border-radius: 50%;
+}
+
+.ellipse-2 {
+  position: absolute;
+  left: 304px;
+  top: 270px;
+  width: 110px;
+  height: 80px;
+  background-color: #2563eb;
+  border-radius: 50%;
+  filter: blur(8px);
+}
+
+.rectangle-7 {
+  position: absolute;
+  left: 436px;
+  top: 272px;
+  width: 80px;
+  height: 70px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 6px 8px 12px #000000a0;
+}
+
+.ellipse-3 {
+  position: absolute;
+  left: 530px;
+  top: 268px;
+  width: 70px;
+  height: 70px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+
+.ellipse-4 {
+  position: absolute;
+  left: 566px;
+  top: 296px;
+  width: 60px;
+  height: 60px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+</style>
+",
+    "path": "Frame.vue",
+  },
+]
+`;

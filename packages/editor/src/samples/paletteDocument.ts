@@ -378,6 +378,108 @@ const PATH_STEP = 130
 
 // A star drawn with straight segments, a leaf with curves, and two circle pairs that become one
 // path each: a union, and a ring cut from a disc.
+const CODE_CARD_LEFT = 540
+const CODE_CARD_TOP = 420
+
+const codeCardButton = (
+  id: string,
+  label: string,
+  fill: string,
+  ink: string
+): DesignOperation[] => [
+  {
+    kind: 'create',
+    id,
+    type: 'frame',
+    parentId: 'code-card-actions',
+    properties: {
+      name: `${label} button`,
+      fill,
+      cornerRadius: 8,
+      layoutMode: 'horizontal',
+      layoutPadding: 8,
+      widthSizing: 'hug',
+      heightSizing: 'hug'
+    }
+  },
+  {
+    kind: 'create',
+    id: `${id}-label`,
+    type: 'text',
+    parentId: id,
+    properties: { name: `${label} label`, text: label, fontSize: 14, fill: ink }
+  }
+]
+
+// An auto-layout card, which code export turns into nested flex boxes: a heading, a paragraph that
+// fills the card's width, and a row of two buttons that hug their labels.
+const codeCardOperations = (): DesignOperation[] => [
+  {
+    kind: 'create',
+    id: 'code-card',
+    type: 'frame',
+    parentId: 'page',
+    properties: {
+      name: 'Code card',
+      x: CODE_CARD_LEFT,
+      y: CODE_CARD_TOP,
+      width: 260,
+      height: 100,
+      fill: '#ffffff',
+      stroke: '#d0d0d0',
+      cornerRadius: 12,
+      layoutMode: 'vertical',
+      layoutGap: 12,
+      layoutPadding: 16,
+      heightSizing: 'hug'
+    }
+  },
+  {
+    kind: 'create',
+    id: 'code-card-heading',
+    type: 'text',
+    parentId: 'code-card',
+    properties: {
+      name: 'Heading',
+      text: 'Export as code',
+      fontSize: 20,
+      fontWeight: 700,
+      fill: '#111111',
+      pdfTag: 'h2'
+    }
+  },
+  {
+    kind: 'create',
+    id: 'code-card-body',
+    type: 'text',
+    parentId: 'code-card',
+    properties: {
+      name: 'Body',
+      text: 'This card is an auto-layout frame, so HTML, Vue, React and JavaScript get flex boxes.',
+      fontSize: 14,
+      fill: '#555555',
+      textWrap: true,
+      widthSizing: 'fill'
+    }
+  },
+  {
+    kind: 'create',
+    id: 'code-card-actions',
+    type: 'frame',
+    parentId: 'code-card',
+    properties: {
+      name: 'Actions',
+      fill: null,
+      layoutMode: 'horizontal',
+      layoutGap: 8,
+      widthSizing: 'hug',
+      heightSizing: 'hug'
+    }
+  },
+  ...codeCardButton('code-card-primary', 'Copy', '#2d6a4f', '#ffffff'),
+  ...codeCardButton('code-card-secondary', 'Download', '#d8f3dc', '#1b4332')
+]
+
 const shapeOperations = (): DesignOperation[] => [
   {
     kind: 'create',
@@ -486,7 +588,8 @@ export const createPaletteDocument = (): DesignDocument => {
     ...masterOperations(),
     { kind: 'update', id: 'page-1', patch: { masterId: 'master' } },
     { kind: 'update', id: 'page-2', patch: { masterId: 'master' } },
-    ...shapeOperations()
+    ...shapeOperations(),
+    ...codeCardOperations()
   ])
   if (!base.ok) throw new Error(base.error)
   const result = applyOperations(base.document, combineOperations(base.document))
