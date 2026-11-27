@@ -29,6 +29,20 @@ const createdIds = (operations: readonly DesignOperation[]): string[] =>
   )
 
 /**
+ * Gives created nodes that came without an id one, and lists the ids the batch creates.
+ * @param operations - The changes, in order, already validated.
+ * @param generateId - Makes ids for created nodes that came without one.
+ * @returns The operations ready for `applyOperations`, and the ids of the nodes they create.
+ */
+export const prepareOperations = (
+  operations: readonly OperationInput[],
+  generateId: GenerateId
+): { operations: DesignOperation[]; createdNodeIds: string[] } => {
+  const operationsWithIds = withGeneratedIds(operations, generateId)
+  return { operations: operationsWithIds, createdNodeIds: createdIds(operationsWithIds) }
+}
+
+/**
  * Applies a batch of operations to a file on disk as one change: nothing is saved if any fails.
  * The MCP server and the editor's write endpoint both save through here.
  * @param dataDirectory - Where Designo files live.
@@ -44,9 +58,9 @@ export const applyOperationsToFile = async (
   generateId: GenerateId
 ): Promise<AppliedBatch> => {
   const document = await readDocument(dataDirectory, fileId)
-  const operationsWithIds = withGeneratedIds(operations, generateId)
-  const result = applyOperations(document, operationsWithIds)
+  const prepared = prepareOperations(operations, generateId)
+  const result = applyOperations(document, prepared.operations)
   if (!result.ok) throw new Error(result.error)
   await writeDocument(dataDirectory, result.document)
-  return { document: result.document, createdNodeIds: createdIds(operationsWithIds) }
+  return { document: result.document, createdNodeIds: prepared.createdNodeIds }
 }

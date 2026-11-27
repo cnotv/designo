@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import {
@@ -40,6 +40,21 @@ export const readDocument = async (
   const raw = await readFile(documentPath(dataDirectory, fileId), 'utf8')
   return parseStoredDocument(JSON.parse(raw))
 }
+
+/**
+ * Reads when a document was last written, so a watcher can tell another process changed it.
+ * @param dataDirectory - Where Designo files live.
+ * @param fileId - Id of the file.
+ * @returns The modification time in milliseconds, or undefined when the file is gone.
+ */
+export const readDocumentStamp = async (
+  dataDirectory: string,
+  fileId: string
+): Promise<number | undefined> =>
+  stat(documentPath(dataDirectory, fileId)).then(
+    (stats) => stats.mtimeMs,
+    () => undefined
+  )
 
 /**
  * Writes a document atomically, so a reader never sees half a file.
