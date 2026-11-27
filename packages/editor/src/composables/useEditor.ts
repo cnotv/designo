@@ -5,6 +5,7 @@ import {
   getPaintOrder,
   getTemplateOperations,
   invertOperations,
+  type BooleanOperation,
   type DesignDocument,
   type DesignNodePatch,
   type DesignOperation,
@@ -24,6 +25,7 @@ import {
   createMakeComponentOperations,
   createResetOverridesOperations
 } from '../editing/components.ts'
+import { createBooleanSelectionOperations } from '../editing/booleans.ts'
 import { createGroupOperations, createUngroupOperations } from '../editing/grouping.ts'
 import {
   createAddPageOperations,
@@ -175,6 +177,7 @@ type SelectionActions = Pick<
   | 'paste'
   | 'groupSelection'
   | 'ungroupSelection'
+  | 'combineSelection'
   | 'makeComponent'
   | 'createInstance'
   | 'detachInstance'
@@ -244,6 +247,17 @@ const useSelectionActions = (
       ),
     ungroupSelection: () =>
       withDocument((current) => commitAndSelect(createUngroupOperations(current, selection.value))),
+    combineSelection: (operation: BooleanOperation) =>
+      withDocument((current) =>
+        commitAndSelect(
+          createBooleanSelectionOperations(
+            current,
+            selection.value,
+            operation,
+            createNodeId('path')
+          )
+        )
+      ),
     makeComponent: () =>
       withDocument((current) =>
         commitAndSelect(createMakeComponentOperations(current, selection.value))

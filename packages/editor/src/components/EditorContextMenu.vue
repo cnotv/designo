@@ -44,6 +44,12 @@ const MENU_SECTIONS: readonly (readonly MenuEntry[])[] = [
     }
   ],
   [
+    { label: 'Union', shortcut: '', run: (target) => target.combineSelection('union') },
+    { label: 'Subtract', shortcut: '', run: (target) => target.combineSelection('subtract') },
+    { label: 'Intersect', shortcut: '', run: (target) => target.combineSelection('intersect') },
+    { label: 'Exclude', shortcut: '', run: (target) => target.combineSelection('exclude') }
+  ],
+  [
     { label: 'Create component', shortcut: '', run: (target) => target.makeComponent() },
     { label: 'New instance', shortcut: '', run: (target) => target.createInstance() },
     { label: 'Reset overrides', shortcut: '', run: (target) => target.resetOverrides() },

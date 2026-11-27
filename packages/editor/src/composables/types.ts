@@ -1,4 +1,5 @@
 import type {
+  BooleanOperation,
   DesignDocument,
   DesignNode,
   DesignNodePatch,
@@ -83,6 +84,8 @@ export interface Editor {
   paste: () => void
   groupSelection: () => void
   ungroupSelection: () => void
+  /** Replaces the selected shapes with one path: their union, subtraction, intersection or exclusion. */
+  combineSelection: (operation: BooleanOperation) => void
   makeComponent: () => void
   createInstance: () => void
   detachInstance: () => void
