@@ -419,3 +419,24 @@ export interface PathBounds {
   width: number
   height: number
 }
+
+/** A point of an outline, in the space of the path data. */
+export interface PathPoint {
+  x: number
+  y: number
+}
+
+/**
+ * A point an outline passes through, with the bezier handles that shape the curves on either side.
+ * A handle is relative to the anchor; null means none, so the outline meets the point at a corner.
+ */
+export interface PathAnchor extends PathPoint {
+  handleIn: PathPoint | null
+  handleOut: PathPoint | null
+}
+
+/** One closed or open subpath of an outline, as its anchors. */
+export interface PathContour {
+  anchors: PathAnchor[]
+  closed: boolean
+}

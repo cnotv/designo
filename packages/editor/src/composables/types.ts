@@ -21,6 +21,7 @@ import type {
   HistoryState,
   LayerOrderMode,
   PathDraft,
+  PathEditSession,
   Point,
   SnapGuide,
   TextBoxMeasurer,
@@ -83,6 +84,19 @@ export interface Editor {
   /** Commits the path as one node; a polygon closes, a pen line stays open unless asked to close. */
   finishPathDraft: (closed?: boolean) => void
   cancelPathDraft: () => void
+  /** The path shown with its anchors and bezier handles, which can be dragged to reshape it. */
+  pathEdit: Ref<PathEditSession | undefined>
+  /** Shows the anchors of a path node for editing, selecting it. */
+  startPathEdit: (nodeId: string) => void
+  stopPathEdit: () => void
+  /** Picks the anchor whose handles are shown, or none. */
+  selectPathAnchor: (selected: PathEditSession['selected']) => void
+  /** Removes the picked anchor; the outline closes over the gap. */
+  removePathAnchor: () => void
+  /** Switches an anchor between a corner and a smooth point. */
+  togglePathAnchor: (address: { contour: number; index: number }) => void
+  /** Adds an anchor on the outline at a point, picking it; nothing when the point is off the outline. */
+  addPathAnchor: (world: Point, scale: number) => void
   setTool: (tool: Tool) => void
   setCanvasSize: (size: { width: number; height: number }) => void
   updateNode: (nodeId: string, patch: DesignNodePatch) => void

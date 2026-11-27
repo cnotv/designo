@@ -37,7 +37,7 @@ import {
   showPage
 } from '../editing/pages.ts'
 import { createLayerOrderOperations } from '../editing/stacking.ts'
-import { usePathDraft } from './usePathDraft.ts'
+import { usePathActions } from './usePathEdit.ts'
 import {
   createDeleteOperations,
   createMoveOperations,
@@ -308,7 +308,7 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
   )
 
   const selectionActions = useSelectionActions(document, selection, commit)
-  const pathDraftActions = usePathDraft(tool, selection, commit)
+  const pathActions = usePathActions(document, tool, selection, commit)
 
   const withDocument = (action: (current: DesignDocument) => void): void => {
     if (document.value) action(document.value)
@@ -366,7 +366,7 @@ export const useEditor = (files: DesignoFiles, measureTextBox: TextBoxMeasurer):
     select: (nodeIds: readonly string[]) => {
       selection.value = [...nodeIds]
     },
-    ...pathDraftActions,
+    ...pathActions,
     setCanvasSize: (size: { width: number; height: number }) => {
       canvasSize.value = size
     },

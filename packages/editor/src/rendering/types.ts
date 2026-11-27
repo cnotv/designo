@@ -1,5 +1,12 @@
 import type { DesignDocument, DesignNode } from '@designo/core'
-import type { Bounds, SnapGuide, SpatialIndex, Viewport } from '../editing/types.ts'
+import type {
+  Bounds,
+  PathEditHandle,
+  PathEditSession,
+  SnapGuide,
+  SpatialIndex,
+  Viewport
+} from '../editing/types.ts'
 import type { GlyphAtlas, TextEngine } from '@designo/text'
 
 export interface OverlayState {
@@ -10,6 +17,9 @@ export interface OverlayState {
   color: string
   guides: readonly SnapGuide[]
   guideColor: string
+  /** Anchors and handles of a path in edit mode, and which anchor is picked. */
+  pathHandles: readonly PathEditHandle[]
+  pathSelected: PathEditSession['selected']
 }
 
 /** What a document needs, worked out once per document, to build a scene for any viewport. */

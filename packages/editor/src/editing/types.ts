@@ -42,6 +42,27 @@ export interface PenPoint extends Point {
   handleOut?: Point
 }
 
+/** Which part of an anchor a drag holds: the point itself, or the handle of the curve into or out of it. */
+export type PathEditPart = 'anchor' | 'handleIn' | 'handleOut'
+
+/** One anchor of a path being edited, and the part of it. */
+export interface PathEditTarget {
+  contour: number
+  index: number
+  part: PathEditPart
+}
+
+/** A point to grab on a path being edited, in world units. */
+export interface PathEditHandle extends PathEditTarget {
+  point: Point
+}
+
+/** The path whose anchors are shown for editing, and the anchor whose handles are shown. */
+export interface PathEditSession {
+  nodeId: string
+  selected: { contour: number; index: number } | undefined
+}
+
 /** A path the pen or polygon tool is drawing: the points placed so far, before it is committed. */
 export interface PathDraft {
   tool: PathTool
@@ -79,6 +100,14 @@ export type Interaction =
       tool: DrawingTool
       nodeId: string
       parentId: string
+      startWorld: Point
+      currentWorld: Point
+    }
+  /** An anchor or handle of a path in edit mode being dragged. */
+  | {
+      kind: 'editingPath'
+      nodeId: string
+      target: PathEditTarget
       startWorld: Point
       currentWorld: Point
     }

@@ -1,6 +1,11 @@
 import { applyOperations, type DesignDocument, type DesignOperation } from '@designo/core'
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import { boundsFromPoints, getNodeBounds } from '../editing/geometry.ts'
+import {
+  createMoveTargetOperations,
+  findPathEditTarget,
+  getPathEditHandles
+} from '../editing/pathEditing.ts'
 import { createPathDraftOperation, isPathTool } from '../editing/pathTools.ts'
 import {
   createDrawOperation,
@@ -98,7 +103,25 @@ const resolveSnap = (
   return snapResize(document, { nodeId, startBounds, handle, delta, threshold: snapThreshold })
 }
 
-const previewOperations = (
+const previewPathEdit = (
+  document: DesignDocument,
+  state: Extract<Interaction, { kind: 'editingPath' }>
+): DesignOperation[] => {
+  const node = document.nodes[state.nodeId]
+  const moved =
+    state.startWorld.x !== state.currentWorld.x || state.startWorld.y !== state.currentWorld.y
+  return node && moved ? createMoveTargetOperations(node, state.target, state.currentWorld) : []
+}
+
+const previewDrawing = (
+  state: Extract<Interaction, { kind: 'drawing' }>,
+  keepSquare: boolean
+): DesignOperation[] => {
+  const { tool, nodeId, parentId, startWorld: start, currentWorld: current } = state
+  return [createDrawOperation({ tool, nodeId, parentId, start, current, keepSquare })]
+}
+
+const previewTransform = (
   document: DesignDocument,
   state: Interaction,
   keepSquare: boolean,
@@ -124,11 +147,18 @@ const previewOperations = (
     })
     return createRotateOperations(document, state.nodeId, rotation)
   }
-  if (state.kind === 'drawing') {
-    const { tool, nodeId, parentId, startWorld: start, currentWorld: current } = state
-    return [createDrawOperation({ tool, nodeId, parentId, start, current, keepSquare })]
-  }
   return []
+}
+
+const previewOperations = (
+  document: DesignDocument,
+  state: Interaction,
+  keepSquare: boolean,
+  snapThreshold: number | undefined
+): DesignOperation[] => {
+  if (state.kind === 'editingPath') return previewPathEdit(document, state)
+  if (state.kind === 'drawing') return previewDrawing(state, keepSquare)
+  return previewTransform(document, state, keepSquare, snapThreshold)
 }
 
 const distanceBetween = (first: Point, second: Point): number =>
@@ -206,6 +236,22 @@ const startSelectToolDrag = (
   return { kind: 'moving', nodeIds, startWorld: world, currentWorld: world }
 }
 
+// In path edit mode a press on an anchor or a bezier handle holds it; anything else is a plain
+// press, which ends the edit when it leaves the path.
+const startPathEditDrag = (editor: Editor, world: Point): Interaction | undefined => {
+  const session = editor.pathEdit.value
+  const node = session && editor.document.value?.nodes[session.nodeId]
+  if (!session || !node) return undefined
+  const target = findPathEditTarget(
+    getPathEditHandles(node, session.selected),
+    world,
+    editor.viewport.value.scale
+  )
+  if (!target) return undefined
+  editor.selectPathAnchor({ contour: target.contour, index: target.index })
+  return { kind: 'editingPath', nodeId: node.id, target, startWorld: world, currentWorld: world }
+}
+
 const startDrag = (
   editor: Editor,
   document: DesignDocument,
@@ -219,7 +265,11 @@ const startDrag = (
     return { kind: 'panning', startScreen: screen, startViewport: editor.viewport.value }
   }
   const tool = editor.tool.value
-  if (tool === 'select') return startSelectToolDrag(editor, document, index, event, world)
+  if (tool === 'select') {
+    return (
+      startPathEditDrag(editor, world) ?? startSelectToolDrag(editor, document, index, event, world)
+    )
+  }
   if (isPathTool(tool)) {
     const parentId =
       editor.pathDraft.value?.parentId ?? findContainerAtPoint(document, index, world)
@@ -309,6 +359,36 @@ const useGuides = (
       : []
   })
 
+// A double click in path edit mode switches the anchor under it between corner and smooth, or adds
+// an anchor where it lands on the outline. True when it was one of those.
+const editPathAt = (editor: Editor, world: Point): boolean => {
+  const session = editor.pathEdit.value
+  const node = session && editor.document.value?.nodes[session.nodeId]
+  if (!node) return false
+  const scale = editor.viewport.value.scale
+  const target = findPathEditTarget(getPathEditHandles(node, session.selected), world, scale)
+  if (target?.part === 'anchor') editor.togglePathAnchor(target)
+  else if (!target) editor.addPathAnchor(world, scale)
+  return true
+}
+
+const doubleClickAt = (editor: Editor, index: SpatialIndex | undefined, world: Point): void => {
+  if (editor.pathDraft.value) {
+    editor.finishPathDraft()
+    return
+  }
+  if (editPathAt(editor, world)) return
+  const document = editor.document.value
+  const hit = document && index && findNodeAtPoint(document, index, world)
+  if (hit?.type === 'path') {
+    editor.startPathEdit(hit.id)
+    return
+  }
+  if (hit?.type !== 'text') return
+  editor.select([hit.id])
+  editor.startTextEdit(hit.id, false)
+}
+
 const zoomOrPan = (editor: Editor, event: WheelEvent): void => {
   event.preventDefault()
   if (event.ctrlKey || event.metaKey) {
@@ -389,18 +469,8 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     if (state.tool === 'text') editor.startTextEdit(state.nodeId, true)
   }
 
-  const onDoubleClick = (event: MouseEvent): void => {
-    if (editor.pathDraft.value) {
-      editor.finishPathDraft()
-      return
-    }
-    const document = editor.document.value
-    const index = hitIndex.value
-    const hit = document && index && findNodeAtPoint(document, index, worldAt(event))
-    if (!hit || hit.type !== 'text') return
-    editor.select([hit.id])
-    editor.startTextEdit(hit.id, false)
-  }
+  const onDoubleClick = (event: MouseEvent): void =>
+    doubleClickAt(editor, hitIndex.value, worldAt(event))
 
   return {
     shownDocument: usePreview(editor, interaction, shiftHeld, snapThreshold, pendingPoint),

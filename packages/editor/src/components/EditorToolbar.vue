@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  ChevronDown,
   Circle,
   Frame,
   Github,
@@ -16,8 +17,15 @@ import {
   Type,
   Undo2
 } from 'lucide-vue-next'
-import { computed, useTemplateRef, type Component } from 'vue'
+import { computed, ref, useTemplateRef, watch, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -50,16 +58,42 @@ const onImageChosen = (event: Event): void => {
   if (file) void insertImageFile(file)
 }
 
-const tools: { tool: Tool; label: string; shortcut: string; icon: Component }[] = [
+interface ToolEntry {
+  tool: Tool
+  label: string
+  shortcut: string
+  icon: Component
+}
+
+const moveTools: ToolEntry[] = [
   { tool: 'select', label: 'Move', shortcut: 'V', icon: MousePointer2 },
-  { tool: 'frame', label: 'Frame', shortcut: 'F', icon: Frame },
+  { tool: 'frame', label: 'Frame', shortcut: 'F', icon: Frame }
+]
+
+// Shapes share one button with a menu, so the bar stays short as drawing tools are added.
+const shapeTools: ToolEntry[] = [
   { tool: 'rectangle', label: 'Rectangle', shortcut: 'R', icon: Square },
   { tool: 'ellipse', label: 'Ellipse', shortcut: 'O', icon: Circle },
   { tool: 'line', label: 'Line', shortcut: 'L', icon: Minus },
   { tool: 'pen', label: 'Pen', shortcut: 'P', icon: PenTool },
-  { tool: 'polygon', label: 'Polygon', shortcut: 'Y', icon: Pentagon },
-  { tool: 'text', label: 'Text', shortcut: 'T', icon: Type }
+  { tool: 'polygon', label: 'Polygon', shortcut: 'Y', icon: Pentagon }
 ]
+
+const textTools: ToolEntry[] = [{ tool: 'text', label: 'Text', shortcut: 'T', icon: Type }]
+
+const tools = [...moveTools, ...shapeTools, ...textTools]
+
+// The button shows the shape drawn last, as drawing apps do, so repeating it is one click.
+const lastShape = ref(shapeTools[0])
+watch(
+  () => editor.tool.value,
+  (tool) => {
+    lastShape.value = shapeTools.find((entry) => entry.tool === tool) ?? lastShape.value
+  }
+)
+const isShapeToolActive = computed(() =>
+  shapeTools.some((entry) => entry.tool === editor.tool.value)
+)
 
 const isTool = (value: unknown): value is Tool => tools.some((entry) => entry.tool === value)
 
@@ -92,7 +126,45 @@ const zoomLabel = computed(() => `${Math.round(editor.viewport.value.scale * PER
     <span class="px-2 text-sm font-semibold">Designo</span>
     <Separator orientation="vertical" class="h-6!" />
     <ToggleGroup v-model="selectedTool" type="single" size="sm" aria-label="Tools">
-      <Tooltip v-for="entry in tools" :key="entry.tool">
+      <Tooltip v-for="entry in moveTools" :key="entry.tool">
+        <TooltipTrigger as-child>
+          <ToggleGroupItem :value="entry.tool" :aria-label="entry.label">
+            <component :is="entry.icon" />
+          </ToggleGroupItem>
+        </TooltipTrigger>
+        <TooltipContent>
+          {{ entry.label }} <Kbd>{{ entry.shortcut }}</Kbd>
+        </TooltipContent>
+      </Tooltip>
+    </ToggleGroup>
+    <DropdownMenu>
+      <DropdownMenuTrigger as-child>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="gap-0.5 px-1.5"
+          aria-label="Shapes"
+          :aria-pressed="isShapeToolActive"
+          :class="{ 'bg-accent': isShapeToolActive }"
+        >
+          <component :is="lastShape?.icon" />
+          <ChevronDown class="size-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem
+          v-for="entry in shapeTools"
+          :key="entry.tool"
+          @select="editor.setTool(entry.tool)"
+        >
+          <component :is="entry.icon" />
+          {{ entry.label }}
+          <DropdownMenuShortcut>{{ entry.shortcut }}</DropdownMenuShortcut>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <ToggleGroup v-model="selectedTool" type="single" size="sm" aria-label="Text tool">
+      <Tooltip v-for="entry in textTools" :key="entry.tool">
         <TooltipTrigger as-child>
           <ToggleGroupItem :value="entry.tool" :aria-label="entry.label">
             <component :is="entry.icon" />
