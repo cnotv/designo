@@ -12,7 +12,7 @@ Phases 0 and 1 are done, and the shared-server deploy is merged. What is left ru
 | 1. Canvas MVP               | Pan and zoom, select, move, resize, draw shapes and text, layers and properties panels, undo                                                                                                                                                                                                  | 3–4 wks  | done    |
 | Shared-server deploy        | Hetzner deploy behind a reverse proxy                                                                                                                                                                                                                                                         |          | done    |
 | Accounts and sign-in        | Google sign-in, approval by admins or auto-approve lists, designs kept per account, an Accounts screen, stdio MCP as an account, a remote `/mcp` agents sign in to with OAuth (#32)                                                                                                           |          | done    |
-| 2. MCP v1                   | Read and write tools done. `get_screenshot` ships with SVG and PNG export below. `get_selection` waits on phase 5                                                                                                                                                                             | 1–2 wks  | partial |
+| 2. MCP v1                   | Read and write tools done. `get_screenshot` ships with SVG and PNG export below. `get_selection` from presence (#123)                                                                                                                                                                         | 1–2 wks  | done    |
 | Editor basics               | Duplicate, copy and paste, group and ungroup, bring forward and send back, align and distribute, snapping and smart guides, rotation, inline text editing, frames clipping their contents, more than one page per file (#13, #14, #16, #73)                                                   | 2–3 wks  | done    |
 | File format versions        | Files carry a `formatVersion` (3 now) and old files are migrated one step at a time on read (#12)                                                                                                                                                                                             | 1 wk     | done    |
 | SVG and PNG export          | SVG from the document, PNG through resvg, both in Node. Ships `get_screenshot` and completes MCP v1 screenshots (#15)                                                                                                                                                                         | 1 wk     |         |
@@ -23,12 +23,11 @@ Phases 0 and 1 are done, and the shared-server deploy is merged. What is left ru
 | 3. Real design work         | In order: auto-layout (a pure engine in `@designo/core`, done, #67), components and instances with overrides, variables with an MCP tool, images with asset storage (built: image nodes, a picture store, `add_image`, fit modes and drop on the canvas), pen tool and booleans last          | 6–8 wks  |         |
 | Print and book design       | Guides, pages in millimetres with bleed (pages, units and guides done, #68), master pages, gradients and blur, fonts and text styles, MCP fixes, then multi-page PDF. See [Print and book design](#print-and-book-design) (#42)                                                               | 5–7 wks  |         |
 | 4. Export                   | Vue, React, HTML and vanilla JS code from one intermediate representation (done, #122), then PDF. SVG and PNG are already done                                                                                                                                                                | 2–3 wks  |         |
-| 5. Multiplayer              | Yjs sync server. The MCP server writes through it, which removes the two-writer race. `get_selection` comes from presence. Cursors, comments                                                                                                                                                  | 2–3 wks  |         |
+| 5. Multiplayer              | Yjs sync server. The MCP server writes through it, which removes the two-writer race. `get_selection` comes from presence. Cursors, comments (#123)                                                                                                                                           | 2–3 wks  | done    |
 | 6. Polish                   | WebGPU backend, sandboxed plugin API                                                                                                                                                                                                                                                          | ongoing  |         |
 
-MCP v1 is partial: the read and write tools work. `get_screenshot` lands with SVG and PNG export,
-`get_selection` with phase 5, and components and variables with the phases that build them.
-`export_code` is done.
+MCP v1 is done: the read and write tools, `get_screenshot`, `export_code`, and `get_selection` from
+the presence of multiplayer.
 
 ## Print and book design
 
@@ -79,5 +78,7 @@ every effect in CI (#121), with WebGL drawn by SwiftShader in headless Chromium.
 - **Text** is the hardest part: shaping, line breaking, rich-text spans and font loading.
 - **Pen tool and boolean operations:** reuse a proven library (paper.js booleans, lyon or kurbo
   through WebAssembly) rather than writing one.
-- **Two writers:** until phase 5, the editor and the MCP server both write the same files.
+- **Two writers:** the editor and remote agents write through the sync hub; the stdio MCP server
+  still writes the file, which the hub merges within half a second, so a clash inside that window is
+  possible.
 - **Legal:** copy features and workflows, not any other tool's branding, icons or file internals.

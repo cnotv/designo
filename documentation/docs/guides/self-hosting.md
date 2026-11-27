@@ -13,6 +13,11 @@ Files live in the `designo-data` volume. The port is bound to `127.0.0.1`, and t
 no login of its own unless you turn on [Sign in with Google](#sign-in-with-google), so put one in
 front or turn that on before exposing it.
 
+Live editing runs over a WebSocket on `/api/sync/<file id>`. A reverse proxy in front has to pass
+the upgrade through (in nginx, `proxy_set_header Upgrade $http_upgrade` and
+`proxy_set_header Connection "upgrade"`; Caddy does it by default). Without it the editor still
+works, saving each edit over a plain request and showing others' edits within a second.
+
 ## Fonts
 
 No font ships with Designo: the editor and the screenshot tool load them from the

@@ -14,6 +14,7 @@ import {
   syncInstances,
   withOverridesAfterPatch
 } from './components.ts'
+import { applyCommentOperation, isCommentOperation } from './comments.ts'
 import { layoutDocument } from './layout.ts'
 import { withPathScaledToSize } from './pathOutline.ts'
 import {
@@ -24,6 +25,7 @@ import {
 } from './styles.ts'
 import { checkTextSpans, clampSpansToText } from './textSpans.ts'
 import type {
+  CommentOperation,
   DesignDocument,
   DesignNode,
   DesignNodeTree,
@@ -400,7 +402,7 @@ const applyResetOverrides = (
 
 const applyWithoutLayout = (
   document: DesignDocument,
-  operation: Exclude<DesignOperation, StyleOperation>
+  operation: Exclude<DesignOperation, StyleOperation | CommentOperation>
 ): OperationResult => {
   if (operation.kind === 'create') return applyCreate(document, operation)
   if (operation.kind === 'createPage') return applyCreatePage(document, operation)
@@ -424,6 +426,7 @@ export const applyOperation = (
   document: DesignDocument,
   operation: DesignOperation
 ): OperationResult => {
+  if (isCommentOperation(operation)) return applyCommentOperation(document, operation)
   const applied = isStyleOperation(operation)
     ? applyStyleOperation(document, operation)
     : applyWithoutLayout(document, operation)

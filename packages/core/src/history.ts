@@ -1,11 +1,14 @@
 import { applyOperation, getChildren, getSubtreeIds } from './document.ts'
+import { invertCommentOperation, isCommentOperation } from './comments.ts'
 import { invertStyleOperation, isStyleOperation, STYLE_LINK_KEYS } from './styles.ts'
 import type {
+  CommentOperation,
   DesignDocument,
   DocumentMetadata,
   DesignNode,
   DesignNodePatch,
-  DesignOperation
+  DesignOperation,
+  StyleOperation
 } from './types.ts'
 
 // Editing a bound or styled property changes how the node is linked, so undo gives the links back too.
@@ -65,15 +68,20 @@ const recreateSubtree = (document: DesignDocument, node: DesignNode): DesignOper
 const CREATING_KINDS: readonly string[] = ['create', 'createPage', 'createInstance']
 const RESTORING_KINDS: readonly string[] = ['detachInstance', 'resetOverrides']
 
-/**
- * Works out the operations that undo one operation, read against the document it applies to.
- * @param document - The document before the operation.
- * @param operation - The operation to undo.
- * @returns The operations that restore the document, in order; empty when there is nothing to undo.
- */
-export const invertOperation = (
+// Metadata, styles and comments sit beside the nodes, so their undo reads no node.
+type OperationBesideNodes = Extract<
+  DesignOperation,
+  { kind: 'updateMetadata' } | StyleOperation | CommentOperation
+>
+
+const isOperationBesideNodes = (operation: DesignOperation): operation is OperationBesideNodes =>
+  operation.kind === 'updateMetadata' ||
+  isStyleOperation(operation) ||
+  isCommentOperation(operation)
+
+const invertOperationBesideNodes = (
   document: DesignDocument,
-  operation: DesignOperation
+  operation: OperationBesideNodes
 ): DesignOperation[] => {
   if (operation.kind === 'updateMetadata') {
     return [
@@ -88,7 +96,22 @@ export const invertOperation = (
       }
     ]
   }
-  if (isStyleOperation(operation)) return invertStyleOperation(document, operation)
+  return isStyleOperation(operation)
+    ? invertStyleOperation(document, operation)
+    : invertCommentOperation(document, operation)
+}
+
+/**
+ * Works out the operations that undo one operation, read against the document it applies to.
+ * @param document - The document before the operation.
+ * @param operation - The operation to undo.
+ * @returns The operations that restore the document, in order; empty when there is nothing to undo.
+ */
+export const invertOperation = (
+  document: DesignDocument,
+  operation: DesignOperation
+): DesignOperation[] => {
+  if (isOperationBesideNodes(operation)) return invertOperationBesideNodes(document, operation)
   if (CREATING_KINDS.includes(operation.kind)) return [{ kind: 'delete', id: operation.id }]
   const node = document.nodes[operation.id]
   if (!node) return []

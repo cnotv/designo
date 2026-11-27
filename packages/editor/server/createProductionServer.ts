@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import type { Duplex } from 'node:stream'
 import {
   accountDirectory,
   createAccountStore,
@@ -7,6 +8,7 @@ import {
   createRateLimiter,
   createReplayGuard
 } from '@designo/auth'
+import { createSyncHub, type SyncHub } from '@designo/sync/server'
 import { handleAdminRoute, isAdminRoute } from './adminRoutes.ts'
 import { accountFromRequest, sendAccountRefusal } from './authentication.ts'
 import { handleAuthRoute, ME_ROUTE } from './authRoutes.ts'
@@ -14,6 +16,7 @@ import { handleConnectionsRoute, isConnectionsRoute } from './connectionsRoutes.
 import { handleOAuthRoute } from './oauthRoutes.ts'
 import { FILES_ROUTE, handleFilesRequest } from './filesApi.ts'
 import { sendError, sendOk } from './http.ts'
+import { handleSyncUpgrade, isSyncUpgrade } from './syncRoute.ts'
 import type { AuthContext, ProductionServerOptions } from './types.ts'
 
 const HTTP_INTERNAL_SERVER_ERROR = 500
@@ -38,6 +41,18 @@ const pathnameOf = (request: IncomingMessage): string => (request.url ?? '').spl
 const isFilesRoute = (pathname: string): boolean =>
   pathname === FILES_ROUTE || pathname.startsWith(`${FILES_ROUTE}/`)
 
+// The folder of the signed-in, approved account a request comes from; the live connection to a
+// file is opened in it, as the files API is.
+const accountDataDirectory = async (
+  context: AuthContext,
+  request: IncomingMessage
+): Promise<string | undefined> => {
+  const account = await accountFromRequest(context, request)
+  return account?.status === 'approved'
+    ? accountDirectory(context.dataDirectory, account.id)
+    : undefined
+}
+
 // The files API works on one account's folder, so a signed-in, approved account is the only way in.
 const handleAccountFiles = async (
   context: AuthContext,
@@ -54,7 +69,8 @@ const handleAccountFiles = async (
     accountDirectory(dataDirectory, account.id),
     request,
     response,
-    (request.url ?? '').slice(FILES_ROUTE.length)
+    (request.url ?? '').slice(FILES_ROUTE.length),
+    context.syncHub.applyOperations
   )
 }
 
@@ -94,6 +110,7 @@ const routeWithSignIn = async (
 
 const routeWithoutSignIn = async (
   options: ProductionServerOptions,
+  syncHub: SyncHub,
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
@@ -107,7 +124,8 @@ const routeWithoutSignIn = async (
       options.dataDirectory,
       request,
       response,
-      (request.url ?? '').slice(FILES_ROUTE.length)
+      (request.url ?? '').slice(FILES_ROUTE.length),
+      syncHub.applyOperations
     )
     return
   }
@@ -124,6 +142,7 @@ const routeWithoutSignIn = async (
  */
 export const createProductionServer = (options: ProductionServerOptions): Server => {
   const clock = options.clock ?? Date.now
+  const syncHub = createSyncHub()
   const context: AuthContext | undefined = options.settings
     ? {
         settings: options.settings,
@@ -136,13 +155,28 @@ export const createProductionServer = (options: ProductionServerOptions): Server
         authorizationCodes: createAuthorizationCodeStore(clock),
         registrationLimiter: createRateLimiter(REGISTRATION_LIMIT, clock),
         tokenLimiter: createRateLimiter(TOKEN_LIMIT, clock),
-        rasterize: options.rasterize
+        rasterize: options.rasterize,
+        syncHub
       }
     : undefined
-  return createServer((request, response) => {
+  const server = createServer((request, response) => {
     const answered = context
       ? routeWithSignIn(context, options, request, response)
-      : routeWithoutSignIn(options, request, response)
+      : routeWithoutSignIn(options, syncHub, request, response)
     answered.catch((error: unknown) => answerInternalError(error, response))
   })
+  server.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+    if (!isSyncUpgrade(request)) {
+      socket.destroy()
+      return
+    }
+    const findDataDirectory = context
+      ? (incoming: IncomingMessage) => accountDataDirectory(context, incoming)
+      : () => Promise.resolve(options.dataDirectory)
+    handleSyncUpgrade(syncHub, findDataDirectory, { request, socket, head }).catch(() =>
+      socket.destroy()
+    )
+  })
+  server.on('close', () => void syncHub.close())
+  return server
 }

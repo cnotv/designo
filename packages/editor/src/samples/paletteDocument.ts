@@ -560,6 +560,49 @@ const combineOperations = (document: DesignDocument): DesignOperation[] => [
   ...getBooleanOperations(document, ['combine-1-a', 'combine-1-b'], 'subtract', 'path-subtract')
 ]
 
+// Two open comments and a resolved one, so the pins and the Comments panel show in the demo.
+const commentOperations = (): DesignOperation[] => [
+  {
+    kind: 'setComment',
+    comment: {
+      id: 'comment-title',
+      nodeId: 'title',
+      x: 0,
+      y: -8,
+      text: 'Could the title use the display weight?',
+      author: 'Ada',
+      createdAt: '2026-11-20T09:00:00.000Z',
+      resolved: false
+    }
+  },
+  {
+    kind: 'setComment',
+    comment: {
+      id: 'comment-star',
+      nodeId: 'path-star',
+      x: 0,
+      y: 0,
+      text: 'The star reads well at this size.',
+      author: 'Agent',
+      createdAt: '2026-11-20T09:05:00.000Z',
+      resolved: false
+    }
+  },
+  {
+    kind: 'setComment',
+    comment: {
+      id: 'comment-resolved',
+      nodeId: null,
+      x: 20,
+      y: 20,
+      text: 'Swatches are now bound to the palette.',
+      author: 'Ada',
+      createdAt: '2026-11-20T08:00:00.000Z',
+      resolved: true
+    }
+  }
+]
+
 /**
  * Builds the sample file the editor shows when no Designo server is behind it, as on the public demo: a palette, two frames numbered as the pages of its PDF, and a master that gives both a page number. Page 1 holds one line the ATS check passes and one it fails.
  * @returns The sample document.
@@ -603,7 +646,10 @@ export const createPaletteDocument = (): DesignDocument => {
     ...codeCardOperations()
   ])
   if (!base.ok) throw new Error(base.error)
-  const result = applyOperations(base.document, combineOperations(base.document))
+  const result = applyOperations(base.document, [
+    ...combineOperations(base.document),
+    ...commentOperations()
+  ])
   if (!result.ok) throw new Error(result.error)
   return result.document
 }

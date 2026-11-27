@@ -434,6 +434,25 @@ export const textStyleSchema = z
     'A named bundle of type settings that a text follows through its `textStyleId`. lineHeight and letterSpacing are multiples of fontSize.'
   )
 
+// The same limit core enforces when a comment is set.
+const MAX_COMMENT_LENGTH = 10_000
+
+export const commentSchema = z
+  .object({
+    id: nodeIdSchema,
+    nodeId: nodeIdSchema.nullable(),
+    x: z.number(),
+    y: z.number(),
+    text: z.string().min(1).max(MAX_COMMENT_LENGTH),
+    author: z.string().max(200),
+    createdAt: z.iso.datetime(),
+    resolved: z.boolean()
+  })
+  .strict()
+  .describe(
+    "A note on the design. With nodeId, x and y are from that node's top left, so the pin follows it; with nodeId null they are on the page."
+  )
+
 export const storedDocumentSchema = z.object({
   formatVersion: z.literal(CURRENT_FORMAT_VERSION),
   id: fileIdSchema,
@@ -441,6 +460,7 @@ export const storedDocumentSchema = z.object({
   metadata: documentMetadataSchema.optional(),
   variables: z.record(z.string(), variableSchema).optional(),
   textStyles: z.record(z.string(), textStyleSchema).optional(),
+  comments: z.record(z.string(), commentSchema).optional(),
   rootId: nodeIdSchema,
   nodes: z.record(z.string(), storedNodeSchema)
 })
@@ -498,6 +518,8 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('deleteVariable'), id: nodeIdSchema }),
   z.object({ kind: z.literal('setTextStyle'), style: textStyleSchema }),
   z.object({ kind: z.literal('deleteTextStyle'), id: nodeIdSchema }),
+  z.object({ kind: z.literal('setComment'), comment: commentSchema }),
+  z.object({ kind: z.literal('deleteComment'), id: nodeIdSchema }),
   z.object({
     kind: z.literal('updateMetadata'),
     patch: documentMetadataSchema.describe(

@@ -208,27 +208,55 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 
 ## Tools
 
-| Tool                | Does                                                                                                                                                 |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `list_files`        | Lists files with their ids and names                                                                                                                 |
-| `list_fonts`        | Lists the fonts the account uploaded: each file's `id`, `family`, `fontWeight` and `fontStyle`                                                       |
-| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                                                                   |
-| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                                                                   |
-| `get_node`          | Reads one node with every property                                                                                                                   |
-| `get_styles`        | Lists the variables and text styles of the file                                                                                                      |
-| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                                          |
-| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text; `textAsPaths` draws text as glyph outlines                                                    |
-| `export_code`       | Exports the page, or `nodeId`, as `html`, `vue`, `react` or `js` code; returns `{ files: [{ path, content }] }`                                      |
-| `check_ats`         | Reports pass, warn or fail for what an applicant tracking system could read from a file's PDF export, or from a PDF given as `pdfBase64`             |
-| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                                           |
-| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                                        |
-| `create_node`       | Creates one frame, group, rectangle, ellipse, path, text or image node                                                                               |
-| `combine_nodes`     | Replaces two or more shapes with one path: `union`, `subtract`, `intersect` or `exclude`                                                             |
-| `add_image`         | Stores a PNG, JPEG, WebP or GIF from base64, a file path, a URL or a stored `assetId`; places it as an image node                                    |
-| `update_node`       | Changes some properties of one node                                                                                                                  |
-| `delete_node`       | Deletes a node and everything inside it                                                                                                              |
-| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                                                      |
-| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, updateMetadata, variable, text style, delete, move and component operations as one change |
+| Tool                | Does                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list_files`        | Lists files with their ids and names                                                                                                                          |
+| `list_fonts`        | Lists the fonts the account uploaded: each file's `id`, `family`, `fontWeight` and `fontStyle`                                                                |
+| `create_file`       | Creates an empty file with one page; returns `fileId` and `pageId`                                                                                            |
+| `get_document_tree` | Reads the node tree from the page, or from `nodeId`, to `depth` levels (default 3)                                                                            |
+| `get_node`          | Reads one node with every property                                                                                                                            |
+| `get_styles`        | Lists the variables and text styles of the file                                                                                                               |
+| `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                                                   |
+| `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text; `textAsPaths` draws text as glyph outlines                                                             |
+| `export_code`       | Exports the page, or `nodeId`, as `html`, `vue`, `react` or `js` code; returns `{ files: [{ path, content }] }`                                               |
+| `check_ats`         | Reports pass, warn or fail for what an applicant tracking system could read from a file's PDF export, or from a PDF given as `pdfBase64`                      |
+| `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                                                    |
+| `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                                                 |
+| `create_node`       | Creates one frame, group, rectangle, ellipse, path, text or image node                                                                                        |
+| `combine_nodes`     | Replaces two or more shapes with one path: `union`, `subtract`, `intersect` or `exclude`                                                                      |
+| `add_image`         | Stores a PNG, JPEG, WebP or GIF from base64, a file path, a URL or a stored `assetId`; places it as an image node                                             |
+| `update_node`       | Changes some properties of one node                                                                                                                           |
+| `delete_node`       | Deletes a node and everything inside it                                                                                                                       |
+| `set_page_setup`    | Sets a frame as a printed page: size, bleed, facing and layout guides, in millimetres or points                                                               |
+| `apply_ops`         | Applies up to 500 create, createPage, reorderPage, update, updateMetadata, variable, text style, comment, delete, move and component operations as one change |
+| `get_selection`     | Tells who has the file open in the editor, what each has selected (ids, names, types) and where their pointer is                                              |
+| `get_comments`      | Lists the open comments, oldest first; `includeResolved` adds the resolved ones                                                                               |
+| `add_comment`       | Leaves a comment on the page, or pinned to `nodeId` at `x`, `y` from its top left                                                                             |
+
+### Working with people live
+
+When a person has the file open, the editor publishes their selection and pointer. `get_selection`
+reads it, so "make this bolder" can find what "this" is:
+
+```json
+{
+  "people": [
+    {
+      "name": "Ada",
+      "kind": "person",
+      "color": "#0090ff",
+      "selection": [{ "id": "title", "name": "Title", "type": "text" }],
+      "cursor": { "x": 412, "y": 96 }
+    }
+  ]
+}
+```
+
+It is empty when nobody has the file open. With sign-in on, the remote `/mcp` endpoint applies every
+write through the file's live room, so the people on it see the change at once; the stdio server
+writes the file, which an open editor picks up within half a second. Comments an agent adds with
+`add_comment` are signed `Agent` (remote: the account's name and "(agent)"). Resolve one with
+`apply_ops` `setComment` and `resolved: true`, or remove it with `deleteComment`.
 
 `list_fonts` answers the fonts uploaded in the editor (the Font field's **Upload a font**). Name a
 listed family in a text's `fontFamily` to use one: it is found before any Fontsource family of the

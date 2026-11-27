@@ -14,6 +14,8 @@ import {
   readFixtureFontBytes
 } from '@designo/text/fixtures'
 import { createTextEngine, loadTextLayout } from '@designo/text'
+import { writePresenceFile } from '@designo/sync/server'
+import { addCommentTool, getCommentsTool, getSelectionTool } from './liveTools.ts'
 import { createDesignoServer } from './server.ts'
 import {
   applyOperationsTool,
@@ -1443,5 +1445,109 @@ describe('variables and text styles', () => {
     expect(result.isError).toBeFalsy()
     const styles = await client.callTool({ name: 'get_styles', arguments: { fileId } })
     expect(JSON.stringify(styles.content)).toContain('Ink')
+  })
+})
+
+describe('live editing tools', () => {
+  const setUpBox = async (): Promise<{ fileId: string; boxId: string }> => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Live' })
+    const { createdNodeIds } = await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        { kind: 'create', type: 'rectangle', parentId: pageId, properties: { name: 'Hero' } }
+      ]
+    })
+    return { fileId, boxId: createdNodeIds[0] ?? '' }
+  }
+
+  const ada = {
+    clientId: 7,
+    user: { name: 'Ada', color: '#0090ff', kind: 'person' as const },
+    cursor: { x: 12, y: 34 }
+  }
+
+  it('get_selection reports what each person has selected, by name and type', async () => {
+    const { fileId, boxId } = await setUpBox()
+    const live = {
+      applyOperations: vi.fn(),
+      getPresence: () => [{ ...ada, selection: [boxId, 'gone'] }]
+    }
+    const report = await getSelectionTool({ ...context, sync: live }, { fileId })
+    expect(report.people).toEqual([
+      {
+        name: 'Ada',
+        kind: 'person',
+        color: '#0090ff',
+        selection: [{ id: boxId, name: 'Hero', type: 'rectangle' }],
+        cursor: { x: 12, y: 34 }
+      }
+    ])
+  })
+
+  it('get_selection reads the presence file without a live hub, and ignores a stale one', async () => {
+    const { fileId, boxId } = await setUpBox()
+    await writePresenceFile(
+      context.dataDirectory,
+      fileId,
+      [{ ...ada, selection: [boxId] }],
+      Date.now()
+    )
+    expect((await getSelectionTool(context, { fileId })).people).toHaveLength(1)
+    await writePresenceFile(context.dataDirectory, fileId, [{ ...ada, selection: [boxId] }], 0)
+    expect((await getSelectionTool(context, { fileId })).people).toEqual([])
+  })
+
+  it('writes through the live hub when the server has one', async () => {
+    const { fileId, boxId } = await setUpBox()
+    const applyOperations = vi.fn(async () => ({
+      document: await readDocument(context.dataDirectory, fileId),
+      createdNodeIds: []
+    }))
+    await applyOperationsTool(
+      { ...context, sync: { applyOperations, getPresence: () => [] } },
+      { fileId, operations: [{ kind: 'update', id: boxId, patch: { x: 5 } }] }
+    )
+    expect(applyOperations).toHaveBeenCalledWith(
+      context.dataDirectory,
+      fileId,
+      [{ kind: 'update', id: boxId, patch: { x: 5 } }],
+      context.generateId
+    )
+  })
+
+  it('add_comment pins a comment to a node, and get_comments lists the open ones', async () => {
+    const { fileId, boxId } = await setUpBox()
+    const { commentId } = await addCommentTool(context, {
+      fileId,
+      text: 'Make the hero bolder',
+      nodeId: boxId,
+      x: 4,
+      y: 8
+    })
+    const { comments } = await getCommentsTool(context, { fileId })
+    expect(comments).toEqual([
+      expect.objectContaining({ id: commentId, nodeId: boxId, author: 'Agent', resolved: false })
+    ])
+    const resolved = comments[0]
+    if (!resolved) throw new Error('No comment')
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [{ kind: 'setComment', comment: { ...resolved, resolved: true } }]
+    })
+    expect((await getCommentsTool(context, { fileId })).comments).toEqual([])
+    expect(
+      (await getCommentsTool(context, { fileId, includeResolved: true })).comments
+    ).toHaveLength(1)
+  })
+
+  it('registers get_selection, get_comments and add_comment', async () => {
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await createDesignoServer(context).connect(serverTransport)
+    const client = new Client({ name: 'test', version: '0.0.0' })
+    await client.connect(clientTransport)
+    const { tools } = await client.listTools()
+    expect(tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining(['get_selection', 'get_comments', 'add_comment'])
+    )
   })
 })

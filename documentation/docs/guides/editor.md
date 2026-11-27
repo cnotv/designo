@@ -422,8 +422,30 @@ same PDF through `export_pdf`, and the same code through `export_code`.
 | Shift 0                  | Zoom to 100%                                       |
 | Shift Ctrl/Cmd E         | Export again                                       |
 
-Undo covers your own edits. If an agent changed a layer since, a step that no longer applies is
-skipped rather than half-applied.
+Undo covers your own edits only, never another person's or an agent's. If someone changed a layer
+since, a step that no longer applies is skipped rather than half-applied.
+
+## Editing together
+
+Open the same file in two tabs, or on two computers signed in to the same server, and edits show
+in the others at once. Each person gets a colour: their pointer moves on your canvas with their
+name beside it, and what they have selected is outlined in their colour. Signed-in people show by
+name; without sign-in a tab picks a guest name such as "Guest Heron". Agents connected through MCP
+see the selections too, with `get_selection`.
+
+Two people changing different properties of the same layer both keep their change. When the
+changes clash, such as one person moving a layer into a frame another deletes, the file is
+repaired: the layer goes with the frame. If the connection drops, edits are saved over plain
+requests until it comes back.
+
+## Comments
+
+The **Comments** panel, under Styles, lists the open comments, numbered oldest first, and the
+coloured dots beside its title are the others on the file. Type in the box and press Enter to add
+one: it is pinned to the top right corner of the first selected layer, and follows it, or to the
+middle of the view when nothing is selected. Pins show on the canvas with their number; hover a
+pin to read it. Resolve a comment with the tick or delete it with the bin. Adding, resolving and
+deleting a comment are edits like any other, so Undo takes them back.
 
 ## Not yet
 

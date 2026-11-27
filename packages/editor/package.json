@@ -20,6 +20,7 @@
     "@designo/fonts": "workspace:*",
     "@designo/mcp": "workspace:*",
     "@designo/storage": "workspace:*",
+    "@designo/sync": "workspace:*",
     "@designo/text": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@vueuse/core": "^15.0.0",
@@ -32,14 +33,19 @@
     "sirv": "^3.0.2",
     "tailwind-merge": "^3.7.0",
     "vue": "^3.5.45",
+    "y-protocols": "^1.0.6",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.27",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "@tailwindcss/vite": "^4.3.5",
     "@vitejs/plugin-vue": "^6.0.11",
     "tailwindcss": "^4.3.5",
     "tw-animate-css": "^1.4.0",
     "vite": "^7.3.8",
-    "vue-tsc": "^3.3.14"
+    "vue-tsc": "^3.3.14",
+    "ws": "^8.18.3"
   }
 }

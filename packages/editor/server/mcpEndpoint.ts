@@ -119,7 +119,9 @@ const serveToolCall = async (
     const server = createDesignoServer({
       dataDirectory: accountDirectory(context.dataDirectory, account.id),
       generateId: createShortId,
-      rasterize: context.rasterize
+      rasterize: context.rasterize,
+      sync: context.syncHub,
+      authorName: `${account.name} (agent)`
     })
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

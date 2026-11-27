@@ -331,6 +331,23 @@ export interface TextStyle extends TextStyleProperties {
   name: string
 }
 
+/**
+ * A note pinned to the canvas, or to a node. `x` and `y` are on the page, or from the node's top
+ * left when `nodeId` is set, so the pin moves with the node.
+ */
+export interface DesignComment {
+  id: string
+  nodeId: string | null
+  x: number
+  y: number
+  text: string
+  /** The name of the person or agent who wrote it. */
+  author: string
+  /** An ISO 8601 time. */
+  createdAt: string
+  resolved: boolean
+}
+
 export interface DesignDocument {
   formatVersion: typeof CURRENT_FORMAT_VERSION
   id: string
@@ -339,6 +356,8 @@ export interface DesignDocument {
   metadata?: DocumentMetadata
   variables?: Readonly<Record<string, DesignVariable>>
   textStyles?: Readonly<Record<string, TextStyle>>
+  /** Notes people and agents leave on the design, by id. */
+  comments?: Readonly<Record<string, DesignComment>>
   rootId: string
   nodes: Readonly<Record<string, DesignNode>>
 }
@@ -389,12 +408,18 @@ export type DesignOperation =
   | { kind: 'setTextStyle'; style: TextStyle }
   /** Removes a text style; texts that used it keep its last values. */
   | { kind: 'deleteTextStyle'; id: string }
+  /** Adds a comment, or changes the one with the same id, such as to resolve it. */
+  | { kind: 'setComment'; comment: DesignComment }
+  /** Removes a comment. */
+  | { kind: 'deleteComment'; id: string }
 
 /** The operations that change the document's variables and text styles. */
 export type StyleOperation = Extract<
   DesignOperation,
   { kind: 'setVariable' | 'deleteVariable' | 'setTextStyle' | 'deleteTextStyle' }
 >
+
+export type CommentOperation = Extract<DesignOperation, { kind: 'setComment' | 'deleteComment' }>
 
 export type OperationResult = { ok: true; document: DesignDocument } | { ok: false; error: string }
 
