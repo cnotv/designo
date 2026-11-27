@@ -23,7 +23,7 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/storage`  | built   | Validated, atomic file reads and writes; the picture and font stores; the operation schema; applying a batch to a file |
 | `@designo/mcp`      | built   | MCP server for agents (stdio)                                                                                          |
 | `@designo/auth`     | built   | Accounts, approval rules, signed session cookies and Google sign-in; pure of HTTP                                      |
-| `@designo/exporter` | built   | Pure SVG export of a node, and a PDF of a document in RGB or CMYK (pdfkit, `@designo/exporter/pdf`)                    |
+| `@designo/exporter` | built   | Pure SVG export of a node, code (HTML, Vue, React, JS), and a PDF in RGB or CMYK (pdfkit, `@designo/exporter/pdf`)     |
 | `@designo/ats`      | built   | Pure ATS checks over a document and the facts of its PDF, and a pdf.js reader for those facts (`@designo/ats/extract`) |
 | `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files                                 |
 | `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it                              |
@@ -31,7 +31,6 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/parity`   | built   | Draws effect cases with WebGL, resvg and the PDF writer in CI, and fails on pixel drift                                |
 | `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11)                                       |
 | `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                                                          |
-| `exporter` (rest)   | phase 4 | Vue/HTML code                                                                                                          |
 
 ## Document model
 
@@ -236,6 +235,23 @@ Hidden children are skipped, text keeps its size (the core has no font metrics) 
 ignored. The pass costs O(nodes) per operation and is skipped when no frame uses layout; scope it
 to the changed subtrees if a drag in a very large document lags. Dragging a child of a layout frame
 snaps it back to its slot; reordering by drag is not built yet.
+
+## Code export
+
+`exportNodeToCode` in `@designo/exporter` (`src/code/`) is pure and shared by the editor and
+`export_code`.
+
+- **One representation.** `buildCodeTree` lays the document out, then turns the node and its
+  visible descendants into `CodeElement`s: a tag, a unique class from the layer name, CSS
+  declarations, and text paragraphs, an image source or a path's outline. Every target is emitted
+  from it, so they agree.
+- **Layout.** An auto-layout frame is a flex box (direction, gap, padding, alignment); a child of
+  one takes no position, a `fill` child grows with `flex: 1 1 0` or stretches across, a hugging
+  frame has no size of its own. Every other child is `position: absolute` at its offset in the
+  parent, as on the canvas. A page takes the box its SVG export has.
+- **Emitters.** HTML, Vue and JSX share one markup writer with a dialect each (class names, text
+  escaping, empty elements); vanilla JavaScript writes the same tree as DOM calls. All four share
+  one stylesheet, scoped in Vue.
 
 ## Serving
 

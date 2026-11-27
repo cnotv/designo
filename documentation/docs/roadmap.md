@@ -22,13 +22,13 @@ Phases 0 and 1 are done, and the shared-server deploy is merged. What is left ru
 | WebGL renderer: hit testing | Hit testing through the spatial index (#11)                                                                                                                                                                                                                                                   | 1 wk     | done    |
 | 3. Real design work         | In order: auto-layout (a pure engine in `@designo/core`, done, #67), components and instances with overrides, variables with an MCP tool, images with asset storage (built: image nodes, a picture store, `add_image`, fit modes and drop on the canvas), pen tool and booleans last          | 6–8 wks  |         |
 | Print and book design       | Guides, pages in millimetres with bleed (pages, units and guides done, #68), master pages, gradients and blur, fonts and text styles, MCP fixes, then multi-page PDF. See [Print and book design](#print-and-book-design) (#42)                                                               | 5–7 wks  |         |
-| 4. Export                   | Vue and HTML code generation after auto-layout, then PDF. SVG and PNG are already done                                                                                                                                                                                                        | 2–3 wks  |         |
+| 4. Export                   | Vue, React, HTML and vanilla JS code from one intermediate representation (done, #122), then PDF. SVG and PNG are already done                                                                                                                                                                | 2–3 wks  |         |
 | 5. Multiplayer              | Yjs sync server. The MCP server writes through it, which removes the two-writer race. `get_selection` comes from presence. Cursors, comments                                                                                                                                                  | 2–3 wks  |         |
 | 6. Polish                   | WebGPU backend, sandboxed plugin API                                                                                                                                                                                                                                                          | ongoing  |         |
 
 MCP v1 is partial: the read and write tools work. `get_screenshot` lands with SVG and PNG export,
-`get_selection` with phase 5, and `export_code`, components and variables with the phases that
-build them.
+`get_selection` with phase 5, and components and variables with the phases that build them.
+`export_code` is done.
 
 ## Print and book design
 

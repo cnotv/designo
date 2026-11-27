@@ -1,6 +1,13 @@
 import { checkAts, checkPdfAts, type AtsReport, type PdfFacts } from '@designo/ats'
 import { extractPdfFacts } from '@designo/ats/extract'
-import { exportNodeToSvg, type OutlinedGlyph, type TextLineRange } from '@designo/exporter'
+import {
+  exportNodeToCode,
+  exportNodeToSvg,
+  type CodeFile,
+  type CodeTarget,
+  type OutlinedGlyph,
+  type TextLineRange
+} from '@designo/exporter'
 import { exportDocumentToPdf } from '@designo/exporter/pdf'
 import {
   DEFAULT_NODE_PROPERTIES,
@@ -351,6 +358,21 @@ export const exportSvgTool = async (
     getImageHref: toImageLookups(await loadSubtreeImages(context.dataDirectory, document, nodeId))
       .getImageHref
   })
+}
+
+/**
+ * Exports the page, or one node, as code: HTML with a stylesheet, a Vue component, a React
+ * component, or a JavaScript function that builds the elements.
+ * @param context - Where files are stored.
+ * @param input - The file, the node (the page when left out), and the target.
+ * @returns The files, each a path and its content.
+ */
+export const exportCodeTool = async (
+  context: DesignoToolContext,
+  input: { fileId: string; nodeId?: string; target: CodeTarget }
+): Promise<{ files: CodeFile[] }> => {
+  const document = resolveMasters(await readDocument(context.dataDirectory, input.fileId))
+  return { files: exportNodeToCode(document, input.nodeId ?? document.rootId, input.target) }
 }
 
 // A blurred node is an image in the PDF, so it is drawn at the density a print needs.

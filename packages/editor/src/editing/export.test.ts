@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildExportFileName,
   clampExportScale,
+  getCodeMediaType,
   getExportTargetIds,
   getRasterSize,
+  isCodeFormat,
   MAX_RASTER_SIDE,
   sanitizeFileName
 } from './export.ts'
@@ -93,5 +95,23 @@ describe('getRasterSize', () => {
     const size = getRasterSize({ width: 6000, height: 3000 }, 3)
     expect(size.width).toBe(MAX_RASTER_SIDE)
     expect(size.height).toBe(MAX_RASTER_SIDE / 2)
+  })
+})
+
+describe('code formats', () => {
+  it('tells code from image and document formats', () => {
+    expect(isCodeFormat('html')).toBe(true)
+    expect(isCodeFormat('vue')).toBe(true)
+    expect(isCodeFormat('react')).toBe(true)
+    expect(isCodeFormat('js')).toBe(true)
+    expect(isCodeFormat('svg')).toBe(false)
+    expect(isCodeFormat('pdf')).toBe(false)
+  })
+
+  it('saves each code file with the media type of its extension', () => {
+    expect(getCodeMediaType('index.html')).toBe('text/html;charset=utf-8')
+    expect(getCodeMediaType('CodeCard.jsx')).toBe('text/javascript;charset=utf-8')
+    expect(getCodeMediaType('styles.css')).toBe('text/css;charset=utf-8')
+    expect(getCodeMediaType('README')).toBe('text/plain;charset=utf-8')
   })
 })

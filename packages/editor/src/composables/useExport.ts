@@ -1,9 +1,15 @@
 import { resolveMasters } from '@designo/core'
-import { exportNodeToSvg } from '@designo/exporter'
+import { exportNodeToCode, exportNodeToSvg, type CodeFile } from '@designo/exporter'
 import { loadTextLayout, toTextLayoutRequest } from '@designo/text'
 import { ref, watch } from 'vue'
 import type { AtsReport, PdfFacts } from '@designo/ats'
-import { buildExportFileName, getExportTargetIds, getRasterSize } from '../editing/export.ts'
+import {
+  buildExportFileName,
+  getCodeMediaType,
+  getExportTargetIds,
+  getRasterSize,
+  isCodeFormat
+} from '../editing/export.ts'
 import type { ExportSettings } from '../editing/types.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
 import type { EditorStore } from '../stores/types.ts'
@@ -23,6 +29,16 @@ const downloadBlob = (blob: Blob, fileName: string): void => {
   // but a tick of grace keeps older ones from losing the file.
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
+
+// One after another, as with several layers: browsers drop downloads started in the same instant.
+const downloadCodeFiles = (files: readonly CodeFile[]): Promise<void> =>
+  files.reduce(
+    (previous, file) =>
+      previous.then(() =>
+        downloadBlob(new Blob([file.content], { type: getCodeMediaType(file.path) }), file.path)
+      ),
+    Promise.resolve()
+  )
 
 const loadImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
@@ -180,6 +196,11 @@ export const useExport = (editor: EditorStore): ExportController => {
   ): Promise<void> => {
     const node = exportedDocument.nodes[nodeId]
     if (!node) return
+    const { format } = settings.value
+    if (isCodeFormat(format)) {
+      await downloadCodeFiles(exportNodeToCode(exportedDocument, nodeId, format))
+      return
+    }
     const svg = exportNodeToSvg(exportedDocument, nodeId)
     const blob = await renderExport(svg, settings.value)
     downloadBlob(blob, buildExportFileName(node.name, settings.value.format, settings.value.scale))

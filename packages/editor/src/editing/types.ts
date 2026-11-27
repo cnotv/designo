@@ -1,4 +1,4 @@
-import type { PdfColorSpace } from '@designo/exporter'
+import type { CodeTarget, PdfColorSpace } from '@designo/exporter'
 import type {
   DesignNode,
   DesignOperation,
@@ -194,7 +194,8 @@ export type LayerOrderMode = 'forward' | 'backward' | 'front' | 'back'
 
 export type NodeIdFactory = (prefix: string) => string
 
-export type ExportFormat = 'svg' | 'png' | 'pdf'
+/** An image or document format, or a kind of code. */
+export type ExportFormat = 'svg' | 'png' | 'pdf' | CodeTarget
 
 export interface ExportSettings {
   format: ExportFormat

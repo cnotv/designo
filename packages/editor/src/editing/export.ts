@@ -1,5 +1,30 @@
 import type { DesignDocument } from '@designo/core'
+import { CODE_TARGETS, type CodeTarget } from '@designo/exporter'
 import type { ExportFormat, PixelSize } from './types.ts'
+
+/**
+ * Whether a format is code, which downloads the files of a component rather than one image.
+ * @param format - The export format.
+ * @returns True for HTML, Vue, React and JavaScript.
+ */
+export const isCodeFormat = (format: ExportFormat): format is CodeTarget =>
+  CODE_TARGETS.some((target) => target === format)
+
+const CODE_MEDIA_TYPES: Readonly<Record<string, string>> = {
+  html: 'text/html',
+  css: 'text/css',
+  vue: 'text/plain',
+  jsx: 'text/javascript',
+  js: 'text/javascript'
+}
+
+/**
+ * The media type a downloaded code file is saved with, from its extension.
+ * @param path - The file's path.
+ * @returns The media type, plain text for an extension it does not know.
+ */
+export const getCodeMediaType = (path: string): string =>
+  `${CODE_MEDIA_TYPES[path.split('.').at(-1) ?? ''] ?? 'text/plain'};charset=utf-8`
 
 export const EXPORT_SCALES: readonly number[] = [1, 2, 3]
 export const MIN_EXPORT_SCALE = 1

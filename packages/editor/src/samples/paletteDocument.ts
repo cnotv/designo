@@ -376,14 +376,13 @@ const masterOperations = (): DesignOperation[] => {
 const PATH_ROW_TOP = 440
 const PATH_STEP = 130
 
-// A star drawn with straight segments, a leaf with curves, and two circle pairs that become one
-// path each: a union, and a ring cut from a disc.
 const CODE_CARD_LEFT = 540
 const CODE_CARD_TOP = 420
 
+// Text boxes are sized to their words at the sample's font sizes, as the editor would fit them.
 const codeCardButton = (
   id: string,
-  label: string,
+  label: { text: string; width: number },
   fill: string,
   ink: string
 ): DesignOperation[] => [
@@ -393,7 +392,7 @@ const codeCardButton = (
     type: 'frame',
     parentId: 'code-card-actions',
     properties: {
-      name: `${label} button`,
+      name: `${label.text} button`,
       fill,
       cornerRadius: 8,
       layoutMode: 'horizontal',
@@ -407,7 +406,14 @@ const codeCardButton = (
     id: `${id}-label`,
     type: 'text',
     parentId: id,
-    properties: { name: `${label} label`, text: label, fontSize: 14, fill: ink }
+    properties: {
+      name: `${label.text} label`,
+      text: label.text,
+      width: label.width,
+      height: 17,
+      fontSize: 14,
+      fill: ink
+    }
   }
 ]
 
@@ -442,6 +448,8 @@ const codeCardOperations = (): DesignOperation[] => [
     properties: {
       name: 'Heading',
       text: 'Export as code',
+      width: 150,
+      height: 24,
       fontSize: 20,
       fontWeight: 700,
       fill: '#111111',
@@ -456,6 +464,7 @@ const codeCardOperations = (): DesignOperation[] => [
     properties: {
       name: 'Body',
       text: 'This card is an auto-layout frame, so HTML, Vue, React and JavaScript get flex boxes.',
+      height: 51,
       fontSize: 14,
       fill: '#555555',
       textWrap: true,
@@ -476,10 +485,12 @@ const codeCardOperations = (): DesignOperation[] => [
       heightSizing: 'hug'
     }
   },
-  ...codeCardButton('code-card-primary', 'Copy', '#2d6a4f', '#ffffff'),
-  ...codeCardButton('code-card-secondary', 'Download', '#d8f3dc', '#1b4332')
+  ...codeCardButton('code-card-primary', { text: 'Copy', width: 34 }, '#2d6a4f', '#ffffff'),
+  ...codeCardButton('code-card-secondary', { text: 'Download', width: 67 }, '#d8f3dc', '#1b4332')
 ]
 
+// A star drawn with straight segments, a leaf with curves, and two circle pairs that become one
+// path each: a union, and a ring cut from a disc.
 const shapeOperations = (): DesignOperation[] => [
   {
     kind: 'create',
