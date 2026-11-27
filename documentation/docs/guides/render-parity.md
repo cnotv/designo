@@ -9,6 +9,8 @@ screenshots, and the PDF writer. An agent only sees its work through the screens
 must agree. `@designo/parity` draws one small document per effect with each of them and compares
 the pixels.
 
+![The parity report: each case drawn by resvg, WebGL and pdf.js, with the pixels that differ marked in red](/img/parity-report.png)
+
 ## Run it
 
 ```sh
@@ -20,6 +22,8 @@ It serves a page with Vite, opens it in headless Chromium through Playwright, an
 differ from resvg in red. `PARITY_OUT` writes the report somewhere else, and `PARITY_CHROMIUM`
 points at a Chromium binary when Playwright's own is not installed. The command exits with 1 when
 a renderer drifts.
+
+![Scrolling through every case of the report: shapes, gradients, blur, shadow, opacity and each blend mode](/img/parity-report.gif)
 
 In CI the `parity` job of `test.yml` runs it on every pull request, adds the table to the job
 summary, and uploads the report as the `render-parity` artifact.
