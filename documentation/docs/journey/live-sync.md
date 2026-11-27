@@ -33,3 +33,12 @@ The repository's immutable-data rule flags `Map.set` and `Set.add`, and the hub 
 connections. Turning the rule off for the file would have been the quick way. The hub keeps
 read-only maps in `let` bindings instead and replaces them on each change, as the replay guard in
 `@designo/auth` already did.
+
+## Presence written after the room closed
+
+After the merge, the sync tests failed about one run in three when they removed their data folder,
+because a presence file appeared in it at the last moment. Closing a room clears everyone's
+presence, and that change fired the listener that schedules the next presence write, after the
+timer had already been cleared. A room whose last connection left had also dropped out of the hub's
+maps, so closing the hub did not wait for it. A closing room now stops listening before it clears
+presence and waits for a write already started, and the hub waits for rooms still closing.

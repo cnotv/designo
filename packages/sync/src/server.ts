@@ -101,6 +101,8 @@ export const createSyncHub = (options: SyncHubOptions = {}): SyncHub => {
   let openRooms: ReadonlyMap<string, SyncRoom> = new Map()
   // Each connection's way to send; a room closes when its last connection leaves.
   let connections: ReadonlyMap<string, readonly Send[]> = new Map()
+  // Rooms their last connection left; they are out of the maps but may still be writing.
+  let closingRooms: readonly Promise<void>[] = []
 
   const broadcast = (key: string, message: Uint8Array): void =>
     (connections.get(key) ?? []).forEach((send) => send(message))
@@ -145,7 +147,10 @@ export const createSyncHub = (options: SyncHubOptions = {}): SyncHub => {
     if (remaining.length > 0) return
     rooms = withoutEntry(rooms, key)
     openRooms = withoutEntry(openRooms, key)
-    await room.close()
+    const closing = room.close()
+    closingRooms = [...closingRooms, closing]
+    await closing
+    closingRooms = closingRooms.filter((other) => other !== closing)
   }
 
   const joinRoom = (socket: WebSocket, key: string, room: SyncRoom): void => {
@@ -195,7 +200,7 @@ export const createSyncHub = (options: SyncHubOptions = {}): SyncHub => {
       rooms = new Map()
       openRooms = new Map()
       connections = new Map()
-      await Promise.all(open.map((room) => room.close()))
+      await Promise.all([...open.map((room) => room.close()), ...closingRooms])
       webSocketServer.close()
     }
   }
