@@ -125,6 +125,8 @@ export interface ExportController {
   isCheckingAts: Ref<boolean>
   /** Exports the PDF and reads it back the way an applicant tracking system would. */
   checkAts: () => Promise<void>
+  /** Reads a PDF from disk in the browser and checks it on its own, with no open document. */
+  checkPdfFile: (file: File) => Promise<void>
 }
 
 export interface AccessGate {

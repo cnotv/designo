@@ -490,6 +490,42 @@ describe('export tools', () => {
     expect(report.summary.fail).toBe(1)
   })
 
+  it('check_ats checks a PDF made elsewhere on its own and lists the rule it could not run', async () => {
+    const withFonts = { ...context, getFontBytes: (fontId: string) => fixtureFontBytes.get(fontId) }
+    const { fileId, pageId } = await createFileTool(withFonts, { name: 'Resume' })
+    await applyOperationsTool(withFonts, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          type: 'text',
+          parentId: pageId,
+          properties: { x: 40, y: 40, width: 300, height: 20, text: 'Jane Doe' }
+        }
+      ]
+    })
+    const { data } = await exportPdfTool(withFonts, { fileId })
+    const report = await checkAtsTool(withFonts, { pdfBase64: data })
+    expect(report.notChecked.map((entry) => entry.rule)).toEqual(['selectable-text'])
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({ rule: 'text-extraction', status: 'pass' })
+    )
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({ rule: 'text-layer', status: 'pass' })
+    )
+    expect(report.readingOrder[0]).toContain('Jane Doe')
+  })
+
+  it('check_ats takes exactly one of a file id and a PDF, and refuses what is not a PDF', async () => {
+    await expect(checkAtsTool(context, {})).rejects.toThrow('exactly one')
+    await expect(checkAtsTool(context, { fileId: 'a', pdfBase64: 'JVBERi0=' })).rejects.toThrow(
+      'exactly one'
+    )
+    await expect(
+      checkAtsTool(context, { pdfBase64: Buffer.from('hello').toString('base64') })
+    ).rejects.toThrow('not a PDF')
+  })
+
   it('export_pdf grows a page by its bleed, and trimMarks adds room for crop marks', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Print' })
     await applyOperationsTool(context, {

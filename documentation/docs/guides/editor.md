@@ -339,6 +339,13 @@ The Export section sits at the bottom of the properties panel.
   Education and Skills headings, text in the header or footer strip or over a picture, the title,
   author and language, and links. It is not a real ATS. Page 1 of the palette sample has one line that passes and one blurred line that fails; the
   **Sample: CV** file is a made-up one column CV that passes every rule. An edit clears the report.
+  **Check a PDF file** reads a PDF from disk, in the browser and with no upload, and applies the
+  same rules to the file itself: whether each page has text at all (a scan fails, and a scan with
+  an invisible OCR layer warns), characters with no Unicode value, words with no space between
+  them, text drawn out of reading order, fonts, columns and tables, contact details, headings, text
+  in the header or footer strip, text over a picture, icons, metadata and links. Only what needs the
+  design (which texts were flattened to images) is listed as **not checked**, never as passed. It
+  works with no file open.
 - **A file to try it on:** `pnpm sample:book` writes `book-sample` to the data directory: twelve
   numbered page frames laid out on one canvas, and an art direction board with no number. Its
   PDF has twelve pages and no board. It is rewritten each time it runs, so edit a copy.

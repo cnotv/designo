@@ -1,5 +1,16 @@
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import { GlobalWorkerOptions, OPS, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import { readPageOperators } from './pageOperators.ts'
 import type { PdfFacts, PdfFontFacts, PdfLinkFacts, PdfPageFacts, PdfTextItem } from './types.ts'
+
+const OPERATOR_CODES = {
+  save: OPS.save,
+  restore: OPS.restore,
+  transform: OPS.transform,
+  paintFormXObjectBegin: OPS.paintFormXObjectBegin,
+  paintFormXObjectEnd: OPS.paintFormXObjectEnd,
+  setTextRenderingMode: OPS.setTextRenderingMode,
+  imageOperators: [OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject]
+}
 
 const OBJECT_PATTERN = /\d+ \d+ obj([\S\s]*?)endobj/g
 
@@ -57,6 +68,7 @@ export const extractPdfFacts = async (
             ]
           : []
       )
+      const drawing = readPageOperators(await page.getOperatorList(), OPERATOR_CODES, height)
       const links = (await page.getAnnotations())
         .filter((annotation) => annotation.subtype === 'Link' && annotation.url)
         .map((annotation): PdfLinkFacts => {
@@ -76,7 +88,7 @@ export const extractPdfFacts = async (
               .join(' ')
           }
         })
-      return { facts: { width, height, items } satisfies PdfPageFacts, links }
+      return { facts: { width, height, items, ...drawing } satisfies PdfPageFacts, links }
     })
   )
   return {

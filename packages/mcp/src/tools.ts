@@ -1,4 +1,4 @@
-import { checkAts, type AtsReport } from '@designo/ats'
+import { checkAts, checkPdfAts, type AtsReport, type PdfFacts } from '@designo/ats'
 import { extractPdfFacts } from '@designo/ats/extract'
 import { exportNodeToSvg, type TextLineRange } from '@designo/exporter'
 import { exportDocumentToPdf } from '@designo/exporter/pdf'
@@ -303,18 +303,38 @@ export const exportPdfTool = async (
   return { mimeType: 'application/pdf', data: Buffer.from(bytes).toString('base64') }
 }
 
+const PDF_SIGNATURE = '%PDF-'
+
+const readPdfFacts = async (bytes: Uint8Array): Promise<PdfFacts> => {
+  try {
+    return await extractPdfFacts(bytes)
+  } catch {
+    throw new Error('The PDF could not be read; it may be damaged or protected by a password.')
+  }
+}
+
 /**
- * Exports the file as a PDF and reports what an applicant tracking system could read from it.
+ * Reports what an applicant tracking system could read, from a file of the design or from a PDF
+ * made elsewhere. A file is exported first and checked against its document; a PDF is checked on
+ * its own, and the rules that need the document are listed as not checked.
  * @param context - Where files live and how text is laid out.
- * @param input - The file.
+ * @param input - Exactly one of a file id or a base64 PDF.
  * @returns Each rule's finding as pass, warn or fail, with a count of each.
  */
 export const checkAtsTool = async (
   context: DesignoToolContext,
-  input: { fileId: string }
+  input: { fileId?: string; pdfBase64?: string }
 ): Promise<AtsReport> => {
-  const { document, bytes } = await buildPdf(context, input)
-  return checkAts(document, await extractPdfFacts(bytes))
+  if ((input.fileId === undefined) === (input.pdfBase64 === undefined))
+    throw new Error('Give exactly one of fileId and pdfBase64')
+  if (input.pdfBase64 !== undefined) {
+    const bytes = Buffer.from(input.pdfBase64, 'base64')
+    if (!bytes.subarray(0, PDF_SIGNATURE.length).toString('latin1').startsWith(PDF_SIGNATURE))
+      throw new Error('pdfBase64 is not a PDF: it does not start with %PDF-')
+    return checkPdfAts(await readPdfFacts(bytes))
+  }
+  const { document, bytes } = await buildPdf(context, { fileId: input.fileId ?? '' })
+  return checkAts(document, await readPdfFacts(bytes))
 }
 
 const collectTexts = (document: DesignDocument, nodeId: string): ScreenshotText[] =>

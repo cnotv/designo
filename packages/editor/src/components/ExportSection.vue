@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Download, ScanSearch } from 'lucide-vue-next'
+import { Download, FileSearch, ScanSearch } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -23,6 +23,16 @@ import type { DocumentMetadata } from '@designo/core'
 
 const { editor, exporter } = useEditorContext()
 const { settings, isExporting, error, atsReport, isCheckingAts } = exporter
+
+const pdfFileInput = ref<HTMLInputElement>()
+
+const checkChosenFile = (event: Event): void => {
+  const input = event.target instanceof HTMLInputElement ? event.target : undefined
+  const file = input?.files?.[0]
+  if (file) void exporter.checkPdfFile(file)
+  // The same file chosen again must still count as a change.
+  if (input) input.value = ''
+}
 
 const STATUS_VARIANT = { fail: 'destructive', warn: 'secondary', pass: 'outline' } as const
 
@@ -140,7 +150,7 @@ const setScale = (value: AcceptableValue): void => {
         its frame's layers.
       </p>
     </div>
-    <div v-if="settings.format === 'pdf' && editor.document.value" class="flex flex-col gap-2">
+    <div v-if="settings.format === 'pdf'" class="flex flex-col gap-2">
       <Button
         size="sm"
         variant="outline"
@@ -149,6 +159,17 @@ const setScale = (value: AcceptableValue): void => {
       >
         <ScanSearch /> {{ isCheckingAts ? 'Checking...' : 'Check for ATS' }}
       </Button>
+      <Button size="sm" variant="outline" :disabled="isCheckingAts" @click="pdfFileInput?.click()">
+        <FileSearch /> Check a PDF file
+      </Button>
+      <input
+        ref="pdfFileInput"
+        type="file"
+        accept="application/pdf,.pdf"
+        class="hidden"
+        aria-label="PDF file to check"
+        @change="checkChosenFile"
+      />
       <section v-if="atsReport" class="flex flex-col gap-1.5" aria-label="ATS report">
         <p class="text-muted-foreground">
           {{ atsReport.summary.fail }} failed, {{ atsReport.summary.warn }} warnings,
@@ -168,6 +189,16 @@ const setScale = (value: AcceptableValue): void => {
               >
                 ({{ describeFindingPlace(editor.document.value, finding) }})</template
               >: {{ finding.message }}
+            </span>
+          </li>
+          <li
+            v-for="entry in atsReport.notChecked"
+            :key="entry.rule"
+            class="flex items-start gap-2"
+          >
+            <Badge variant="outline">not checked</Badge>
+            <span>
+              <span class="font-medium">{{ entry.rule }}</span>: {{ entry.reason }}
             </span>
           </li>
         </ul>

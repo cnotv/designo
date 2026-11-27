@@ -2,7 +2,7 @@ import { resolveMasters } from '@designo/core'
 import { exportNodeToSvg } from '@designo/exporter'
 import { loadTextLayout, toTextLayoutRequest } from '@designo/text'
 import { ref, watch } from 'vue'
-import type { AtsReport } from '@designo/ats'
+import type { AtsReport, PdfFacts } from '@designo/ats'
 import { buildExportFileName, getExportTargetIds, getRasterSize } from '../editing/export.ts'
 import type { ExportSettings } from '../editing/types.ts'
 import { getSharedTextRuntime } from '../rendering/text/sharedTextEngine.ts'
@@ -91,6 +91,10 @@ const exportPdf = async (
   return new Blob([bytes], { type: 'application/pdf' })
 }
 
+type AtsModule = typeof import('@designo/ats') & {
+  extractPdfFacts: (bytes: Uint8Array) => Promise<PdfFacts>
+}
+
 /**
  * Exports the selected layers, or the page when none is selected, as downloads; a PDF is always
  * the whole document, a page for each of its pages.
@@ -104,34 +108,61 @@ export const useExport = (editor: Editor): ExportController => {
   const atsReport = ref<AtsReport | undefined>()
   const isCheckingAts = ref(false)
 
-  // A report describes the document it was made from, so an edit retires it.
+  // A report on the open document is retired by an edit; one on a file from disk has no document
+  // to go stale against.
+  const isReportOfFile = ref(false)
   watch(editor.document, () => {
-    atsReport.value = undefined
+    if (!isReportOfFile.value) atsReport.value = undefined
   })
 
-  const checkAts = async (): Promise<void> => {
-    const storedDocument = editor.document.value
-    if (!storedDocument || isCheckingAts.value) return
-    const currentDocument = resolveMasters(storedDocument)
+  const runAtsCheck = async (
+    check: (ats: AtsModule) => Promise<AtsReport>,
+    fromFile: boolean
+  ): Promise<void> => {
+    if (isCheckingAts.value) return
     isCheckingAts.value = true
     error.value = undefined
     try {
-      const pdf = await exportPdf(currentDocument, false)
       // Loaded on demand with the worker pdf.js reads in; nothing else in the editor needs them.
-      const [{ extractPdfFacts }, { checkAts: runChecks }, { default: workerSource }] =
-        await Promise.all([
-          import('@designo/ats/extract'),
-          import('@designo/ats'),
-          import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
-        ])
-      const facts = await extractPdfFacts(new Uint8Array(await pdf.arrayBuffer()), workerSource)
-      atsReport.value = runChecks(currentDocument, facts)
+      const [reader, rules, { default: workerSource }] = await Promise.all([
+        import('@designo/ats/extract'),
+        import('@designo/ats'),
+        import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
+      ])
+      atsReport.value = await check({
+        extractPdfFacts: (bytes) => reader.extractPdfFacts(bytes, workerSource),
+        ...rules
+      })
+      isReportOfFile.value = fromFile
     } catch (caught) {
       error.value = caught instanceof Error ? caught.message : 'The ATS check failed'
     } finally {
       isCheckingAts.value = false
     }
   }
+
+  const checkAts = async (): Promise<void> => {
+    const storedDocument = editor.document.value
+    if (!storedDocument) return
+    const currentDocument = resolveMasters(storedDocument)
+    await runAtsCheck(async (ats) => {
+      const pdf = await exportPdf(currentDocument, false)
+      return ats.checkAts(
+        currentDocument,
+        await ats.extractPdfFacts(new Uint8Array(await pdf.arrayBuffer()))
+      )
+    }, false)
+  }
+
+  const checkPdfFile = (file: File): Promise<void> =>
+    runAtsCheck(async (ats) => {
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      try {
+        return ats.checkPdfAts(await ats.extractPdfFacts(bytes))
+      } catch {
+        throw new Error('The file could not be read as a PDF; it may be damaged or protected.')
+      }
+    }, true)
 
   const exportNode = async (
     exportedDocument: NonNullable<Editor['document']['value']>,
@@ -170,5 +201,5 @@ export const useExport = (editor: Editor): ExportController => {
     }
   }
 
-  return { settings, isExporting, error, run, atsReport, isCheckingAts, checkAts }
+  return { settings, isExporting, error, run, atsReport, isCheckingAts, checkAts, checkPdfFile }
 }

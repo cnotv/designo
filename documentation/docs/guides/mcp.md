@@ -165,7 +165,13 @@ lines where the editor breaks it; a node with blur or a shadow is an image. It f
 text, when a text's fonts cannot be found, rather than leaving the text out.
 
 `check_ats` takes a `fileId`, exports the same PDF and reads it back with pdf.js, the way a parser
-does. It answers JSON: a `parser` line naming the reader and rule set, a `summary` count of passes,
+does. Or it takes `pdfBase64`, a PDF made by another program, and checks that on its own; give
+exactly one of the two. From a PDF alone the same rules run on the file itself: `text-layer` fails a page with no text
+(a scan) and warns about an invisible OCR layer over a picture of the page; `text-extraction` looks
+for characters with no Unicode value, words separated by a gap with no space character, and text
+drawn out of reading order; `layout-traps` also finds text over a picture, from where the file
+draws its pictures. What only the design can tell, which texts were flattened to images
+(`selectable-text`), comes back in a `notChecked` list with the reason, never as a pass. It answers JSON: a `parser` line naming the reader and rule set, a `summary` count of passes,
 warnings and failures, the `findings`, and `readingOrder`, the text of each page one row at a time.
 A finding has a `rule`, a `status`, a `message` and, when it concerns one thing, a `nodeId` or a
 `page`. The rules are `selectable-text` (a text blurred or shadowed is an image and fails),
@@ -201,7 +207,7 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 | `get_styles`        | Lists the variables and text styles of the file                                                                                                      |
 | `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                                          |
 | `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text                                                                                                |
-| `check_ats`         | Exports the file as a PDF and reports pass, warn or fail for what an applicant tracking system could read from it                                    |
+| `check_ats`         | Reports pass, warn or fail for what an applicant tracking system could read from a file's PDF export, or from a PDF given as `pdfBase64`             |
 | `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                                           |
 | `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                                        |
 | `create_node`       | Creates one frame, group, rectangle, ellipse, text or image node                                                                                     |

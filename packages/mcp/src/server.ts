@@ -46,6 +46,7 @@ const MAX_FONT_FAMILY_LENGTH = 200
 // A 20 MB picture is about 28 million characters of base64.
 const MAX_LOCATION_LENGTH = 4096
 const MAX_IMAGE_BASE64_LENGTH = 28_000_000
+const MAX_PDF_BASE64_LENGTH = 28_000_000
 
 const toToolResult = async (work: () => Promise<unknown>): Promise<CallToolResult> => {
   try {
@@ -183,8 +184,11 @@ const registerAtsTools = (server: McpServer, context: DesignoToolContext): void 
     'check_ats',
     {
       description:
-        'Export the file as a PDF and report what an applicant tracking system (ATS) could read from it, for a resume or any document sent to a parser. Each finding is pass, warn or fail with a rule name and, when it concerns one thing, the node id or page: selectable-text (every text is text in the PDF, none an image), text-extraction (a pdf.js reader gets the words back without lost spaces or reordering), fonts (embedded with a Unicode map), reading-order (columns and tables a single-column reader interleaves), contact-details (a name, an email and a phone number in the first lines), section-headings (experience, education and skills as plain text lines), layout-traps (text in the header or footer strip, over a picture, or an icon in place of a word), metadata (title, author, language) and links (each link is an annotation with visible text). The report also lists the text in reading order, page by page. It names the reader and rules that produced it and is not a real ATS.',
-      inputSchema: { fileId: fileIdSchema },
+        'Report what an applicant tracking system (ATS) could read from a PDF, for a resume or any document sent to a parser. Give exactly one of fileId (the file is exported, then checked against its document) and pdfBase64 (a PDF made elsewhere, base64, checked on its own: selectable-text, text-extraction and text over a picture need the document, so they come back in notChecked with the reason, never as passes, and text-layer fails a page with no text, such as a scan). Each finding is pass, warn or fail with a rule name and, when it concerns one thing, the node id or page: selectable-text (every text is text in the PDF, none an image), text-extraction (a pdf.js reader gets the words back without lost spaces or reordering), fonts (embedded with a Unicode map), reading-order (columns and tables a single-column reader interleaves), contact-details (a name, an email and a phone number in the first lines), section-headings (experience, education and skills as plain text lines), layout-traps (text in the header or footer strip, over a picture, or an icon in place of a word), metadata (title, author, language) and links (each link is an annotation with visible text). The report also lists the text in reading order, page by page. It names the reader and rules that produced it and is not a real ATS.',
+      inputSchema: {
+        fileId: fileIdSchema.optional(),
+        pdfBase64: z.string().max(MAX_PDF_BASE64_LENGTH).optional()
+      },
       annotations: READ_ONLY
     },
     (input) => toToolResult(() => checkAtsTool(context, input))
