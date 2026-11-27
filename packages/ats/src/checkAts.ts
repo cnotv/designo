@@ -6,6 +6,7 @@ import {
   checkPdfLayoutTraps,
   checkPdfLinks,
   checkPdfMetadata,
+  checkPdfTextExtraction,
   checkTextLayer
 } from './pdfOnlyRules.ts'
 import { getPlacedNodes } from './scope.ts'
@@ -59,15 +60,8 @@ export const checkAts = (document: DesignDocument, facts: PdfFacts): AtsReport =
 const NOT_CHECKED_WITHOUT_DOCUMENT: AtsReport['notChecked'] = [
   {
     rule: 'selectable-text',
-    reason: 'There is no document to compare the PDF text with; text-layer checks for any text.'
-  },
-  {
-    rule: 'text-extraction',
-    reason: 'There is no document to compare the PDF text with, so lost spaces cannot be told.'
-  },
-  {
-    rule: 'layout-traps',
-    reason: 'Text over a picture needs the pictures, which a PDF check does not read.'
+    reason:
+      'Which texts of a design were flattened to images needs the design. text-layer and the scan check read the PDF itself.'
   }
 ]
 
@@ -81,6 +75,7 @@ export const checkPdfAts = (facts: PdfFacts): AtsReport =>
   buildReport(
     [
       ...checkTextLayer(facts),
+      ...checkPdfTextExtraction(facts),
       ...checkFonts(facts),
       ...checkReadingOrder(facts),
       ...checkContactDetails(facts),

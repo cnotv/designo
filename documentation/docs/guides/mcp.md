@@ -166,9 +166,12 @@ text, when a text's fonts cannot be found, rather than leaving the text out.
 
 `check_ats` takes a `fileId`, exports the same PDF and reads it back with pdf.js, the way a parser
 does. Or it takes `pdfBase64`, a PDF made by another program, and checks that on its own; give
-exactly one of the two. A PDF has no document to compare with, so `selectable-text`,
-`text-extraction` and text over a picture come back in a `notChecked` list with the reason, never
-as passes, and a `text-layer` rule fails any page with no text at all, such as a scan. It answers JSON: a `parser` line naming the reader and rule set, a `summary` count of passes,
+exactly one of the two. From a PDF alone the same rules run on the file itself: `text-layer` fails a page with no text
+(a scan) and warns about an invisible OCR layer over a picture of the page; `text-extraction` looks
+for characters with no Unicode value, words separated by a gap with no space character, and text
+drawn out of reading order; `layout-traps` also finds text over a picture, from where the file
+draws its pictures. What only the design can tell, which texts were flattened to images
+(`selectable-text`), comes back in a `notChecked` list with the reason, never as a pass. It answers JSON: a `parser` line naming the reader and rule set, a `summary` count of passes,
 warnings and failures, the `findings`, and `readingOrder`, the text of each page one row at a time.
 A finding has a `rule`, a `status`, a `message` and, when it concerns one thing, a `nodeId` or a
 `page`. The rules are `selectable-text` (a text blurred or shadowed is an image and fails),

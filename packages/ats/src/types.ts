@@ -19,11 +19,23 @@ export interface PdfTextItem {
   height: number
 }
 
+/** A rectangle on a page, measured from its top left. */
+export interface PdfBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface PdfPageFacts {
   width: number
   height: number
   /** In the order the file draws them, which is the order a reader that ignores position uses. */
   items: readonly PdfTextItem[]
+  /** Where pictures are drawn; absent when the page's drawing was not read. */
+  images?: readonly PdfBox[]
+  /** Text drawn invisible, as a scanned page carries its OCR text. */
+  hasInvisibleText?: boolean
 }
 
 export interface PdfFontFacts {

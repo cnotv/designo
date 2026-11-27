@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { checkPdfAts } from './checkAts.ts'
 import {
   checkPdfLayoutTraps,
+  checkPdfTextExtraction,
   checkPdfLinks,
   checkPdfMetadata,
   checkTextLayer
@@ -52,6 +53,86 @@ describe('checkPdfLayoutTraps', () => {
   })
 })
 
+describe('scanned pages', () => {
+  const scan = { x: 0, y: 0, width: 600, height: 800 }
+
+  it('warns when the text is an invisible layer over a picture of the page', () => {
+    const facts = {
+      ...factsOf([item('Jane Doe', 50, 50)]),
+      pages: [
+        {
+          width: 600,
+          height: 800,
+          items: [item('Jane Doe', 50, 50)],
+          images: [scan],
+          hasInvisibleText: true
+        }
+      ]
+    }
+    expect(checkTextLayer(facts)[0]).toMatchObject({ status: 'warn', page: 1 })
+  })
+
+  it('does not call a picture behind real text a trap, since the scan rule covers it', () => {
+    const facts = {
+      ...factsOf([]),
+      pages: [{ width: 600, height: 800, items: [item('Jane Doe', 50, 50)], images: [scan] }]
+    }
+    expect(checkPdfLayoutTraps(facts)[0]).toMatchObject({ status: 'pass' })
+  })
+})
+
+describe('text over a picture', () => {
+  it('warns about text that sits on a photo', () => {
+    const facts = {
+      ...factsOf([]),
+      pages: [
+        {
+          width: 600,
+          height: 800,
+          items: [item('Jane Doe', 60, 140)],
+          images: [{ x: 40, y: 100, width: 200, height: 100 }]
+        }
+      ]
+    }
+    expect(checkPdfLayoutTraps(facts)[0]).toMatchObject({
+      status: 'warn',
+      message: expect.stringContaining('over a picture')
+    })
+  })
+})
+
+describe('checkPdfTextExtraction', () => {
+  it('passes ordinary text', () => {
+    const facts = factsOf([item('Jane', 50, 100), item(' ', 70, 100), item('Doe', 75, 100)])
+    expect(checkPdfTextExtraction(facts)[0]).toMatchObject({ status: 'pass' })
+  })
+
+  it('warns about two words a space apart with no space character between them', () => {
+    const facts = factsOf([item('Jane', 50, 100), item('Doe', 85, 100)])
+    expect(checkPdfTextExtraction(facts)[0]).toMatchObject({
+      status: 'warn',
+      message: expect.stringContaining('no space character')
+    })
+  })
+
+  it('warns about characters with no Unicode value', () => {
+    expect(checkPdfTextExtraction(factsOf([item('Jane \uFFFD', 50, 100)]))[0]).toMatchObject({
+      status: 'warn',
+      message: expect.stringContaining('Unicode')
+    })
+  })
+
+  it('warns when the file draws text out of reading order, but not for one column break', () => {
+    const scrambled = factsOf([300, 100, 400, 50, 350, 150].map((y) => item('line', 50, y)))
+    expect(checkPdfTextExtraction(scrambled)[0]).toMatchObject({ status: 'warn' })
+    const twoColumns = factsOf([
+      ...[100, 130, 160].map((y) => item('left', 40, y)),
+      ...[100, 130, 160].map((y) => item('right', 340, y))
+    ])
+    expect(checkPdfTextExtraction(twoColumns)[0]).toMatchObject({ status: 'pass' })
+  })
+})
+
 describe('checkPdfMetadata', () => {
   it('treats a title that is a file name as missing', () => {
     const findings = checkPdfMetadata(
@@ -78,13 +159,10 @@ describe('checkPdfLinks', () => {
 describe('checkPdfAts', () => {
   it('lists the rules it could not run, and runs the rest', () => {
     const report = checkPdfAts(factsOf([item('Jane Doe', 50, 50)]))
-    expect(report.notChecked.map((entry) => entry.rule)).toEqual([
-      'selectable-text',
-      'text-extraction',
-      'layout-traps'
-    ])
+    expect(report.notChecked.map((entry) => entry.rule)).toEqual(['selectable-text'])
     expect(report.findings.some((finding) => finding.rule === 'text-layer')).toBe(true)
     expect(report.findings.some((finding) => finding.rule === 'selectable-text')).toBe(false)
+    expect(report.findings.some((finding) => finding.rule === 'text-extraction')).toBe(true)
   })
 
   it('flags two columns on a page of a PDF made elsewhere', () => {

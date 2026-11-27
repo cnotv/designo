@@ -490,7 +490,7 @@ describe('export tools', () => {
     expect(report.summary.fail).toBe(1)
   })
 
-  it('check_ats checks a PDF made elsewhere on its own and lists the rules it could not run', async () => {
+  it('check_ats checks a PDF made elsewhere on its own and lists the rule it could not run', async () => {
     const withFonts = { ...context, getFontBytes: (fontId: string) => fixtureFontBytes.get(fontId) }
     const { fileId, pageId } = await createFileTool(withFonts, { name: 'Resume' })
     await applyOperationsTool(withFonts, {
@@ -506,8 +506,10 @@ describe('export tools', () => {
     })
     const { data } = await exportPdfTool(withFonts, { fileId })
     const report = await checkAtsTool(withFonts, { pdfBase64: data })
-    expect(report.notChecked.map((entry) => entry.rule)).toContain('text-extraction')
-    expect(report.findings.some((finding) => finding.rule === 'text-extraction')).toBe(false)
+    expect(report.notChecked.map((entry) => entry.rule)).toEqual(['selectable-text'])
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({ rule: 'text-extraction', status: 'pass' })
+    )
     expect(report.findings).toContainEqual(
       expect.objectContaining({ rule: 'text-layer', status: 'pass' })
     )
