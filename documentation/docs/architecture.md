@@ -5,14 +5,15 @@ sidebar_position: 3
 # Architecture
 
 Designo is a pnpm workspace. Every change to a document, whoever makes it, is a
-`DesignOperation` applied by `@designo/core`, so the editor, agents and (later) multiplayer
-share one path for validation, undo and sync.
+`DesignOperation` applied by `@designo/core`, so the editor, agents and multiplayer share one
+path for validation, undo and sync.
 
 ```
-agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ──▶ ~/.designo-data/*.designo.json
-                                │                   ▲
-                                ▼                   │ dev server /api/files (polled)
-                          @designo/core ◀──── @designo/editor (Vue 3, canvas)
+editor tab ──WebSocket /api/sync/<file>──┐
+editor tab ──WebSocket /api/sync/<file>──┤
+remote agent ──/mcp──────────────────────┼──▶ sync hub (one live room per open file) ──▶ *.designo.json
+files API ──POST /api/files/<file>/ops───┘          ▲ follows the file for writes from elsewhere
+agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ──┘
 ```
 
 ## Packages
@@ -27,10 +28,10 @@ agent (Claude) ──stdio──▶ @designo/mcp ──▶ @designo/storage ─�
 | `@designo/ats`      | built   | Pure ATS checks over a document and the facts of its PDF, and a pdf.js reader for those facts (`@designo/ats/extract`) |
 | `@designo/fonts`    | built   | Finds the font files a text needs through the Fontsource API, and reads TrueType files                                 |
 | `@designo/text`     | built   | Text layout with HarfBuzz: line breaking, shaping, measuring. The editor and MCP share it                              |
+| `@designo/sync`     | built   | Live editing: a Yjs copy of a file, merge repair and presence (pure), and the sync hub (`@designo/sync/server`)        |
 | `@designo/editor`   | built   | Vue 3 app: canvas, tools, layers and properties panels; shadcn-vue on Reka UI                                          |
 | `@designo/parity`   | built   | Draws effect cases with WebGL, resvg and the PDF writer in CI, and fails on pixel drift                                |
 | `renderer`          | partial | WebGL2 shapes (#9) and HarfBuzz text from a glyph atlas (#10); hit testing (#11)                                       |
-| `server`            | phase 5 | Yjs sync, presence and persistence (SQLite); replaces polling                                                          |
 
 ## Document model
 
@@ -253,9 +254,42 @@ snaps it back to its slot; reordering by drag is not built yet.
   escaping, empty elements); vanilla JavaScript writes the same tree as DOM calls. All four share
   one stylesheet, scoped in Vue.
 
+## Live editing
+
+`@designo/sync` keeps each open file as a Yjs document. Every node is a Yjs map of its properties,
+so two people changing different properties of one node both keep their change; variables, text
+styles and comments are maps of whole values; the id, name and root sit in a `meta` map.
+
+Edits still go through `applyOperations`. `applyOperationsToLiveDocument` reads the live copy,
+runs the batch through core, and writes back only the properties that changed, in one
+transaction tagged with who made it. Undo is the editor's own history of inverse operations, so it
+undoes only that tab's edits, whatever the others did since.
+
+The **sync hub** (`createSyncHub`, in `@designo/sync/server`) runs inside the production server and
+the dev server's `designoFilesPlugin`. It holds one room per open file, opened by the first
+WebSocket on `/api/sync/<file id>` and closed when the last one leaves. The route checks the
+request as the files API does: same site, a signed-in, approved account (its folder), a known file.
+The protocol is y-websocket's, so the editor uses `WebsocketProvider` as it is.
+
+After a change a room waits 50 ms, then repairs the merge, checks it against the stored-file schema
+and writes the file. Repair (`repairDocument`) drops nodes no page reaches, which is how a node
+moved into a frame someone else deleted ends, picks a page left when the root is gone, and runs
+layout again, since an auto-layout frame depends on children two people may have changed. A merge
+that fails the schema is not saved.
+
+The files API and the remote `/mcp` endpoint write through the hub (`DesignoToolContext.sync`), so
+the people on the file see an agent's change at once and the hub is the one writer. The stdio MCP
+server is another process: it writes the file, and the room looks at the file's time every 500 ms
+and merges what changed on disk since its own last save, so live edits not yet saved survive.
+
+Presence (y-protocols awareness) carries each tab's name, colour, selection and pointer, checked
+against `presenceStateSchema`. The hub writes it to `.presence/<file id>.json` in the data folder,
+which is how `get_selection` answers from the stdio server; a file older than 60 seconds is ignored.
+
 ## Serving
 
-- **Development:** `pnpm dev` runs Vite, whose `designoFilesPlugin` answers `/api/files`.
+- **Development:** `pnpm dev` runs Vite, whose `designoFilesPlugin` answers `/api/files` and
+  `/api/sync`.
 - **Self-hosted:** `pnpm start` runs `packages/editor/server/productionServer.ts`, which serves
   the built editor and the same `/api/files` handler (`server/filesApi.ts`). Node runs it
   straight from TypeScript. It listens on loopback unless `HOST` says otherwise. On a server, Compose

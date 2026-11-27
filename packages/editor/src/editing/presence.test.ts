@@ -1,5 +1,6 @@
 import { applyOperations, createDocument, type DesignDocument } from '@designo/core'
 import { describe, expect, it } from 'vitest'
+import { createPaletteDocument } from '../samples/paletteDocument.ts'
 import { createComment, getCommentPins, guestName, toRemoteMarks } from './presence.ts'
 
 const documentWithBox = (): DesignDocument => {
@@ -65,6 +66,11 @@ describe('presence and comments in the editor', () => {
       ['c1', 1, { x: 370, y: 120 }],
       ['c2', 2, { x: 210, y: 120 }]
     ])
+  })
+
+  it('shows the two open comments of the default sample as pins', () => {
+    const pins = getCommentPins(createPaletteDocument(), { offsetX: 0, offsetY: 0, scale: 1 })
+    expect(pins.map((pin) => pin.comment.id)).toEqual(['comment-title', 'comment-star'])
   })
 
   it('names a guest the same way for the same seed', () => {
