@@ -1,5 +1,5 @@
 import { createFontsourceResolver, withUploadedFonts } from '@designo/fonts'
-import { getUploadedFonts } from '../../composables/uploadedFonts.ts'
+import { getUploadedFonts } from '../../stores/uploadedFonts.ts'
 import { fetchFontBytes } from './fetchFontBytes.ts'
 import { addBrowserFontFace } from './fontFamilyList.ts'
 import { createFontLibrary } from '@designo/text'

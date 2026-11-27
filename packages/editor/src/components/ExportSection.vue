@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { Download, FileSearch, ScanSearch } from 'lucide-vue-next'
 import type { AcceptableValue } from 'reka-ui'
 import { computed, ref } from 'vue'
@@ -14,15 +15,17 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { useEditorContext } from '../composables/editorContext.ts'
+import { useEditorStore } from '../stores/editor.ts'
+import { useExportStore } from '../stores/export.ts'
 import { clampExportScale, EXPORT_SCALES, getExportTargetIds } from '../editing/export.ts'
 import { describeFindingPlace, sortFindingsBySeverity } from '../editing/atsReport.ts'
 import { createMetadataOperations } from '../editing/pdfMetadata.ts'
 import type { ExportFormat, ExportSettings } from '../editing/types.ts'
 import type { DocumentMetadata } from '@designo/core'
 
-const { editor, exporter } = useEditorContext()
-const { settings, isExporting, error, atsReport, isCheckingAts } = exporter
+const editor = useEditorStore()
+const exporter = useExportStore()
+const { settings, isExporting, error, atsReport, isCheckingAts } = storeToRefs(exporter)
 
 const pdfFileInput = ref<HTMLInputElement>()
 
@@ -48,13 +51,11 @@ const COLOR_SPACES: { value: ExportSettings['colorSpace']; label: string }[] = [
 ]
 
 const targetCount = computed(() =>
-  editor.document.value
-    ? getExportTargetIds(editor.document.value, editor.selection.value).length
-    : 0
+  editor.document ? getExportTargetIds(editor.document, editor.selection).length : 0
 )
 const targetLabel = computed(() => {
   if (settings.value.format === 'pdf') return 'Exports every page as one PDF.'
-  if (editor.selection.value.length === 0) return 'Exports the whole page.'
+  if (editor.selection.length === 0) return 'Exports the whole page.'
   return targetCount.value === 1
     ? 'Exports the selected layer.'
     : `Exports ${targetCount.value} layers, one file each.`
@@ -69,18 +70,12 @@ const METADATA_FIELDS: { field: keyof DocumentMetadata; label: string }[] = [
 
 // Read in the template, so the title's hint follows the open file.
 const getPlaceholder = (field: keyof DocumentMetadata): string =>
-  ({ title: editor.document.value?.name ?? '', author: '', subject: '', language: 'en or de-DE' })[
-    field
-  ]
+  ({ title: editor.document?.name ?? '', author: '', subject: '', language: 'en or de-DE' })[field]
 
 const setMetadata = (field: keyof DocumentMetadata, event: Event): void => {
-  if (editor.document.value)
+  if (editor.document)
     editor.commit(
-      createMetadataOperations(
-        editor.document.value,
-        field,
-        (event.target as HTMLInputElement).value
-      )
+      createMetadataOperations(editor.document, field, (event.target as HTMLInputElement).value)
     )
 }
 
@@ -131,12 +126,12 @@ const setScale = (value: AcceptableValue): void => {
         </Select>
       </div>
     </div>
-    <div v-if="settings.format === 'pdf' && editor.document.value" class="flex flex-col gap-2">
+    <div v-if="settings.format === 'pdf' && editor.document" class="flex flex-col gap-2">
       <div v-for="item in METADATA_FIELDS" :key="item.field" class="flex flex-col gap-1.5">
         <Label :for="`pdf-${item.field}`">{{ item.label }}</Label>
         <Input
           :id="`pdf-${item.field}`"
-          :model-value="editor.document.value.metadata?.[item.field] ?? ''"
+          :model-value="editor.document.metadata?.[item.field] ?? ''"
           :placeholder="getPlaceholder(item.field)"
           class="h-7 text-xs"
           @change="setMetadata(item.field, $event)"
@@ -176,7 +171,7 @@ const setScale = (value: AcceptableValue): void => {
       <Button
         size="sm"
         variant="outline"
-        :disabled="isCheckingAts || !editor.document.value"
+        :disabled="isCheckingAts || !editor.document"
         @click="exporter.checkAts"
       >
         <ScanSearch /> {{ isCheckingAts ? 'Checking...' : 'Check for ATS' }}
@@ -207,9 +202,9 @@ const setScale = (value: AcceptableValue): void => {
             <Badge :variant="STATUS_VARIANT[finding.status]">{{ finding.status }}</Badge>
             <span>
               <span class="font-medium">{{ finding.rule }}</span><template
-                v-if="describeFindingPlace(editor.document.value, finding)"
+                v-if="describeFindingPlace(editor.document, finding)"
               >
-                ({{ describeFindingPlace(editor.document.value, finding) }})</template
+                ({{ describeFindingPlace(editor.document, finding) }})</template
               >: {{ finding.message }}
             </span>
           </li>
@@ -226,7 +221,7 @@ const setScale = (value: AcceptableValue): void => {
         </ul>
       </section>
     </div>
-    <Button size="sm" :disabled="isExporting || !editor.document.value" @click="exporter.run">
+    <Button size="sm" :disabled="isExporting || !editor.document" @click="exporter.run">
       <Download /> Export {{ settings.format.toUpperCase() }}
     </Button>
     <p class="text-muted-foreground">{{ targetLabel }}</p>

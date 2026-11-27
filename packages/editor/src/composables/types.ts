@@ -37,6 +37,10 @@ export interface DesignoFiles {
   activeDocument: Ref<DesignDocument | undefined>
   isDemo: Ref<boolean>
   saveError: Ref<string | undefined>
+  /** True once the server refused the visitor, who has signed out or lost access. */
+  accessRefused: Ref<boolean>
+  /** Shows a failure on the error line, as for a picture that could not be added. */
+  reportError: (message: string) => void
   selectFile: (fileId: string) => void
   /** Removes a file from the server; in the demo, from the list in this tab. */
   deleteFile: (fileId: string) => Promise<void>
@@ -102,6 +106,8 @@ export interface Editor {
   addPathAnchor: (world: Point, scale: number) => void
   setTool: (tool: Tool) => void
   setCanvasSize: (size: { width: number; height: number }) => void
+  /** Pans or zooms to a view, as a drag or the wheel does. */
+  setViewport: (viewport: Viewport) => void
   updateNode: (nodeId: string, patch: DesignNodePatch) => void
   deleteSelection: () => void
   nudgeSelection: (deltaX: number, deltaY: number) => void

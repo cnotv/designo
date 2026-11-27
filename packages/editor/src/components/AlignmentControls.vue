@@ -13,11 +13,11 @@ import { computed, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useEditorContext } from '../composables/editorContext.ts'
+import { useEditorStore } from '../stores/editor.ts'
 import { canAlign, canDistribute } from '../editing/alignment.ts'
 import type { AlignKind, DistributeAxis } from '../editing/types.ts'
 
-const { editor } = useEditorContext()
+const editor = useEditorStore()
 
 const alignments: { kind: AlignKind; label: string; icon: Component }[] = [
   { kind: 'left', label: 'Align left', icon: AlignStartVertical },
@@ -34,13 +34,13 @@ const distributions: { axis: DistributeAxis; label: string; icon: Component }[] 
 ]
 
 const alignEnabled = computed(() => {
-  const document = editor.document.value
-  return document ? canAlign(document, editor.selection.value) : false
+  const document = editor.document
+  return document ? canAlign(document, editor.selection) : false
 })
 
 const distributeEnabled = computed(() => {
-  const document = editor.document.value
-  return document ? canDistribute(document, editor.selection.value) : false
+  const document = editor.document
+  return document ? canDistribute(document, editor.selection) : false
 })
 </script>
 

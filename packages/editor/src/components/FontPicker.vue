@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { Check, ChevronsUpDown, Upload } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
@@ -15,8 +16,8 @@ import {
   ComboboxTrigger,
   ComboboxViewport
 } from '@/components/ui/combobox'
-import { useFontFamilyList } from '../composables/fontFamilyList.ts'
-import { useUploadedFonts } from '../composables/uploadedFonts.ts'
+import { useFontFamilyListStore } from '../stores/fontFamilyList.ts'
+import { useUploadedFontsStore } from '../stores/uploadedFonts.ts'
 import {
   findFontFamilies,
   findUploadedFamilies,
@@ -28,15 +29,16 @@ import {
 const props = defineProps<{ id: string; fontFamily: string }>()
 const emit = defineEmits<{ pick: [fontFamily: string] }>()
 
-const { families, status, load } = useFontFamilyList()
-const uploaded = useUploadedFonts()
+const familyList = useFontFamilyListStore()
+const { families, status } = storeToRefs(familyList)
+const uploaded = useUploadedFontsStore()
 const open = ref(false)
 const search = ref('')
 const fontFileInput = ref<HTMLInputElement>()
 
 const currentName = computed(() => readPickedFamilyName(props.fontFamily))
 const matches = computed(() => findFontFamilies(families.value, search.value))
-const uploadedMatches = computed(() => findUploadedFamilies(uploaded.fonts.value, search.value))
+const uploadedMatches = computed(() => findUploadedFamilies(uploaded.fonts, search.value))
 
 // An uploaded family is an item of its own, apart from the font API's ids.
 const UPLOADED_PREFIX = 'uploaded:'
@@ -44,7 +46,7 @@ const UPLOADED_PREFIX = 'uploaded:'
 // The list is half a megabyte, so it loads when the picker first opens, and again after a failure.
 watch(open, (isOpen) => {
   if (isOpen) {
-    void load()
+    void familyList.load()
     void uploaded.load()
   } else search.value = ''
 })
@@ -142,14 +144,14 @@ const uploadChosenFont = async (event: Event): Promise<void> => {
           variant="ghost"
           size="sm"
           class="h-7 w-full justify-start text-xs"
-          :disabled="uploaded.isUploading.value"
+          :disabled="uploaded.isUploading"
           @click="fontFileInput?.click()"
         >
           <Upload class="size-3.5" />
-          {{ uploaded.isUploading.value ? 'Uploading...' : 'Upload a font' }}
+          {{ uploaded.isUploading ? 'Uploading...' : 'Upload a font' }}
         </Button>
-        <p v-if="uploaded.uploadError.value" class="text-destructive px-2 py-1 text-xs">
-          {{ uploaded.uploadError.value }}
+        <p v-if="uploaded.uploadError" class="text-destructive px-2 py-1 text-xs">
+          {{ uploaded.uploadError }}
         </p>
         <input
           ref="fontFileInput"

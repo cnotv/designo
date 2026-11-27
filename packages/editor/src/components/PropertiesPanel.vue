@@ -28,8 +28,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import AlignmentControls from './AlignmentControls.vue'
-import { useEditorContext } from '../composables/editorContext.ts'
-import { useFontFamilyList } from '../composables/fontFamilyList.ts'
+import { useEditorStore } from '../stores/editor.ts'
+import { useFilesStore } from '../stores/files.ts'
+import { useFontFamilyListStore } from '../stores/fontFamilyList.ts'
 import { useImageInsertion } from '../composables/useImageInsertion.ts'
 import { findPickedFamily } from '../editing/fontPicker.ts'
 import {
@@ -73,7 +74,8 @@ import ExportSection from './ExportSection.vue'
 import FontPicker from './FontPicker.vue'
 import PageSetupSection from './PageSetupSection.vue'
 
-const { editor, files } = useEditorContext()
+const editor = useEditorStore()
+const files = useFilesStore()
 
 const PERCENT = 100
 const HEX_COLOR = /^#[\da-f]{6}$/i
@@ -114,10 +116,8 @@ const LIST_ICONS: Record<string, Component> = {
 }
 
 const node = computed(() => {
-  const [nodeId] = editor.selection.value
-  return editor.selection.value.length === 1 && nodeId
-    ? editor.document.value?.nodes[nodeId]
-    : undefined
+  const [nodeId] = editor.selection
+  return editor.selection.length === 1 && nodeId ? editor.document?.nodes[nodeId] : undefined
 })
 
 const { replaceImageFile } = useImageInsertion(editor, files)
@@ -130,7 +130,7 @@ const onReplacementChosen = (event: Event): void => {
   if (file && node.value) void replaceImageFile(node.value.id, file)
 }
 
-const fontFamilyList = useFontFamilyList()
+const fontFamilyList = useFontFamilyListStore()
 
 // The list says which weights and styles a family has; it loads once, when a text is selected.
 watch(
@@ -142,7 +142,7 @@ watch(
 )
 
 const pickedFamily = computed(() =>
-  node.value ? findPickedFamily(fontFamilyList.families.value, node.value.fontFamily) : undefined
+  node.value ? findPickedFamily(fontFamilyList.families, node.value.fontFamily) : undefined
 )
 
 const fontWeightOptions = computed(() =>
@@ -154,7 +154,7 @@ const italicAvailable = computed(() =>
 )
 
 const parentNode = computed(() =>
-  node.value?.parentId ? editor.document.value?.nodes[node.value.parentId] : undefined
+  node.value?.parentId ? editor.document?.nodes[node.value.parentId] : undefined
 )
 
 const sizingFields = computed(() =>
@@ -218,16 +218,14 @@ const update = (patch: DesignNodePatch): void => {
 }
 
 const colourVariables = computed(() =>
-  editor.document.value
-    ? listVariables(editor.document.value).filter((variable) => variable.kind === 'color')
+  editor.document
+    ? listVariables(editor.document).filter((variable) => variable.kind === 'color')
     : []
 )
-const textStyles = computed(() =>
-  editor.document.value ? listTextStyles(editor.document.value) : []
-)
+const textStyles = computed(() => (editor.document ? listTextStyles(editor.document) : []))
 
 const bindColour = (property: 'fill' | 'stroke', choice: unknown): void => {
-  const document = editor.document.value
+  const document = editor.document
   if (!document || !node.value) return
   const variableId = choice === NO_STYLE ? undefined : String(choice)
   editor.commit(createBindVariableOperations(document, node.value.id, property, variableId))
@@ -284,7 +282,7 @@ const updateLineHeight = (event: Event): void => {
 }
 
 const masterChoices = computed(() =>
-  editor.document.value && node.value ? getMasterChoices(editor.document.value, node.value.id) : []
+  editor.document && node.value ? getMasterChoices(editor.document, node.value.id) : []
 )
 
 const updateMasterId = (raw: unknown): void => {
@@ -540,7 +538,7 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
             id="property-image"
             variant="outline"
             size="sm"
-            :disabled="files.isDemo.value"
+            :disabled="files.isDemo"
             @click="replaceInput?.click()"
           >
             Replace image
@@ -860,8 +858,8 @@ const opacityPercent = computed(() => Math.round((node.value?.opacity ?? 1) * PE
       </template>
     </template>
 
-    <div v-else-if="editor.selection.value.length > 1" class="flex flex-col gap-2">
-      <p>{{ editor.selection.value.length }} layers selected</p>
+    <div v-else-if="editor.selection.length > 1" class="flex flex-col gap-2">
+      <p>{{ editor.selection.length }} layers selected</p>
       <AlignmentControls />
       <Button variant="outline" size="sm" @click="editor.deleteSelection"><Trash2 /> Delete</Button>
     </div>

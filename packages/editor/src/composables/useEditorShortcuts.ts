@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
 import type { LayerOrderMode, Tool } from '../editing/types.ts'
-import type { Editor } from './types.ts'
+import type { EditorStore } from '../stores/types.ts'
 
 const NUDGE_DISTANCE = 1
 const LARGE_NUDGE_DISTANCE = 10
@@ -40,7 +40,7 @@ const LAYER_ORDER_BY_CODE: Record<string, [LayerOrderMode, LayerOrderMode]> = {
   BracketLeft: ['backward', 'back']
 }
 
-const handleArrangeKey = (editor: Editor, event: KeyboardEvent): boolean => {
+const handleArrangeKey = (editor: EditorStore, event: KeyboardEvent): boolean => {
   const modes = LAYER_ORDER_BY_CODE[event.code]
   if (modes) {
     editor.reorderSelection(modes[event.shiftKey ? 1 : 0])
@@ -52,7 +52,7 @@ const handleArrangeKey = (editor: Editor, event: KeyboardEvent): boolean => {
   return true
 }
 
-const COMMAND_ACTIONS: Record<string, (editor: Editor) => void> = {
+const COMMAND_ACTIONS: Record<string, (editor: EditorStore) => void> = {
   d: (editor) => editor.duplicateSelection(),
   c: (editor) => editor.copySelection(),
   x: (editor) => editor.cutSelection(),
@@ -60,7 +60,7 @@ const COMMAND_ACTIONS: Record<string, (editor: Editor) => void> = {
 }
 
 const handleCommandKey = (
-  editor: Editor,
+  editor: EditorStore,
   event: KeyboardEvent,
   exportSelection: () => void
 ): boolean => {
@@ -91,7 +91,7 @@ const handleCommandKey = (
   return false
 }
 
-const handleArrowKey = (editor: Editor, event: KeyboardEvent): boolean => {
+const handleArrowKey = (editor: EditorStore, event: KeyboardEvent): boolean => {
   const direction = ARROW_DIRECTIONS[event.key]
   if (!direction) return false
   const distance = event.shiftKey ? LARGE_NUDGE_DISTANCE : NUDGE_DISTANCE
@@ -100,8 +100,8 @@ const handleArrowKey = (editor: Editor, event: KeyboardEvent): boolean => {
 }
 
 // A path in progress takes Enter to finish and Escape to leave, keeping what is drawn.
-const handlePathKey = (editor: Editor, event: KeyboardEvent): boolean => {
-  if (!editor.pathDraft.value) return false
+const handlePathKey = (editor: EditorStore, event: KeyboardEvent): boolean => {
+  if (!editor.pathDraft) return false
   if (event.key === 'Enter') editor.finishPathDraft()
   else if (event.key === 'Escape') editor.finishPathDraft(false)
   else return false
@@ -110,8 +110,8 @@ const handlePathKey = (editor: Editor, event: KeyboardEvent): boolean => {
 
 // In path edit mode Delete removes the picked anchor and Escape leaves the edit, keeping the path
 // selected.
-const handlePathEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
-  if (!editor.pathEdit.value) return false
+const handlePathEditKey = (editor: EditorStore, event: KeyboardEvent): boolean => {
+  if (!editor.pathEdit) return false
   if (event.key === 'Delete' || event.key === 'Backspace') editor.removePathAnchor()
   else if (event.key === 'Escape' || event.key === 'Enter') editor.stopPathEdit()
   else return false
@@ -119,17 +119,17 @@ const handlePathEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
 }
 
 // Enter edits what is selected: the words of a text, or the anchors of a path.
-const handleEnterKey = (editor: Editor, event: KeyboardEvent): boolean => {
-  const [selectedId] = editor.selection.value
-  const selected = selectedId ? editor.document.value?.nodes[selectedId] : undefined
-  if (event.key !== 'Enter' || editor.selection.value.length !== 1) return false
+const handleEnterKey = (editor: EditorStore, event: KeyboardEvent): boolean => {
+  const [selectedId] = editor.selection
+  const selected = selectedId ? editor.document?.nodes[selectedId] : undefined
+  if (event.key !== 'Enter' || editor.selection.length !== 1) return false
   if (selected?.type === 'text') editor.startTextEdit(selected.id, false)
   else if (selected?.type === 'path') editor.startPathEdit(selected.id)
   else return false
   return true
 }
 
-const handleEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
+const handleEditKey = (editor: EditorStore, event: KeyboardEvent): boolean => {
   if (handleEnterKey(editor, event)) return true
   if (event.key === 'Delete' || event.key === 'Backspace') {
     editor.deleteSelection()
@@ -141,7 +141,7 @@ const handleEditKey = (editor: Editor, event: KeyboardEvent): boolean => {
   return true
 }
 
-const handleZoomKey = (editor: Editor, event: KeyboardEvent): boolean => {
+const handleZoomKey = (editor: EditorStore, event: KeyboardEvent): boolean => {
   if (!event.shiftKey) return false
   if (event.code === 'Digit1') editor.zoomToFit()
   else if (event.code === 'Digit0') editor.zoomTo(1)
@@ -149,7 +149,7 @@ const handleZoomKey = (editor: Editor, event: KeyboardEvent): boolean => {
   return true
 }
 
-const handleToolKey = (editor: Editor, event: KeyboardEvent): boolean => {
+const handleToolKey = (editor: EditorStore, event: KeyboardEvent): boolean => {
   const tool = TOOL_BY_KEY[event.key.toLowerCase()]
   if (!tool || event.shiftKey) return false
   editor.setTool(tool)
@@ -165,7 +165,7 @@ const PLAIN_KEY_HANDLERS = [
   handleToolKey
 ]
 
-const handlePlainKey = (editor: Editor, event: KeyboardEvent): boolean =>
+const handlePlainKey = (editor: EditorStore, event: KeyboardEvent): boolean =>
   PLAIN_KEY_HANDLERS.some((handler) => handler(editor, event))
 
 /**
@@ -176,7 +176,7 @@ const handlePlainKey = (editor: Editor, event: KeyboardEvent): boolean =>
  * @param exportSelection - Exports with the last-used settings.
  */
 export const useEditorShortcuts = (
-  editor: Editor,
+  editor: EditorStore,
   spaceHeld: Ref<boolean>,
   exportSelection: () => void
 ): void => {

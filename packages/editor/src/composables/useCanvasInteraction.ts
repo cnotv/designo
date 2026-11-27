@@ -38,7 +38,8 @@ import type {
 } from '../editing/types.ts'
 import { createNodeId } from '../lib/nodeIds.ts'
 import { panBy, screenToWorld, worldToScreen, zoomAt } from '../editing/viewport.ts'
-import type { CanvasInteraction, Editor } from './types.ts'
+import type { EditorStore } from '../stores/types.ts'
+import type { CanvasInteraction } from './types.ts'
 
 const HANDLE_HIT_RADIUS = 6
 // A pen point dragged less than this, in world units, stays a corner.
@@ -164,13 +165,13 @@ const previewOperations = (
 const distanceBetween = (first: Point, second: Point): number =>
   Math.hypot(first.x - second.x, first.y - second.y)
 
-const findHandleAt = (editor: Editor, screenPoint: Point): HandleHit | undefined => {
-  const [nodeId] = editor.selection.value
-  const single = editor.selection.value.length === 1 && nodeId
-  const node = single ? editor.document.value?.nodes[nodeId] : undefined
+const findHandleAt = (editor: EditorStore, screenPoint: Point): HandleHit | undefined => {
+  const [nodeId] = editor.selection
+  const single = editor.selection.length === 1 && nodeId
+  const node = single ? editor.document?.nodes[nodeId] : undefined
   if (!node) return undefined
   const bounds = getNodeBounds(node)
-  const viewport = editor.viewport.value
+  const viewport = editor.viewport
   const distances = getRotatedHandlePositions(bounds, node.rotation).map(({ handle, point }) => ({
     handle,
     distance: distanceBetween(worldToScreen(viewport, point), screenPoint)
@@ -190,7 +191,7 @@ const findHandleAt = (editor: Editor, screenPoint: Point): HandleHit | undefined
 }
 
 const startSelectToolDrag = (
-  editor: Editor,
+  editor: EditorStore,
   document: DesignDocument,
   index: SpatialIndex,
   event: PointerEvent,
@@ -223,29 +224,29 @@ const startSelectToolDrag = (
   }
   const hit = findNodeAtPoint(document, index, world)
   if (!hit) {
-    const baseSelection = event.shiftKey ? editor.selection.value : []
+    const baseSelection = event.shiftKey ? editor.selection : []
     editor.select(baseSelection)
     return { kind: 'marquee', startWorld: world, currentWorld: world, baseSelection }
   }
   if (event.shiftKey) {
-    editor.select(toggleInSelection(editor.selection.value, hit.id))
+    editor.select(toggleInSelection(editor.selection, hit.id))
     return { kind: 'idle' }
   }
-  if (!editor.selection.value.includes(hit.id)) editor.select([hit.id])
-  const nodeIds = [...editor.selection.value]
+  if (!editor.selection.includes(hit.id)) editor.select([hit.id])
+  const nodeIds = [...editor.selection]
   return { kind: 'moving', nodeIds, startWorld: world, currentWorld: world }
 }
 
 // In path edit mode a press on an anchor or a bezier handle holds it; anything else is a plain
 // press, which ends the edit when it leaves the path.
-const startPathEditDrag = (editor: Editor, world: Point): Interaction | undefined => {
-  const session = editor.pathEdit.value
-  const node = session && editor.document.value?.nodes[session.nodeId]
+const startPathEditDrag = (editor: EditorStore, world: Point): Interaction | undefined => {
+  const session = editor.pathEdit
+  const node = session && editor.document?.nodes[session.nodeId]
   if (!session || !node) return undefined
   const target = findPathEditTarget(
     getPathEditHandles(node, session.selected),
     world,
-    editor.viewport.value.scale
+    editor.viewport.scale
   )
   if (!target) return undefined
   editor.selectPathAnchor({ contour: target.contour, index: target.index })
@@ -253,27 +254,26 @@ const startPathEditDrag = (editor: Editor, world: Point): Interaction | undefine
 }
 
 const startDrag = (
-  editor: Editor,
+  editor: EditorStore,
   document: DesignDocument,
   index: SpatialIndex,
   event: PointerEvent,
   spaceHeld: boolean
 ): Interaction => {
   const screen = pointerOnCanvas(event)
-  const world = screenToWorld(editor.viewport.value, screen)
+  const world = screenToWorld(editor.viewport, screen)
   if (event.button === MIDDLE_BUTTON || spaceHeld) {
-    return { kind: 'panning', startScreen: screen, startViewport: editor.viewport.value }
+    return { kind: 'panning', startScreen: screen, startViewport: editor.viewport }
   }
-  const tool = editor.tool.value
+  const tool = editor.tool
   if (tool === 'select') {
     return (
       startPathEditDrag(editor, world) ?? startSelectToolDrag(editor, document, index, event, world)
     )
   }
   if (isPathTool(tool)) {
-    const parentId =
-      editor.pathDraft.value?.parentId ?? findContainerAtPoint(document, index, world)
-    editor.addPathPoint(world, parentId, editor.viewport.value.scale)
+    const parentId = editor.pathDraft?.parentId ?? findContainerAtPoint(document, index, world)
+    editor.addPathPoint(world, parentId, editor.viewport.scale)
     return { kind: 'placingPoint', startWorld: world, currentWorld: world }
   }
   const parentId = findContainerAtPoint(document, index, world)
@@ -282,14 +282,14 @@ const startDrag = (
 }
 
 const pickCursor = (
-  editor: Editor,
+  editor: EditorStore,
   state: Interaction,
   spaceHeld: boolean,
   hoveredHandle: HandleTarget | undefined
 ): string => {
   if (state.kind === 'panning') return 'grabbing'
   if (spaceHeld) return 'grab'
-  if (editor.tool.value !== 'select') return 'crosshair'
+  if (editor.tool !== 'select') return 'crosshair'
   if (state.kind === 'rotating') return ROTATE_CURSOR
   if (state.kind === 'resizing') return CURSOR_BY_HANDLE[state.handle]
   if (hoveredHandle === 'rotate') return ROTATE_CURSOR
@@ -297,27 +297,27 @@ const pickCursor = (
 }
 
 // Built once per committed document, not per pointer event, so a hit test reads the index.
-const useHitIndex = (editor: Editor) =>
+const useHitIndex = (editor: EditorStore) =>
   computed(() => {
-    const document = editor.document.value
+    const document = editor.document
     return document ? indexDocument(document) : undefined
   })
 
 // While a path is being drawn it is shown as an open outline that ends at the pointer.
-const draftOperations = (editor: Editor, pending: Point | undefined): DesignOperation[] => {
-  const draft = editor.pathDraft.value
+const draftOperations = (editor: EditorStore, pending: Point | undefined): DesignOperation[] => {
+  const draft = editor.pathDraft
   return draft ? [createPathDraftOperation(draft, { closed: false, pending })] : []
 }
 
 const usePreview = (
-  editor: Editor,
+  editor: EditorStore,
   interaction: Ref<Interaction>,
   shiftHeld: Ref<boolean>,
   snapThreshold: ComputedRef<number | undefined>,
   pendingPoint: Ref<Point | undefined>
 ) =>
   computed(() => {
-    const document = editor.document.value
+    const document = editor.document
     if (!document) return undefined
     const operations = [
       ...previewOperations(document, interaction.value, shiftHeld.value, snapThreshold.value),
@@ -329,31 +329,31 @@ const usePreview = (
   })
 
 const findHoveredId = (
-  editor: Editor,
+  editor: EditorStore,
   index: SpatialIndex | undefined,
   world: Point
 ): string | undefined => {
-  const document = editor.document.value
-  const canHover = document && index && editor.tool.value === 'select'
+  const document = editor.document
+  const canHover = document && index && editor.tool === 'select'
   return canHover ? findNodeAtPoint(document, index, world)?.id : undefined
 }
 
 // Dragging a pen point out of where it was placed bends the curve that leaves it.
-const dragPenHandle = (editor: Editor, state: Interaction, world: Point): void => {
+const dragPenHandle = (editor: EditorStore, state: Interaction, world: Point): void => {
   const isPenDrag =
     state.kind === 'placingPoint' &&
-    editor.tool.value === 'pen' &&
+    editor.tool === 'pen' &&
     distanceBetween(state.startWorld, world) >= PEN_DRAG_THRESHOLD
   if (isPenDrag) editor.setPathPointHandle(world)
 }
 
 const useGuides = (
-  editor: Editor,
+  editor: EditorStore,
   interaction: Ref<Interaction>,
   snapThreshold: ComputedRef<number | undefined>
 ) =>
   computed(() => {
-    const document = editor.document.value
+    const document = editor.document
     return document
       ? (resolveSnap(document, interaction.value, snapThreshold.value)?.guides ?? [])
       : []
@@ -361,11 +361,11 @@ const useGuides = (
 
 // A double click in path edit mode switches the anchor under it between corner and smooth, removes
 // the bezier handle under it, or adds an anchor where it lands on the outline. True when it was one of those.
-const editPathAt = (editor: Editor, world: Point): boolean => {
-  const session = editor.pathEdit.value
-  const node = session && editor.document.value?.nodes[session.nodeId]
+const editPathAt = (editor: EditorStore, world: Point): boolean => {
+  const session = editor.pathEdit
+  const node = session && editor.document?.nodes[session.nodeId]
   if (!node) return false
-  const scale = editor.viewport.value.scale
+  const scale = editor.viewport.scale
   const target = findPathEditTarget(getPathEditHandles(node, session.selected), world, scale)
   if (target?.part === 'anchor') editor.togglePathAnchor(target)
   else if (target) editor.removePathHandle(target)
@@ -373,13 +373,17 @@ const editPathAt = (editor: Editor, world: Point): boolean => {
   return true
 }
 
-const doubleClickAt = (editor: Editor, index: SpatialIndex | undefined, world: Point): void => {
-  if (editor.pathDraft.value) {
+const doubleClickAt = (
+  editor: EditorStore,
+  index: SpatialIndex | undefined,
+  world: Point
+): void => {
+  if (editor.pathDraft) {
     editor.finishPathDraft()
     return
   }
   if (editPathAt(editor, world)) return
-  const document = editor.document.value
+  const document = editor.document
   const hit = document && index && findNodeAtPoint(document, index, world)
   if (hit?.type === 'path') {
     editor.startPathEdit(hit.id)
@@ -390,14 +394,14 @@ const doubleClickAt = (editor: Editor, index: SpatialIndex | undefined, world: P
   editor.startTextEdit(hit.id, false)
 }
 
-const zoomOrPan = (editor: Editor, event: WheelEvent): void => {
+const zoomOrPan = (editor: EditorStore, event: WheelEvent): void => {
   event.preventDefault()
   if (event.ctrlKey || event.metaKey) {
     const factor = Math.exp(-event.deltaY * WHEEL_ZOOM_SPEED)
-    editor.viewport.value = zoomAt(editor.viewport.value, pointerOnCanvas(event), factor)
+    editor.setViewport(zoomAt(editor.viewport, pointerOnCanvas(event), factor))
     return
   }
-  editor.viewport.value = panBy(editor.viewport.value, -event.deltaX, -event.deltaY)
+  editor.setViewport(panBy(editor.viewport, -event.deltaX, -event.deltaY))
 }
 
 /**
@@ -407,7 +411,7 @@ const zoomOrPan = (editor: Editor, event: WheelEvent): void => {
  * @param editor - The editor state.
  * @returns What the canvas shows, and the handlers to attach to it.
  */
-export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
+export const useCanvasInteraction = (editor: EditorStore): CanvasInteraction => {
   const interaction = ref<Interaction>({ kind: 'idle' })
   const hoveredId = ref<string>()
   const hoveredHandle = ref<HandleTarget>()
@@ -418,13 +422,13 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
   const pendingPoint = ref<Point>()
   // The threshold is a screen distance, so it shrinks in world units as the view zooms in.
   const snapThreshold = computed(() =>
-    snapDisabled.value ? undefined : SNAP_THRESHOLD_PX / editor.viewport.value.scale
+    snapDisabled.value ? undefined : SNAP_THRESHOLD_PX / editor.viewport.scale
   )
 
   const hitIndex = useHitIndex(editor)
 
   const worldAt = (event: MouseEvent): Point =>
-    screenToWorld(editor.viewport.value, pointerOnCanvas(event))
+    screenToWorld(editor.viewport, pointerOnCanvas(event))
 
   const updateHover = (event: PointerEvent): void => {
     hoveredHandle.value = findHandleAt(editor, pointerOnCanvas(event))?.target
@@ -435,15 +439,15 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     shiftHeld.value = event.shiftKey
     snapDisabled.value = event.ctrlKey || event.metaKey
     const state = interaction.value
-    const document = editor.document.value
-    pendingPoint.value = editor.pathDraft.value ? worldAt(event) : undefined
+    const document = editor.document
+    pendingPoint.value = editor.pathDraft ? worldAt(event) : undefined
     if (state.kind === 'idle') {
       updateHover(event)
       return
     }
     if (state.kind === 'panning') {
       const moved = difference(state.startScreen, pointerOnCanvas(event))
-      editor.viewport.value = panBy(state.startViewport, moved.x, moved.y)
+      editor.setViewport(panBy(state.startViewport, moved.x, moved.y))
       return
     }
     interaction.value = followPointer(state, worldAt(event))
@@ -458,7 +462,7 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
 
   const onPointerUp = (event: PointerEvent): void => {
     const state = followPointer(interaction.value, worldAt(event))
-    const document = editor.document.value
+    const document = editor.document
     interaction.value = { kind: 'idle' }
     if (!document) return
     snapDisabled.value = event.ctrlKey || event.metaKey
@@ -488,7 +492,7 @@ export const useCanvasInteraction = (editor: Editor): CanvasInteraction => {
     ),
     spaceHeld,
     onPointerDown: (event: PointerEvent) => {
-      const document = editor.document.value
+      const document = editor.document
       // A right-click opens the context menu on the current selection instead of starting a drag.
       const index = hitIndex.value
       if (!document || !index || event.button === SECONDARY_BUTTON) return

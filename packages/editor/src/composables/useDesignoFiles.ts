@@ -1,7 +1,7 @@
 import type { DesignDocument, DesignOperation } from '@designo/core'
 import type { DocumentSummary } from '@designo/storage'
 import { documentSummaryListSchema, storedDocumentSchema } from '@designo/storage/schemas'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onScopeDispose, ref, type Ref } from 'vue'
 import { z } from 'zod'
 import { isAccessRefusal } from '../editing/accessGate.ts'
 import { createDemoFiles } from './demoFiles.ts'
@@ -37,19 +37,30 @@ const postOperationsRequest = (
     body: JSON.stringify({ operations })
   }).catch(() => undefined)
 
+// Loads now and polls until the store is disposed; a poll waits for the saves before it.
+const followServer = (refresh: () => Promise<void>, pendingSave: Ref<Promise<void>>): void => {
+  const pollTimer = setInterval(() => {
+    void pendingSave.value.then(refresh)
+  }, POLL_INTERVAL_MILLISECONDS)
+  onScopeDispose(() => clearInterval(pollTimer))
+  void refresh()
+}
+
 /**
  * Loads the files from the Designo server, follows changes and saves edits. Without a server,
  * as on a static host, it falls back to a bundled sample that edits stay local to.
- * @param onAccessRefused - Called when the server answers 401 or 403, which means the visitor has
- * signed out or lost access; the app goes back to its sign-in screens rather than failing quietly.
- * @returns The file list, the open file, and ways to switch files and save.
+ * It is the files store's setup, so it starts loading at once and stops when the store is disposed.
+ * @returns The file list, the open file, and ways to switch files and save. `accessRefused` turns
+ * true when the server answers 401 or 403, which means the visitor has signed out or lost access;
+ * the app goes back to its sign-in screens rather than failing quietly.
  */
-export const useDesignoFiles = (onAccessRefused: () => void): DesignoFiles => {
+export const useDesignoFiles = (): DesignoFiles => {
   const documentSummaries = ref<DocumentSummary[]>([])
   const selectedFileId = ref<string>()
   const activeDocument = ref<DesignDocument>()
   const isDemo = ref(false)
   const saveError = ref<string>()
+  const accessRefused = ref(false)
   const lastDocumentJson = ref('')
   // Bumped by every local edit: a poll that started before an edit would show the file without it.
   const localEditGeneration = ref(0)
@@ -59,7 +70,7 @@ export const useDesignoFiles = (onAccessRefused: () => void): DesignoFiles => {
   // A refusal is not an error to show in the editor: the sign-in screens take over.
   const refusedAccess = (response: Response | undefined): boolean => {
     if (!response || !isAccessRefusal(response.status)) return false
-    onAccessRefused()
+    accessRefused.value = true
     return true
   }
 
@@ -142,11 +153,7 @@ export const useDesignoFiles = (onAccessRefused: () => void): DesignoFiles => {
     await refresh()
   }
 
-  const pollTimer = setInterval(() => {
-    void pendingSave.value.then(refresh)
-  }, POLL_INTERVAL_MILLISECONDS)
-  onMounted(() => void refresh())
-  onBeforeUnmount(() => clearInterval(pollTimer))
+  followServer(refresh, pendingSave)
 
   return {
     documentSummaries,
@@ -154,6 +161,10 @@ export const useDesignoFiles = (onAccessRefused: () => void): DesignoFiles => {
     activeDocument,
     isDemo,
     saveError,
+    accessRefused,
+    reportError: (message: string) => {
+      saveError.value = message
+    },
     selectFile,
     deleteFile,
     saveOperations
