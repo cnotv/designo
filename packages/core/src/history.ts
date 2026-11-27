@@ -68,13 +68,14 @@ const recreateSubtree = (document: DesignDocument, node: DesignNode): DesignOper
 const CREATING_KINDS: readonly string[] = ['create', 'createPage', 'createInstance']
 const RESTORING_KINDS: readonly string[] = ['detachInstance', 'resetOverrides']
 
-// Metadata, styles and comments sit beside the nodes, so their undo reads no node.
+// The name, metadata, styles and comments sit beside the nodes, so their undo reads no node.
 type OperationBesideNodes = Extract<
   DesignOperation,
-  { kind: 'updateMetadata' } | StyleOperation | CommentOperation
+  { kind: 'renameDocument' | 'updateMetadata' } | StyleOperation | CommentOperation
 >
 
 const isOperationBesideNodes = (operation: DesignOperation): operation is OperationBesideNodes =>
+  operation.kind === 'renameDocument' ||
   operation.kind === 'updateMetadata' ||
   isStyleOperation(operation) ||
   isCommentOperation(operation)
@@ -83,6 +84,7 @@ const invertOperationBesideNodes = (
   document: DesignDocument,
   operation: OperationBesideNodes
 ): DesignOperation[] => {
+  if (operation.kind === 'renameDocument') return [{ kind: 'renameDocument', name: document.name }]
   if (operation.kind === 'updateMetadata') {
     return [
       {

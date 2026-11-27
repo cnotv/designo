@@ -42,6 +42,71 @@ describe('files store', () => {
     expect(files.activeDocument?.id).toBe(files.selectedFileId)
   })
 
+  it('creates numbered untitled files in the demo and opens each', async () => {
+    const files = await openDemo()
+    await files.createFile()
+    await files.createFile()
+    expect(files.documentSummaries.map((summary) => summary.name).slice(-2)).toEqual([
+      'Untitled',
+      'Untitled 2'
+    ])
+    expect(files.activeDocument?.name).toBe('Untitled 2')
+  })
+
+  it('creates a file on the server and opens it', async () => {
+    const existing = { id: 'file-old', name: 'Untitled', nodeCount: 1 }
+    const created = { id: 'file-new', name: 'Untitled 2', nodeCount: 1 }
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return Promise.resolve(jsonResponse({ fileId: 'file-new' }, 201))
+      if (url === '/api/files') return Promise.resolve(jsonResponse([existing, created]))
+      return Promise.resolve(new Response('{}', { status: 404 }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const files = useFilesStore()
+    await vi.waitFor(() => expect(files.selectedFileId).toBe('file-old'))
+    expect(await files.createFile()).toBe('file-new')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/files',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: 'Untitled 3' }) })
+    )
+    expect(files.selectedFileId).toBe('file-new')
+  })
+
+  it('renames a file in the demo, and ignores a blank name', async () => {
+    const files = await openDemo()
+    const [first] = files.documentSummaries
+    files.renameFile(first?.id ?? '', '  Poster ')
+    expect(files.documentSummaries[0]?.name).toBe('Poster')
+    expect(files.activeDocument?.name).toBe('Poster')
+    files.renameFile(first?.id ?? '', '   ')
+    expect(files.documentSummaries[0]?.name).toBe('Poster')
+  })
+
+  it('saves a rename to the server as an operation on that file', async () => {
+    const listed = [
+      { id: 'file-a', name: 'One', nodeCount: 1 },
+      { id: 'file-b', name: 'Two', nodeCount: 1 }
+    ]
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url === '/api/files' ? jsonResponse(listed) : new Response('{}', { status: 404 })
+      )
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const files = useFilesStore()
+    await vi.waitFor(() => expect(files.documentSummaries).toHaveLength(2))
+    files.renameFile('file-b', 'Poster')
+    expect(files.documentSummaries[1]?.name).toBe('Poster')
+    await vi.waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/files/file-b/operations',
+        expect.objectContaining({
+          body: JSON.stringify({ operations: [{ kind: 'renameDocument', name: 'Poster' }] })
+        })
+      )
+    )
+  })
+
   it('flags a refused visitor', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ error: 'Sign in' }, 401)))
     const files = useFilesStore()

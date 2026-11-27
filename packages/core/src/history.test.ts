@@ -86,4 +86,8 @@ describe('document metadata', () => {
     expect(cleared.metadata).toEqual({ title: 'CV' })
     expectUndoRestores([{ kind: 'updateMetadata', patch: { title: 'CV', subject: 'Job' } }])
   })
+
+  it('undoes a rename of the file', () => {
+    expectUndoRestores([{ kind: 'renameDocument', name: 'Poster' }])
+  })
 })

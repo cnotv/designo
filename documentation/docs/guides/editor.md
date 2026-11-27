@@ -34,6 +34,15 @@ The two buttons at the ends of the top bar hide and show the left panel (files, 
 and the right panel (properties). The canvas takes the room they leave. Each panel is toggled on
 its own, and both come back as they were.
 
+The **+** button beside the **Files** heading creates an empty file with one page and opens it,
+with its name field ready: type a name and press **Enter**. It starts as `Untitled`, or `Untitled 2`,
+`Untitled 3` and so on when that name is taken.
+
+Rename any file by double-clicking its name, or with the pencil button that shows on hover. **Enter**
+or clicking away saves the name, **Escape** keeps the old one, and a blank name is ignored. The rename
+is a `renameDocument` operation, the same one agents send through `apply_ops`. In the demo without a
+server, new files and names live in this tab only.
+
 Hover a file in the **Files** list to show its trash button. It asks for confirmation, then
 deletes the file from the server; this cannot be undone. The demo without a server has two sample
 files to switch between and delete; they come back when the page reloads.

@@ -106,6 +106,38 @@ describe('files API', () => {
     expect(response.status).toBe(409)
   })
 
+  describe('creating a file', () => {
+    const postNewFile = (body: unknown, headers: Record<string, string> = {}) =>
+      fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body)
+      })
+
+    it('creates an empty file with one page and lists it', async () => {
+      const response = await postNewFile({ name: 'Untitled' })
+      expect(response.status).toBe(201)
+      const { fileId, pageId } = await response.json()
+      expect(fileId).toMatch(/^file-/)
+      const created = await readDocument(dataDirectory, fileId)
+      expect(created.name).toBe('Untitled')
+      expect(Object.keys(created.nodes)).toEqual([pageId])
+      expect(
+        (await (await fetch(baseUrl)).json()).map((file: { id: string }) => file.id)
+      ).toContain(fileId)
+    })
+
+    it('refuses a blank name', async () => {
+      expect((await postNewFile({ name: '   ' })).status).toBe(400)
+    })
+
+    it('refuses a request from another site', async () => {
+      const response = await postNewFile({ name: 'Untitled' }, { Origin: 'https://evil.example' })
+      expect(response.status).toBe(403)
+      expect(await (await fetch(baseUrl)).json()).toHaveLength(1)
+    })
+  })
+
   it('reports an unknown file', async () => {
     const response = await fetch(`${baseUrl}/nope/operations`, {
       method: 'POST',

@@ -37,4 +37,22 @@ describe('demo files', () => {
     demo.remove('sample-scratch')
     expect(state.selectedFileId.value).toBe('sample-palette')
   })
+
+  it('creates an empty file at the end of the list and opens it', () => {
+    const { state, demo } = startDemo()
+    demo.create()
+    expect(state.documentSummaries.value).toHaveLength(4)
+    expect(state.documentSummaries.value.at(-1)).toMatchObject({ name: 'Untitled', nodeCount: 1 })
+    expect(state.activeDocument.value?.name).toBe('Untitled')
+    expect(state.selectedFileId.value).toBe(state.activeDocument.value?.id)
+  })
+
+  it('renames a file that is not open and keeps the open one', () => {
+    const { state, demo } = startDemo()
+    demo.rename('sample-cv', { kind: 'renameDocument', name: 'Resume' })
+    expect(state.documentSummaries.value.find((file) => file.id === 'sample-cv')?.name).toBe(
+      'Resume'
+    )
+    expect(state.selectedFileId.value).toBe('sample-palette')
+  })
 })
