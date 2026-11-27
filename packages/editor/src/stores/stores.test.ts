@@ -14,6 +14,20 @@ vi.mock('../rendering/text/sharedTextEngine.ts', () => ({
   })
 }))
 vi.mock('../rendering/fallbackText.ts', () => ({ measureFallbackTextBox: () => undefined }))
+// Nor a sync server: an open file stays off the live connection and is saved over HTTP.
+vi.mock('../composables/useLiveFile.ts', async () => {
+  const { ref } = await import('vue')
+  return {
+    useLiveFile: () => ({
+      isLive: ref(false),
+      presence: ref([]),
+      apply: () => undefined,
+      current: () => undefined,
+      updatePresence: () => undefined,
+      presenceUser: () => ({ name: 'Guest', color: '#000000', kind: 'person' })
+    })
+  }
+})
 
 const jsonResponse = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
