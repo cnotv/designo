@@ -1,6 +1,6 @@
 import { paperScope } from './paperScope.ts'
 import { combinePaths } from './booleans.ts'
-import type { BooleanOperation, DesignNode } from './types.ts'
+import type { BooleanOperation, DesignNode, DesignNodePatch } from './types.ts'
 
 /** The box and outline of a node made by combining others; the outline starts at the box's corner. */
 export interface BooleanResult {
@@ -74,4 +74,27 @@ export const getBooleanResult = (
 ): BooleanResult => {
   if (nodes.length < 2) throw new Error('A boolean operation needs at least two nodes')
   return getPathBox(combinePaths(operation, nodes.map(getWorldOutline)))
+}
+
+const scaleFactor = (before: number, after: number | undefined): number =>
+  after === undefined || before <= 0 || after <= 0 ? 1 : after / before
+
+/**
+ * Works out the outline a path node takes when its size changes, so the outline follows its box:
+ * it is stretched by the same share. A patch that sets the outline itself, or leaves the size
+ * alone, is returned as it is, and so is a size of zero on either side, which cannot be stretched.
+ * @param node - The path node before the change.
+ * @param patch - The change to apply.
+ * @returns The patch, with the stretched outline added where the size changes.
+ */
+export const withPathScaledToSize = (node: DesignNode, patch: DesignNodePatch): DesignNodePatch => {
+  if (node.type !== 'path' || 'pathData' in patch) return patch
+  const scaleX = scaleFactor(node.width, patch.width)
+  const scaleY = scaleFactor(node.height, patch.height)
+  if (scaleX === 1 && scaleY === 1) return patch
+  const outline = paperScope.PathItem.create(node.pathData)
+  outline.scale(scaleX, scaleY, new paperScope.Point(0, 0))
+  const { pathData } = outline
+  outline.remove()
+  return { ...patch, pathData }
 }

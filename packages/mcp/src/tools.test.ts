@@ -17,6 +17,7 @@ import { createDesignoServer } from './server.ts'
 import {
   applyOperationsTool,
   checkAtsTool,
+  combineNodesTool,
   createFileTool,
   exportPdfTool,
   exportSvgTool,
@@ -1219,6 +1220,92 @@ describe('set_page_setup', () => {
       arguments: { fileId, nodeId: 'spread', setup: { margins: { top: 'wide' } } }
     })
     expect(result.isError).toBe(true)
+  })
+})
+
+describe('paths and booleans', () => {
+  const makeShapes = async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Shapes' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'square',
+          type: 'rectangle',
+          parentId: pageId,
+          properties: { x: 0, y: 0, width: 10, height: 10, fill: '#ff0000' }
+        },
+        {
+          kind: 'create',
+          id: 'round',
+          type: 'ellipse',
+          parentId: pageId,
+          properties: { x: 5, y: 5, width: 10, height: 10 }
+        }
+      ]
+    })
+    return fileId
+  }
+
+  it.each(['union', 'subtract', 'intersect', 'exclude'] as const)(
+    'combines two shapes with %s into one path',
+    async (operation) => {
+      const fileId = await makeShapes()
+      const { nodeId } = await combineNodesTool(context, {
+        fileId,
+        operation,
+        nodeIds: ['square', 'round']
+      })
+      const document = await readDocument(context.dataDirectory, fileId)
+      expect(document.nodes['square']).toBeUndefined()
+      expect(document.nodes['round']).toBeUndefined()
+      expect(document.nodes[nodeId]).toMatchObject({ type: 'path', fill: '#ff0000' })
+      expect(document.nodes[nodeId]?.pathData).not.toBe('')
+    }
+  )
+
+  it('draws a path from SVG path data given to create_node', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Path' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [
+        {
+          kind: 'create',
+          id: 'triangle',
+          type: 'path',
+          parentId: pageId,
+          properties: { x: 0, y: 0, width: 10, height: 10, pathData: 'M0,10L5,0L10,10Z' }
+        }
+      ]
+    })
+    const svg = await exportSvgTool(context, { fileId, nodeId: 'triangle' })
+    expect(svg).toContain('d="M0,10L5,0L10,10Z"')
+  })
+
+  it('refuses path data with characters that are not path data', async () => {
+    const { fileId, pageId } = await createFileTool(context, { name: 'Bad' })
+    const client = await connectClient()
+    const result = await client.callTool({
+      name: 'create_node',
+      arguments: {
+        fileId,
+        type: 'path',
+        parentId: pageId,
+        properties: { pathData: 'M0,0" onload="alert(1)' }
+      }
+    })
+    expect(result.isError).toBe(true)
+  })
+
+  it('refuses shapes that cannot be combined, and is registered', async () => {
+    const fileId = await makeShapes()
+    await expect(
+      combineNodesTool(context, { fileId, operation: 'union', nodeIds: ['square'] })
+    ).rejects.toThrow('two or more')
+    const client = await connectClient()
+    const { tools } = await client.listTools()
+    expect(tools.map((tool) => tool.name)).toContain('combine_nodes')
   })
 })
 

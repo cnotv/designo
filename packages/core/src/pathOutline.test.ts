@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { getPathArea, getPathBounds } from './booleans.ts'
+import { applyOperations, createDocument } from './document.ts'
 import { DEFAULT_NODE_PROPERTIES } from './defaults.ts'
-import { getBooleanResult, getPathBox, getWorldOutline } from './pathOutline.ts'
+import {
+  getBooleanResult,
+  getPathBox,
+  getWorldOutline,
+  withPathScaledToSize
+} from './pathOutline.ts'
 import type { DesignNode } from './types.ts'
 
 const makeNode = (overrides: Partial<DesignNode>): DesignNode => ({
@@ -101,5 +107,66 @@ describe('getPathBox', () => {
   it('keeps a straight line as a box with no height', () => {
     const box = getPathBox('M0,5 L10,5')
     expect([box.width, box.height]).toEqual([10, 0])
+  })
+})
+
+describe('withPathScaledToSize', () => {
+  const triangle = makeNode({
+    type: 'path',
+    width: 10,
+    height: 10,
+    pathData: 'M0,10L5,0L10,10Z'
+  })
+
+  it('stretches the outline by the share the size changes', () => {
+    const patch = withPathScaledToSize(triangle, { width: 20, height: 5 })
+    expect(getPathBounds(patch.pathData ?? '')).toEqual({ x: 0, y: 0, width: 20, height: 5 })
+  })
+
+  it('stretches along one axis when only one changes', () => {
+    const patch = withPathScaledToSize(triangle, { height: 30 })
+    expect(getPathBounds(patch.pathData ?? '')).toEqual({ x: 0, y: 0, width: 10, height: 30 })
+  })
+
+  it('leaves a move, other properties, and an outline set in the same patch alone', () => {
+    expect(withPathScaledToSize(triangle, { x: 5, fill: '#000000' })).toEqual({
+      x: 5,
+      fill: '#000000'
+    })
+    const own = { width: 20, pathData: 'M0,0L1,1' }
+    expect(withPathScaledToSize(triangle, own)).toBe(own)
+  })
+
+  it('does not stretch a rectangle, or from or to a size of zero', () => {
+    const resized = { width: 20 }
+    expect(withPathScaledToSize(rectangle, resized)).toBe(resized)
+    const fromZero = { height: 10 }
+    expect(withPathScaledToSize({ ...triangle, height: 0 }, fromZero)).toBe(fromZero)
+    expect(withPathScaledToSize(triangle, { width: 0 }).pathData).toBeUndefined()
+  })
+})
+
+describe('resizing a path through an update', () => {
+  it('stretches the outline with the box, and back again on undo', () => {
+    const start = applyOperations(createDocument('file', 'File', 'page'), [
+      {
+        kind: 'create',
+        id: 'p',
+        type: 'path',
+        parentId: 'page',
+        properties: { width: 10, height: 10, pathData: 'M0,0L10,0L10,10Z' }
+      }
+    ])
+    if (!start.ok) throw new Error(start.error)
+    const wider = applyOperations(start.document, [
+      { kind: 'update', id: 'p', patch: { width: 40 } }
+    ])
+    if (!wider.ok) throw new Error(wider.error)
+    expect(getPathBounds(wider.document.nodes['p']?.pathData ?? '').width).toBe(40)
+    const back = applyOperations(wider.document, [
+      { kind: 'update', id: 'p', patch: { width: 10 } }
+    ])
+    if (!back.ok) throw new Error(back.error)
+    expect(getPathBounds(back.document.nodes['p']?.pathData ?? '').width).toBeCloseTo(10)
   })
 })

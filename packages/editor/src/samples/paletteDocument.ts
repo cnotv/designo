@@ -2,6 +2,7 @@ import {
   applyOperations,
   createDocument,
   DEFAULT_NODE_PROPERTIES,
+  getBooleanOperations,
   millimetresToPoints,
   type DesignDocument,
   type DesignOperation,
@@ -304,12 +305,86 @@ const masterOperations = (): DesignOperation[] => {
   ]
 }
 
+const PATH_ROW_TOP = 440
+const PATH_STEP = 130
+
+// A star drawn with straight segments, a leaf with curves, and two circle pairs that become one
+// path each: a union, and a ring cut from a disc.
+const shapeOperations = (): DesignOperation[] => [
+  {
+    kind: 'create',
+    id: 'path-star',
+    type: 'path',
+    parentId: 'page',
+    properties: {
+      name: 'Star',
+      x: SWATCH_LEFT,
+      y: PATH_ROW_TOP,
+      width: 80,
+      height: 78,
+      fill: '#f4a261',
+      pathData: 'M40,0L50,28L80,30L56,48L64,78L40,60L16,78L24,48L0,30L30,28Z'
+    }
+  },
+  {
+    kind: 'create',
+    id: 'path-leaf',
+    type: 'path',
+    parentId: 'page',
+    properties: {
+      name: 'Leaf',
+      x: SWATCH_LEFT + PATH_STEP,
+      y: PATH_ROW_TOP,
+      width: 60,
+      height: 80,
+      fill: '#52b788',
+      stroke: '#1b4332',
+      strokeWidth: 3,
+      pathData: 'M30,0C70,30 70,60 30,80C-10,60 -10,30 30,0Z'
+    }
+  },
+  ...[0, 1].flatMap((position): DesignOperation[] => [
+    {
+      kind: 'create',
+      id: `combine-${position}-a`,
+      type: 'ellipse',
+      parentId: 'page',
+      properties: {
+        x: SWATCH_LEFT + PATH_STEP * (position + 2),
+        y: PATH_ROW_TOP,
+        width: 70,
+        height: 70,
+        fill: '#2d6a4f'
+      }
+    },
+    {
+      kind: 'create',
+      id: `combine-${position}-b`,
+      type: 'ellipse',
+      parentId: 'page',
+      properties: {
+        x: SWATCH_LEFT + PATH_STEP * (position + 2) + 35,
+        y: PATH_ROW_TOP + 10,
+        width: 70,
+        height: 70
+      }
+    }
+  ])
+]
+
+// The two circle pairs are combined as the editor combines a selection, so the sample holds what
+// the union and subtract commands make.
+const combineOperations = (document: DesignDocument): DesignOperation[] => [
+  ...getBooleanOperations(document, ['combine-0-a', 'combine-0-b'], 'union', 'path-union'),
+  ...getBooleanOperations(document, ['combine-1-a', 'combine-1-b'], 'subtract', 'path-subtract')
+]
+
 /**
  * Builds the sample file the editor shows when no Designo server is behind it, as on the public demo: a palette, two frames numbered as the pages of its PDF, and a master that gives both a page number. Page 1 holds one line the ATS check passes and one it fails.
  * @returns The sample document.
  */
 export const createPaletteDocument = (): DesignDocument => {
-  const result = applyOperations(createDocument('sample-palette', 'Sample: palette', 'page'), [
+  const base = applyOperations(createDocument('sample-palette', 'Sample: palette', 'page'), [
     ...styleOperations(),
     {
       kind: 'create',
@@ -340,8 +415,11 @@ export const createPaletteDocument = (): DesignDocument => {
     ...atsOperations(),
     ...masterOperations(),
     { kind: 'update', id: 'page-1', patch: { masterId: 'master' } },
-    { kind: 'update', id: 'page-2', patch: { masterId: 'master' } }
+    { kind: 'update', id: 'page-2', patch: { masterId: 'master' } },
+    ...shapeOperations()
   ])
+  if (!base.ok) throw new Error(base.error)
+  const result = applyOperations(base.document, combineOperations(base.document))
   if (!result.ok) throw new Error(result.error)
   return result.document
 }

@@ -25,6 +25,7 @@ import { addImageTool } from './addImage.ts'
 import {
   applyOperationsTool,
   checkAtsTool,
+  combineNodesTool,
   createFileTool,
   exportPdfTool,
   exportSvgTool,
@@ -41,6 +42,7 @@ import type { DesignoToolContext, PdfFile, ScreenshotImage } from './types.ts'
 
 const SERVER_VERSION = '0.0.0'
 const MAX_TREE_DEPTH = 50
+const MAX_COMBINED_NODES = 100
 const MAX_MEASURED_TEXT_LENGTH = 100_000
 const MAX_FONT_FAMILY_LENGTH = 200
 // A 20 MB picture is about 28 million characters of base64.
@@ -208,6 +210,23 @@ const registerStyleTools = (server: McpServer, context: DesignoToolContext): voi
   )
 }
 
+const registerShapeTools = (server: McpServer, context: DesignoToolContext): void => {
+  server.registerTool(
+    'combine_nodes',
+    {
+      description:
+        'Combine two or more rectangles, ellipses or paths that share a parent into one path node: union (everything they cover), subtract (the first, back-most shape with every later one cut from it), intersect (where they all overlap) or exclude (everything but where they overlap). The shapes are replaced; the path takes the paint of the back-most one and its place in the layers, and keeps its curves. A path node has pathData (SVG path data with M, L, H, V, C, S, Q, T, A and Z, with 0,0 at the top left of the node box), so create_node with type path and pathData draws any outline directly. Returns the new nodeId.',
+      inputSchema: {
+        fileId: fileIdSchema,
+        operation: z.enum(['union', 'subtract', 'intersect', 'exclude']),
+        nodeIds: z.array(nodeIdSchema).min(2).max(MAX_COMBINED_NODES)
+      },
+      annotations: { destructiveHint: true }
+    },
+    (input) => toToolResult(() => combineNodesTool(context, input))
+  )
+}
+
 const registerWriteTools = (server: McpServer, context: DesignoToolContext): void => {
   server.registerTool(
     'create_file',
@@ -316,5 +335,6 @@ export const createDesignoServer = (context: DesignoToolContext): McpServer => {
   registerStyleTools(server, context)
   registerAtsTools(server, context)
   registerWriteTools(server, context)
+  registerShapeTools(server, context)
   return server
 }

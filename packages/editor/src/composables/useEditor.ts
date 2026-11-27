@@ -1,5 +1,6 @@
 import {
   applyOperations,
+  getBooleanOperations,
   getChildren,
   getPageNodes,
   getPaintOrder,
@@ -25,7 +26,6 @@ import {
   createMakeComponentOperations,
   createResetOverridesOperations
 } from '../editing/components.ts'
-import { createBooleanSelectionOperations } from '../editing/booleans.ts'
 import { createGroupOperations, createUngroupOperations } from '../editing/grouping.ts'
 import {
   createAddPageOperations,
@@ -249,16 +249,11 @@ const useSelectionActions = (
     ungroupSelection: () =>
       withDocument((current) => commitAndSelect(createUngroupOperations(current, selection.value))),
     combineSelection: (operation: BooleanOperation) =>
-      withDocument((current) =>
-        commitAndSelect(
-          createBooleanSelectionOperations(
-            current,
-            selection.value,
-            operation,
-            createNodeId('path')
-          )
-        )
-      ),
+      withDocument((current) => {
+        const resultId = createNodeId('path')
+        const operations = getBooleanOperations(current, selection.value, operation, resultId)
+        commitAndSelect({ operations, selection: operations.length > 0 ? [resultId] : [] })
+      }),
     makeComponent: () =>
       withDocument((current) =>
         commitAndSelect(createMakeComponentOperations(current, selection.value))

@@ -46,11 +46,30 @@ files to switch between and delete; they come back when the page reloads.
 | Frame     | F   | Draw a frame; shapes drawn inside it belong to it |
 | Rectangle | R   | Draw a rectangle                                  |
 | Ellipse   | O   | Draw an ellipse                                   |
+| Line      | L   | Drag to draw a line                               |
+| Pen       | P   | Click points; drag a point out to curve the path  |
+| Polygon   | Y   | Click corner points; click the first to close it  |
 | Text      | T   | Click to place text, then type it on the canvas   |
 | Image     |     | The **Add image** button opens a file chooser     |
 
 Drag to draw; a click without a drag draws at a default size. Hold Shift for a square or a
 circle. After drawing, the editor returns to Move.
+
+## Paths and boolean operations
+
+A path is a node drawn from an outline: the Line tool drags out a stroked line, the Pen places
+points by click (drag a point out and its curve bends along the handle), and the Polygon tool places
+corners. Click the first point of a path with three or more points to close it, or press Enter or
+double-click to finish; Escape finishes a pen line open and leaves what is drawn. Switching tool
+keeps the path too, and the whole path is one undo step. A closed path has a fill; an open one has
+a stroke. Shift on the Line tool snaps the direction to 45 degrees.
+
+Select two or more rectangles, ellipses or paths that share a parent and choose **Union**,
+**Subtract**, **Intersect** or **Exclude** from the context menu. They are replaced by one path
+that keeps its curves and takes the paint of the back-most shape; Subtract cuts every later shape
+from it. A path's outline is drawn the same in the canvas, SVG, PNG and PDF exports. Resizing a path
+stretches its outline with its box. Paths take a fill and a stroke, but not yet a gradient, blur or
+shadow.
 
 ## Selecting and editing
 
@@ -370,6 +389,7 @@ same PDF through `export_pdf`.
 | Shift Ctrl/Cmd G         | Ungroup             |
 | Ctrl/Cmd ], [            | Forward, backward   |
 | Shift Ctrl/Cmd ], [      | To front, to back   |
+| Enter                    | Finish a path       |
 | Escape                   | Deselect            |
 | Scroll                   | Pan                 |
 | Space-drag, middle-drag  | Pan                 |

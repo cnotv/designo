@@ -1,12 +1,9 @@
-import {
-  applyOperations,
-  createDocument,
-  getChildren,
-  getPathArea,
-  type DesignDocument
-} from '@designo/core'
 import { describe, expect, it } from 'vitest'
-import { createBooleanSelectionOperations } from './booleans.ts'
+import { getPathArea } from './booleans.ts'
+import { getBooleanOperations } from './booleanOperations.ts'
+import { createDocument, getChildren } from './document.ts'
+import { applyOperations } from './document.ts'
+import type { DesignDocument } from './types.ts'
 
 const apply = (
   document: DesignDocument,
@@ -41,49 +38,41 @@ const document = apply(createDocument('file', 'File', 'page'), [
   }
 ])
 
-describe('createBooleanSelectionOperations', () => {
+describe('getBooleanOperations', () => {
   it.each([
     ['union', 175],
     ['subtract', 75],
     ['intersect', 25],
     ['exclude', 150]
   ] as const)('%s replaces the shapes with one path of the right area', (operation, area) => {
-    const change = createBooleanSelectionOperations(
-      document,
-      ['back', 'front'],
-      operation,
-      'result'
-    )
-    const next = apply(document, change.operations)
+    const operations = getBooleanOperations(document, ['back', 'front'], operation, 'result')
+    const next = apply(document, operations)
     expect(getChildren(next, 'page').map((node) => node.id)).toEqual(['result', 'label'])
     const result = next.nodes['result']
     expect(result?.type).toBe('path')
     expect(getPathArea(result?.pathData ?? '')).toBeCloseTo(area)
-    expect(change.selection).toEqual(['result'])
   })
 
   it('takes the paint of the back shape and names the result after the operation', () => {
-    const change = createBooleanSelectionOperations(document, ['front', 'back'], 'union', 'result')
-    const result = apply(document, change.operations).nodes['result']
+    const operations = getBooleanOperations(document, ['front', 'back'], 'union', 'result')
+    const result = apply(document, operations).nodes['result']
     expect(result?.fill).toBe('#ff0000')
     expect(result?.name).toBe('Union')
   })
 
   it('places the result where the shapes were', () => {
-    const change = createBooleanSelectionOperations(document, ['back', 'front'], 'union', 'result')
-    const result = apply(document, change.operations).nodes['result']
+    const operations = getBooleanOperations(document, ['back', 'front'], 'union', 'result')
+    const result = apply(document, operations).nodes['result']
     expect([result?.x, result?.y, result?.width, result?.height]).toEqual([0, 0, 15, 15])
   })
 
   it('does nothing for fewer than two shapes', () => {
-    expect(
-      createBooleanSelectionOperations(document, ['back'], 'union', 'result').operations
-    ).toEqual([])
+    expect(getBooleanOperations(document, ['back'], 'union', 'result')).toEqual([])
   })
 
   it('does nothing when a selected node has no outline', () => {
-    const change = createBooleanSelectionOperations(document, ['back', 'label'], 'union', 'result')
-    expect(change.operations).toEqual([])
+    const operations = getBooleanOperations(document, ['back', 'label'], 'union', 'result')
+    expect(operations).toEqual([])
   })
 
   it('does nothing when the shapes have different parents', () => {
@@ -91,7 +80,7 @@ describe('createBooleanSelectionOperations', () => {
       { kind: 'create', id: 'frame', type: 'frame', parentId: 'page' },
       { kind: 'move', id: 'front', parentId: 'frame' }
     ])
-    const change = createBooleanSelectionOperations(nested, ['back', 'front'], 'union', 'result')
-    expect(change.operations).toEqual([])
+    const operations = getBooleanOperations(nested, ['back', 'front'], 'union', 'result')
+    expect(operations).toEqual([])
   })
 })
