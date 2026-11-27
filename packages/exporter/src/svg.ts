@@ -226,6 +226,14 @@ const renderEllipse = (node: DesignNode): string => {
   ])}/>`
 }
 
+// The outline is in the node's own space, so it is moved to the node's position; the turn sits on
+// the outer group, about the centre of the box, as it does for every other shape.
+const renderPath = (node: DesignNode): string =>
+  wrapInGroup(
+    presentationAttributes(node),
+    `<path transform="translate(${formatNumber(node.x)} ${formatNumber(node.y)})" d="${escapeXml(node.pathData)}" ${paintAttributes(node)}/>`
+  )
+
 // A list's lines sit past the marker, so the box they align in starts there.
 const getListIndent = (node: DesignNode): number =>
   node.listStyle === 'none' ? 0 : node.listIndent * node.fontSize
@@ -454,6 +462,7 @@ const renderNode = (
     rectangle: () =>
       `${renderDefinitions(node)}${renderRectangleShape(node, [paintAttributes(node), ...presentationAttributes(node)])}`,
     ellipse: () => renderEllipse(node),
+    path: () => renderPath(node),
     text: () => renderText(node, options),
     image: () => renderImage(node, options)
   }

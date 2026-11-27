@@ -1,0 +1,87 @@
+import { describe, expect, it } from 'vitest'
+import { getPathArea, getPathBounds } from './booleans.ts'
+import { DEFAULT_NODE_PROPERTIES } from './defaults.ts'
+import { getBooleanResult, getWorldOutline } from './pathOutline.ts'
+import type { DesignNode } from './types.ts'
+
+const makeNode = (overrides: Partial<DesignNode>): DesignNode => ({
+  ...DEFAULT_NODE_PROPERTIES,
+  id: 'n',
+  type: 'rectangle',
+  parentId: 'page',
+  order: 0,
+  ...overrides
+})
+
+const rectangle = makeNode({ x: 0, y: 0, width: 10, height: 10 })
+const ellipse = makeNode({ id: 'e', type: 'ellipse', x: 5, y: 5, width: 10, height: 10 })
+
+describe('getWorldOutline', () => {
+  it('traces a rectangle at its place', () => {
+    const outline = getWorldOutline(makeNode({ x: 4, y: 6, width: 10, height: 20 }))
+    expect(getPathBounds(outline)).toEqual({ x: 4, y: 6, width: 10, height: 20 })
+    expect(getPathArea(outline)).toBeCloseTo(200)
+  })
+
+  it('rounds the corners of a rectangle', () => {
+    const outline = getWorldOutline(makeNode({ width: 10, height: 10, cornerRadius: 5 }))
+    expect(getPathArea(outline)).toBeCloseTo(Math.PI * 25, 0)
+  })
+
+  it('traces an ellipse inside its box', () => {
+    const outline = getWorldOutline(ellipse)
+    expect(getPathArea(outline)).toBeCloseTo(Math.PI * 25, 0)
+    expect(getPathBounds(outline).x).toBeCloseTo(5)
+  })
+
+  it('offsets a path node by its position', () => {
+    const outline = getWorldOutline(
+      makeNode({ type: 'path', x: 10, y: 10, pathData: 'M0,0 L4,0 L4,4 L0,4 Z' })
+    )
+    expect(getPathBounds(outline)).toEqual({ x: 10, y: 10, width: 4, height: 4 })
+  })
+
+  it('turns a rectangle about its centre', () => {
+    const turned = getWorldOutline(makeNode({ width: 10, height: 10, rotation: 45 }))
+    expect(getPathBounds(turned).width).toBeCloseTo(Math.SQRT2 * 10)
+    expect(getPathBounds(turned).x).toBeCloseTo(5 - (Math.SQRT2 * 10) / 2)
+  })
+})
+
+describe('getBooleanResult', () => {
+  it('makes a path node box from the combined outline', () => {
+    const result = getBooleanResult('union', [rectangle, ellipse])
+    expect(result.x).toBeCloseTo(0)
+    expect(result.y).toBeCloseTo(0)
+    expect(result.width).toBeCloseTo(15)
+    expect(result.height).toBeCloseTo(15)
+    expect(getPathBounds(result.pathData).x).toBeCloseTo(0)
+  })
+
+  it('keeps the path in the new box, so it starts at the origin', () => {
+    const far = makeNode({ x: 100, y: 200, width: 10, height: 10 })
+    const result = getBooleanResult('subtract', [
+      far,
+      makeNode({ x: 100, y: 200, width: 5, height: 5 })
+    ])
+    expect(result.x).toBeCloseTo(100)
+    expect(result.y).toBeCloseTo(200)
+    expect(getPathBounds(result.pathData).x).toBeCloseTo(0)
+    expect(getPathBounds(result.pathData).y).toBeCloseTo(0)
+    expect(getPathArea(result.pathData)).toBeCloseTo(75)
+  })
+
+  it('subtracts the later nodes from the first', () => {
+    const result = getBooleanResult('subtract', [rectangle, ellipse])
+    expect(result.width).toBeCloseTo(10)
+    expect(getPathArea(result.pathData)).toBeLessThan(100)
+  })
+
+  it('refuses fewer than two nodes', () => {
+    expect(() => getBooleanResult('union', [rectangle])).toThrow()
+  })
+
+  it('refuses a node that has no outline', () => {
+    expect(() => getBooleanResult('union', [rectangle, makeNode({ type: 'text' })])).toThrow()
+  })
+})

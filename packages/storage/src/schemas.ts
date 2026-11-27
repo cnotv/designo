@@ -123,6 +123,17 @@ const pdfTagSchema = z
     "Text only: h1 to h6, p or li writes the text as that element of a tagged PDF, so screen readers and parsers read the structure; reading order is the order of the frame's children. null (the default) leaves it untagged."
   )
 
+const MAX_PATH_DATA_LENGTH = 200_000
+
+// Only the characters SVG path data is written in, so the string is safe to put in an attribute.
+const pathDataSchema = z
+  .string()
+  .max(MAX_PATH_DATA_LENGTH)
+  .regex(/^[\d\s+,.ACEHLMQSTVZacehlmqstvz-]*$/)
+  .describe(
+    'Paths only: the outline as SVG path data (M, L, H, V, C, S, Q, T, A, Z), with 0,0 at the top left of the node box. Create a path from outlines with the boolean tool, or draw one point by point.'
+  )
+
 export const nodePatchSchema = z
   .object({
     name: z.string().max(200),
@@ -141,6 +152,7 @@ export const nodePatchSchema = z
     stroke: colorSchema,
     strokeWidth: z.number().min(0),
     cornerRadius: z.number().min(0),
+    pathData: pathDataSchema,
     imageAsset: assetIdSchema
       .nullable()
       .describe(
@@ -356,7 +368,7 @@ const storedNodeSchema = nodePatchSchema
   .extend(styleLinksSchema.shape)
   .extend({
     id: nodeIdSchema,
-    type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'text', 'image']),
+    type: z.enum(['page', 'frame', 'group', 'rectangle', 'ellipse', 'path', 'text', 'image']),
     parentId: nodeIdSchema.nullable(),
     order: z.number(),
     pdfTag: pdfTagSchema.optional()
@@ -425,6 +437,7 @@ export const creatableNodeTypeSchema = z.enum([
   'group',
   'rectangle',
   'ellipse',
+  'path',
   'text',
   'image'
 ])

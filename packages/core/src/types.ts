@@ -23,7 +23,8 @@ export interface TextSpan {
   fontStyle?: FontStyle
   fill?: string
 }
-export type DesignNodeType = 'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'text' | 'image'
+export type DesignNodeType =
+  'page' | 'frame' | 'group' | 'rectangle' | 'ellipse' | 'path' | 'text' | 'image'
 
 /** Which edge a text node's lines sit against, inside the node's width. */
 export type TextAlign = 'left' | 'center' | 'right' | 'justify'
@@ -183,6 +184,11 @@ export interface DesignNodeProperties {
   stroke: string | null
   strokeWidth: number
   cornerRadius: number
+  /**
+   * Paths only: the outline as SVG path data, in the node's own space where 0,0 is the top left of
+   * its box. Fill, stroke and rotation apply as they do to a rectangle.
+   */
+  pathData: string
   /**
    * Images only: the id of the stored picture, drawn in the node's box as `imageFit` says; null draws the
    * node's `fill` as a placeholder.

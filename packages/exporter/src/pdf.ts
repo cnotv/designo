@@ -5,6 +5,7 @@ import {
   getPageNodes,
   getGradientLine,
   getSubtreeIds,
+  getWorldOutline,
   hasLayerEffects,
   type DesignDocument,
   type DesignNode,
@@ -154,6 +155,11 @@ const applyRotation = ({ pdf }: ExportContext, node: DesignNode): void => {
 
 // A radius larger than half the shorter side would fold the corners over; the SVG clamps it too.
 const traceShape = ({ pdf }: ExportContext, node: DesignNode): void => {
+  if (node.type === 'path') {
+    // The turn is applied to the page by applyRotation, so the outline is only moved here.
+    pdf.path(getWorldOutline({ ...node, rotation: 0 }))
+    return
+  }
   if (node.type === 'ellipse') {
     pdf.ellipse(node.x + node.width / 2, node.y + node.height / 2, node.width / 2, node.height / 2)
     return

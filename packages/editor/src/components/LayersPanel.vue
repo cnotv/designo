@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import type { DesignNodeType } from '@designo/core'
-import { Circle, Eye, EyeOff, Frame, Group, ImageIcon, Square, Type } from 'lucide-vue-next'
+import {
+  Circle,
+  PenTool,
+  Eye,
+  EyeOff,
+  Frame,
+  Group,
+  ImageIcon,
+  Square,
+  Type
+} from 'lucide-vue-next'
 import { computed, type Component } from 'vue'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -21,6 +31,7 @@ const ICON_BY_TYPE: Record<DesignNodeType, Component> = {
   group: Group,
   rectangle: Square,
   ellipse: Circle,
+  path: PenTool,
   text: Type,
   image: ImageIcon
 }

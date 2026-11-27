@@ -482,6 +482,27 @@ describe('exportDocumentToPdf', () => {
     expect(pdf).toContain('/ShadingType 3')
   })
 
+  it('draws a path outline at the node position', async () => {
+    const document = build(createDocument('file', 'Path', 'page'), [
+      {
+        kind: 'create',
+        id: 'blob',
+        type: 'path',
+        parentId: 'page',
+        properties: {
+          x: 10,
+          y: 20,
+          width: 4,
+          height: 4,
+          fill: '#ff0000',
+          pathData: 'M0,0L4,0L4,4L0,4Z'
+        }
+      }
+    ])
+    const pdf = contentOf(await exportDocumentToPdf(document, await optionsFor(document)))
+    expect(pdf).toMatch(/10 20 m\s+14 20 l\s+14 24 l\s+10 24 l/)
+  })
+
   it('draws a node with blur or a shadow as the image it is given, and sharp without one', async () => {
     const document = build(createDocument('file', 'Blur', 'page'), [
       {

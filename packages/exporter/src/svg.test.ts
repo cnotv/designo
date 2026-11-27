@@ -68,6 +68,29 @@ describe('exportNodeToSvg', () => {
     )
   })
 
+  it('renders a path at the node position, turned about the centre of its box', () => {
+    const document = build([
+      {
+        kind: 'create',
+        id: 'blob',
+        type: 'path',
+        parentId: 'page',
+        properties: {
+          x: 10,
+          y: 20,
+          width: 4,
+          height: 4,
+          rotation: 90,
+          fill: '#ff0000',
+          pathData: 'M0,0L4,0L4,4L0,4Z'
+        }
+      }
+    ])
+    expect(exportNodeToSvg(document, 'blob')).toContain(
+      '<g transform="rotate(90 12 22)"><path transform="translate(10 20)" d="M0,0L4,0L4,4L0,4Z" fill="#ff0000"/></g>'
+    )
+  })
+
   it('clips a frame children with a clipPath and keeps paint order', () => {
     const document = build([
       {

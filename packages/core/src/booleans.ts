@@ -1,11 +1,8 @@
-import paper from 'paper/dist/paper-core.js'
+import { paperScope } from './paperScope.ts'
 import type { BooleanOperation, PathBounds } from './types.ts'
 
-// paper needs a project to build items in, but never draws, so a 1x1 canvas size is enough.
-paper.setup(new paper.Size(1, 1))
-
 const toItem = (pathData: string): paper.PathItem => {
-  const item = paper.PathItem.create(pathData)
+  const item = paperScope.PathItem.create(pathData)
   item.remove()
   return item
 }
@@ -48,7 +45,7 @@ export const combinePaths = (
  */
 export const getPathArea = (pathData: string): number => {
   const item = toItem(pathData)
-  return item instanceof paper.CompoundPath
+  return item instanceof paperScope.CompoundPath
     ? item.children.reduce((total, child) => total + Math.abs((child as paper.Path).area), 0)
     : Math.abs((item as paper.Path).area)
 }
