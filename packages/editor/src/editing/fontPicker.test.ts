@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  findUploadedFamilies,
+  quoteFamilyName,
   findFontFamilies,
   findPickedFamily,
   readPickedFamilyName,
@@ -83,5 +85,29 @@ describe('findPickedFamily', () => {
 
   it('finds nothing for a family the list does not have', () => {
     expect(findPickedFamily(FAMILIES, 'Georgia, serif')).toBeUndefined()
+  })
+})
+
+describe('findUploadedFamilies', () => {
+  const fonts = [
+    { family: 'Studio Sans' },
+    { family: 'Studio Sans' },
+    { family: 'Brand Serif' },
+    { family: 'Old Studio' }
+  ]
+
+  it('lists each family once, sorted', () => {
+    expect(findUploadedFamilies(fonts, '')).toEqual(['Brand Serif', 'Old Studio', 'Studio Sans'])
+  })
+
+  it('puts the families starting with the words first', () => {
+    expect(findUploadedFamilies(fonts, 'studio')).toEqual(['Studio Sans', 'Old Studio'])
+  })
+})
+
+describe('quoteFamilyName', () => {
+  it('quotes a name CSS cannot read bare', () => {
+    expect(quoteFamilyName('Studio Sans')).toBe('Studio Sans')
+    expect(quoteFamilyName('1980 Mono')).toBe('"1980 Mono"')
   })
 })

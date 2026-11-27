@@ -138,6 +138,16 @@ shadow.
   generic family after it (`Lora, serif`), as an undoable change. The field shows the first family
   of the layer's font list. If the list cannot be loaded the field says so, and opening it again
   retries; an agent can still set any font family through the MCP tools.
+- **Your fonts:** **Upload a font** at the foot of the Font field stores a TrueType (`.ttf`) or
+  OpenType (`.otf`) file, up to 10 MB, in your account and sets the layer to its family. The
+  family, weight and style come from the file itself, so upload each weight or italic of a family
+  as its own file. Uploaded families are listed first, under **Your fonts**, for your account only;
+  a family you upload is drawn with your file even where Fontsource has one of the same name, in
+  the canvas, in screenshots an agent takes and embedded in the PDF. WOFF, WOFF2 and font
+  collections are refused. Upload only fonts whose licence allows it: a desktop licence often
+  does not cover embedding the font in a PDF you send out or using it on a server, so check the
+  licence's embedding and server terms; fonts under the SIL Open Font License allow both. The
+  static demo has no server, so it cannot store fonts.
 - **Text rendering:** text is shaped with HarfBuzz, so ligatures, kerning, Arabic joining,
   Devanagari conjuncts and mixed left-to-right and right-to-left lines come out right, and it
   stays sharp at any zoom. Fonts come from the [Fontsource](https://fontsource.org) API as a text

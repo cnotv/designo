@@ -39,13 +39,43 @@ export const findFontFamilies = (
 }
 
 /**
+ * Quotes a family name where CSS needs it, as a `fontFamily` list writes it.
+ * @param family - A family name such as `Playfair Display` or `1980 Mono`.
+ * @returns The name, in double quotes when it holds anything but letters, digits, spaces and
+ * hyphens, or starts with a digit.
+ */
+export const quoteFamilyName = (family: string): string =>
+  NEEDS_QUOTES.test(family) ? `"${family}"` : family
+
+/**
+ * Lists the families among an account's uploaded fonts that a search matches, each once.
+ * @param fonts - The uploaded fonts, several of which can share a family.
+ * @param query - What was typed; empty lists them all.
+ * @returns The family names, sorted, those starting with the words first.
+ */
+export const findUploadedFamilies = (
+  fonts: readonly { family: string }[],
+  query: string
+): string[] => {
+  const words = query.trim().toLowerCase()
+  const families = [...new Set(fonts.map((font) => font.family))].toSorted((left, right) =>
+    left.localeCompare(right)
+  )
+  const starting = families.filter((family) => family.toLowerCase().startsWith(words))
+  const containing = families.filter(
+    (family) => !family.toLowerCase().startsWith(words) && family.toLowerCase().includes(words)
+  )
+  return [...starting, ...containing]
+}
+
+/**
  * Writes the `fontFamily` list a picked family sets: its name, quoted when CSS needs it, and a
  * generic family for its category.
  * @param family - The family picked.
  * @returns A list such as `"Playfair Display", serif`.
  */
 export const toFontFamilyValue = (family: FontsourceFamilySummary): string => {
-  const name = NEEDS_QUOTES.test(family.family) ? `"${family.family}"` : family.family
+  const name = quoteFamilyName(family.family)
   const generic = GENERIC_BY_CATEGORY[family.category]
   return generic === undefined ? name : `${name}, ${generic}`
 }
