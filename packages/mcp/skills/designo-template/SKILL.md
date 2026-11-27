@@ -38,7 +38,33 @@ safe default:
 Text that arrives as a PDF has line breaks, not paragraphs. Join it into real paragraphs and
 confirm the page splits with the owner before any layout.
 
-## 2. Use the tools that fit
+## 2. Style brief
+
+Skip this step when the owner already has a look; go straight to the kit below. A design craft
+skill, if the agent has one, goes deeper than this page: use it as well.
+
+Write the brief in one line: audience, purpose, medium, 3 to 5 mood words, constraints (print or
+screen, size, deadline). Then propose three directions built from five axes: era or movement,
+medium feel (watercolour, gouache, ink, risograph, paper-cut, flat vector), type voice, colour
+mood, composition.
+
+- Safe: one era plus one medium. Blended: two influences. Bold: an unexpected pairing.
+- For each, give a name, tone, palette, type, layout rule and where it could fail.
+- Recommend one in two sentences and let the owner choose.
+- Adapt mechanics only; never copy a specific artwork, brand, character or an artist's signature look.
+
+The chosen direction becomes the kit the build uses:
+
+- Palette: 8 to 10 named colours with hex and a role each, at most four per page.
+- Type: two families at most, a size scale, leading about 1.4 for body, deep warm ink instead of pure black on cream.
+- Surface: one paper tone and one grain reused on every page, off small text.
+- Imagery rules: subject, perspective, detail level, colour limits.
+- Contrast: 4.5 to 1 for body text, 3 to 1 for large text.
+
+For a picture book, also settle the pacing: one beat per page, vary wide, medium and close
+shots, put a quiet page before the ending, and keep faces away from the text area and the fold.
+
+## 3. Use the tools that fit
 
 This skill is served by the Designo server, so it matches the tools you are connected to. Read the
 `apply_ops` description once for the exact operation names, then use these:
@@ -55,7 +81,7 @@ frame per page stacked in a column on one page with a 40 pt gap; no gradient mea
 rectangles for the scrim; no `export_pdf` means `export_svg` per frame. Say which fallbacks you used
 in the final report.
 
-## 3. Plan the pages
+## 4. Plan the pages
 
 Working pages first, then the product in reading order. Name every working page
 `WORKING PAGE · NOT PART OF THE PRODUCT` so nobody prints it.
@@ -76,7 +102,7 @@ Each working page has a skeleton in `references/working-pages.md`; fill it from 
 Drop the parts a format does not need: a postcard has no characters page. Stationery sets use
 one page per piece (letterhead, envelope, card, label) and a spec box instead of a story map.
 
-## 4. Print specs
+## 5. Print specs
 
 Write them on the how to page and bake them in:
 
@@ -86,7 +112,7 @@ Write them on the how to page and bake them in:
 - Page count: a multiple of 4 is the press minimum, 8 or 16 for a signature. If the plan is not a multiple, state the gap and the options (add a title or colophon page, split a long page) rather than pretend.
 - Add a `GUIDES` frame per page, hidden by default, with the trim line, bleed line and safe margin, so the artist can switch it on.
 
-## 5. Content pages
+## 6. Content pages
 
 Each content page is one full bleed frame. Everything the artist replaces lives inside a single
 group named `ART PLACEHOLDER pN (hide when art is in)`, so one click hides the whole brief.
@@ -106,7 +132,7 @@ Outside it: the text scrim and the text.
 - Placeholder text that the owner must supply stays in brackets (`[Author name]`, `[Illustrator name]`, `[Publisher]`, an `ISBN / barcode` box). Never invent it.
 - Heading and body in the text styles, inside the safe margin, no folio unless the format needs one.
 
-## 6. Typography
+## 7. Typography
 
 - Use a family from `list_fonts`, or an uploaded one; never reference Google font URLs, so the file makes no third party request.
 - Choose body size by measuring, not by feel: `measure_text` with the real font, size, leading and width returns height and line count. Fit the longest page first, then apply that size to every page. If it does not fit, split the content across pages; do not shrink below the minimum.
@@ -115,13 +141,13 @@ Outside it: the text scrim and the text.
 - Text boxes with `textWrap: true` need `width`. Height is computed.
 - Check contrast: 4.5 to 1 for body text against the scrim.
 
-## 7. Palette
+## 8. Palette
 
 One `setVariable` per colour and one table on the art direction page, named, with a role per colour: paper, three or four neighbours of the main hue, one
 accent, one glow, one cool dusk colour, ink. Rules to write on the art direction page: at most
 four colours per page plus paper; glow is always the lightest value; no pure black.
 
-## 8. Build order
+## 9. Build order
 
 1. Fix tokens: sizes, margins, palette variables, text styles, the master page.
 2. Create all frames with ids, guides and `pdfPage` numbers.
@@ -131,7 +157,7 @@ four colours per page plus paper; glow is always the lightest value; no pure bla
 6. Build working pages last, since they describe decisions already made.
 7. Batch 50 to 150 operations per `apply_ops` call. A failed call saves nothing, so a batch is easy to retry.
 
-## 9. Verify
+## 10. Verify
 
 - `get_screenshot` per new page at scale 1, and look at it. Update responses carry no ids, so a screenshot is the only proof a change landed.
 - Check the riskiest pages at 2x: the longest text, the cover, the map table.
@@ -139,7 +165,7 @@ four colours per page plus paper; glow is always the lightest value; no pure bla
 - Only frames with a `pdfPage` number print, sorted by that number, not by page order. Renumber after any move.
 - If the client cannot read resources, ask the owner how to save the export; never go looking for tokens on disk.
 
-## 10. Hand off
+## 11. Hand off
 
 Fill the preflight page, then report plainly:
 

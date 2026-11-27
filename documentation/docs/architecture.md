@@ -455,7 +455,7 @@ says "building in Designo? load Designo's skill first"
 ```
 
 The dependency runs one way. A skill pack may point at Designo's skills; a Designo skill never
-names a skill pack. A skill pack carries what is true of any tool (style, workflow, review), and
+names a skill pack, and only the documentation suggests one, as an optional extra. A skill pack carries what is true of any tool (style, workflow, review), and
 Designo carries what is true only of Designo (its operations, its limits, its print specs).
 Calling an agent outside Designo, such as from another editor, goes through the router, which
 fetches the skill from a connected Designo server; with none connected it says so and stops.

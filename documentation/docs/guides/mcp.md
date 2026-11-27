@@ -242,6 +242,11 @@ one of the references it lists. The server instructions tell the agent to load t
 before it builds. Today there is one: `designo-template`, for artist and stationery templates (a
 picture book, zine, card, poster series or letterhead set).
 
+The built-in skill covers a short style brief, so it works alone. For deeper design craft (style
+directions, layout, colour, review), add a design skill pack next to it; the
+[agent-base](https://github.com/cnotv/agent-base) plugin has `visual-design-craft` and a router
+that loads Designo's skill for you. Designo needs neither.
+
 ### Working with people live
 
 When a person has the file open, the editor publishes their selection and pointer. `get_selection`
