@@ -7,6 +7,7 @@ import { createFakeIdentityProvider } from '@designo/auth/testing'
 import { createDocument } from '@designo/core'
 import { writeDocument } from '@designo/storage'
 import { readLiveDocument } from '@designo/sync'
+import { createSyncHub, type SyncHub } from '@designo/sync/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
 import { WebsocketProvider } from 'y-websocket'
@@ -14,6 +15,7 @@ import * as Y from 'yjs'
 import { createProductionServer } from './createProductionServer.ts'
 
 let dataDirectory: string
+let syncHub: SyncHub
 let servers: Server[] = []
 let providers: WebsocketProvider[] = []
 
@@ -48,6 +50,7 @@ const staticStub = (_request: unknown, response: { end: (body: string) => void }
 
 beforeEach(async () => {
   dataDirectory = await mkdtemp(path.join(tmpdir(), 'designo-sync-route-'))
+  syncHub = createSyncHub()
   await writeDocument(dataDirectory, createDocument('file-1', 'One', 'page'))
 })
 
@@ -56,12 +59,16 @@ afterEach(async () => {
   providers = []
   await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))))
   servers = []
+  // The server closes its hub without waiting, so the rooms' last writes are awaited here.
+  await syncHub.close()
   await rm(dataDirectory, { recursive: true, force: true })
 })
 
 describe('the live connection route', () => {
   it('sends an edit posted to the files API to the people who have the file open', async () => {
-    const port = await listen(createProductionServer({ dataDirectory, serveStatic: staticStub }))
+    const port = await listen(
+      createProductionServer({ dataDirectory, serveStatic: staticStub, syncHub })
+    )
     const yDocument = new Y.Doc()
     const provider = new WebsocketProvider(`ws://127.0.0.1:${port}/api/sync`, 'file-1', yDocument, {
       WebSocketPolyfill: WebSocket as unknown as typeof globalThis.WebSocket
@@ -80,7 +87,9 @@ describe('the live connection route', () => {
   })
 
   it('refuses another site, an unknown file and a bad id', async () => {
-    const port = await listen(createProductionServer({ dataDirectory, serveStatic: staticStub }))
+    const port = await listen(
+      createProductionServer({ dataDirectory, serveStatic: staticStub, syncHub })
+    )
     const base = `ws://127.0.0.1:${port}/api/sync`
     expect(await upgradeStatus(`${base}/file-1`, { Origin: 'https://evil.example' })).toBe(403)
     expect(await upgradeStatus(`${base}/missing`)).toBe(404)
@@ -93,6 +102,7 @@ describe('the live connection route', () => {
       createProductionServer({
         dataDirectory,
         serveStatic: staticStub,
+        syncHub,
         settings: {
           googleClientId: 'client-id.example.com',
           googleClientSecret: 'google-client-secret-that-must-never-leak',

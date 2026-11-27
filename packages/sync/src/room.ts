@@ -81,17 +81,24 @@ export const openRoom = async (
     if (!isFromDisk(origin)) scheduleSave()
   })
 
-  const savePresence = (): Promise<void> =>
-    writePresenceFile(dataDirectory, fileId, readPresence(awareness), Date.now()).catch(() => {
-      // Presence is a convenience for agents in other processes; the room works without it.
-    })
-  awareness.on('update', () => {
+  // The last presence write, so closing waits for one already on its way to disk.
+  let presenceWrite: Promise<void> = Promise.resolve()
+  const savePresence = (): Promise<void> => {
+    presenceWrite = presenceWrite.then(() =>
+      writePresenceFile(dataDirectory, fileId, readPresence(awareness), Date.now()).catch(() => {
+        // Presence is a convenience for agents in other processes; the room works without it.
+      })
+    )
+    return presenceWrite
+  }
+  const schedulePresenceSave = (): void => {
     if (presenceTimer !== undefined) return
     presenceTimer = setTimeout(() => {
       presenceTimer = undefined
       void savePresence()
     }, timings.presenceDelayMilliseconds)
-  })
+  }
+  awareness.on('update', schedulePresenceSave)
 
   const pollTimer = setInterval(() => void enqueue(pickUpDiskChanges), timings.pollMilliseconds)
 
@@ -103,6 +110,8 @@ export const openRoom = async (
   let closing: Promise<void> | undefined
   const close = async (): Promise<void> => {
     clearInterval(pollTimer)
+    // Removing the states below fires an update; a timer it set would write after the room is gone.
+    awareness.off('update', schedulePresenceSave)
     clearTimeout(presenceTimer)
     await flush()
     removeAwarenessStates(awareness, [...awareness.getStates().keys()], 'close')

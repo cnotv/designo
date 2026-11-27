@@ -142,7 +142,7 @@ const routeWithoutSignIn = async (
  */
 export const createProductionServer = (options: ProductionServerOptions): Server => {
   const clock = options.clock ?? Date.now
-  const syncHub = createSyncHub()
+  const syncHub = options.syncHub ?? createSyncHub()
   const context: AuthContext | undefined = options.settings
     ? {
         settings: options.settings,

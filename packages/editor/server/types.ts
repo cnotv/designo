@@ -23,6 +23,8 @@ interface ProductionServerBaseOptions {
   clock?: Clock
   /** Draws screenshots for the MCP endpoint; left out, it renders in a child process. Tests replace it. */
   rasterize?: Rasterize
+  /** The live rooms; left out, the server makes its own. Tests pass one to wait for its rooms to close. */
+  syncHub?: SyncHub
 }
 
 interface SignInOffOptions {
