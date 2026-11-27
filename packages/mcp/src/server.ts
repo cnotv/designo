@@ -27,6 +27,7 @@ import {
   checkAtsTool,
   combineNodesTool,
   createFileTool,
+  exportCodeTool,
   exportPdfTool,
   exportSvgTool,
   getDocumentTreeTool,
@@ -348,6 +349,23 @@ const registerWriteTools = (server: McpServer, context: DesignoToolContext): voi
   )
 }
 
+const registerCodeTools = (server: McpServer, context: DesignoToolContext): void => {
+  server.registerTool(
+    'export_code',
+    {
+      description:
+        'Export the page, or one node, as code. target html gives index.html and styles.css; vue a single-file component with scoped styles; react a function component and its CSS file; js a function that builds the same elements with the DOM, and its CSS file. Auto-layout frames become flex boxes (gap, padding, alignment, hug and fill sizing); every other child is positioned absolutely in its parent, as on the canvas. Text keeps its spans as span elements, a list becomes ul or ol, a pdfTag of h1 to h6 becomes that heading, a path is inline SVG, an image points at assets/<asset id>, and a link wraps the node in an a. Hidden layers are left out; class names come from layer names. Returns JSON: { files: [{ path, content }] }.',
+      inputSchema: {
+        fileId: fileIdSchema,
+        nodeId: nodeIdSchema.optional(),
+        target: z.enum(['html', 'vue', 'react', 'js'])
+      },
+      annotations: READ_ONLY
+    },
+    (input) => toToolResult(() => exportCodeTool(context, input))
+  )
+}
+
 /**
  * Builds the Designo MCP server with every tool registered.
  * @param context - Where files live and how ids are made.
@@ -362,5 +380,6 @@ export const createDesignoServer = (context: DesignoToolContext): McpServer => {
   registerAtsTools(server, context)
   registerWriteTools(server, context)
   registerShapeTools(server, context)
+  registerCodeTools(server, context)
   return server
 }

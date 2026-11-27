@@ -17,7 +17,12 @@ import {
 } from '@/components/ui/select'
 import { useEditorStore } from '../stores/editor.ts'
 import { useExportStore } from '../stores/export.ts'
-import { clampExportScale, EXPORT_SCALES, getExportTargetIds } from '../editing/export.ts'
+import {
+  clampExportScale,
+  EXPORT_SCALES,
+  getExportTargetIds,
+  isCodeFormat
+} from '../editing/export.ts'
 import { describeFindingPlace, sortFindingsBySeverity } from '../editing/atsReport.ts'
 import { createMetadataOperations } from '../editing/pdfMetadata.ts'
 import type { ExportFormat, ExportSettings } from '../editing/types.ts'
@@ -42,7 +47,11 @@ const STATUS_VARIANT = { fail: 'destructive', warn: 'secondary', pass: 'outline'
 const FORMATS: { value: ExportFormat; label: string }[] = [
   { value: 'svg', label: 'SVG' },
   { value: 'png', label: 'PNG' },
-  { value: 'pdf', label: 'PDF' }
+  { value: 'pdf', label: 'PDF' },
+  { value: 'html', label: 'HTML and CSS' },
+  { value: 'vue', label: 'Vue' },
+  { value: 'react', label: 'React' },
+  { value: 'js', label: 'JavaScript' }
 ]
 
 const COLOR_SPACES: { value: ExportSettings['colorSpace']; label: string }[] = [
@@ -55,6 +64,10 @@ const targetCount = computed(() =>
 )
 const targetLabel = computed(() => {
   if (settings.value.format === 'pdf') return 'Exports every page as one PDF.'
+  if (isCodeFormat(settings.value.format))
+    return editor.selection.length === 0
+      ? 'Exports the whole page as code, with its stylesheet.'
+      : 'Exports each selected layer as code, with its stylesheet.'
   if (editor.selection.length === 0) return 'Exports the whole page.'
   return targetCount.value === 1
     ? 'Exports the selected layer.'
@@ -80,8 +93,8 @@ const setMetadata = (field: keyof DocumentMetadata, event: Event): void => {
 }
 
 const setFormat = (value: AcceptableValue): void => {
-  if (value === 'svg' || value === 'png' || value === 'pdf')
-    settings.value = { ...settings.value, format: value }
+  const format = FORMATS.find((option) => option.value === value)?.value
+  if (format) settings.value = { ...settings.value, format }
 }
 const setColorSpace = (value: AcceptableValue): void => {
   if (value === 'rgb' || value === 'cmyk') settings.value = { ...settings.value, colorSpace: value }

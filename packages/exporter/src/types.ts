@@ -103,3 +103,66 @@ export interface PdfExportOptions {
    */
   colorSpace?: PdfColorSpace
 }
+
+/** The kinds of code a design exports as. */
+export type CodeTarget = 'html' | 'vue' | 'react' | 'js'
+
+/** One CSS declaration, as a property in kebab case and its value. */
+export type CssDeclaration = readonly [property: string, value: string]
+
+/** A stretch of a text paragraph, with the class of the span it is in, if any. */
+export interface CodeTextRun {
+  text: string
+  className?: string
+  style: readonly CssDeclaration[]
+}
+
+/** A path node drawn as inline SVG in its own box. */
+export interface CodeVector {
+  width: number
+  height: number
+  pathData: string
+  fill: string
+  stroke: string | null
+  strokeWidth: number
+}
+
+/**
+ * One element of the intermediate representation every code target is emitted from. A text holds
+ * paragraphs of runs; an image a source; a path a vector; the rest hold children.
+ */
+export interface CodeElement {
+  nodeId: string
+  /** Unique within the export, kebab case, from the node's name. */
+  className: string
+  tag: 'div' | 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'ul' | 'ol' | 'img' | 'svg'
+  style: readonly CssDeclaration[]
+  /** Text only: each paragraph's runs; in a list, each paragraph is an item. */
+  paragraphs?: readonly (readonly CodeTextRun[])[]
+  image?: { source: string; alt: string }
+  vector?: CodeVector
+  /** Wraps the element in a link. */
+  link?: string
+  children: readonly CodeElement[]
+}
+
+/** The intermediate representation of one exported node. */
+export interface CodeTree {
+  /** PascalCase, from the root node's name, for a component or a function. */
+  componentName: string
+  root: CodeElement
+}
+
+/** One file of an export, with a path relative to where the export is saved. */
+export interface CodeFile {
+  path: string
+  content: string
+}
+
+export interface CodeExportOptions {
+  /**
+   * The `src` of an image node's picture. Without it, or when it returns undefined, the picture is
+   * expected at `assets/<asset id>` beside the code.
+   */
+  getImageSource?: (assetId: string) => string | undefined
+}

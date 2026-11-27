@@ -25,6 +25,7 @@ Then pick how you want to use it. Both ways read and write the same plain `.desi
 Just the MCP server: no editor, no browser and no port. Your agent's client starts it as a
 process, as in the sections below, and the agent builds a design by calling the tools. It can
 check its own work without a browser: `get_screenshot` returns a PNG, `export_svg` the SVG and `export_pdf` a PDF.
+`export_code` turns a design into code; see [Exporting code](code-export.md).
 
 To try the server by hand, `pnpm mcp` waits for MCP messages on stdin. Keep the designs in a
 folder of your own with `DESIGNO_DATA_DIR`, as an absolute path:
@@ -217,6 +218,7 @@ order of the frame's children. A PDF with no tagged text is not tagged.
 | `get_styles`        | Lists the variables and text styles of the file                                                                                                      |
 | `get_screenshot`    | Renders the page, or `nodeId`, to a PNG image; `scale` 0.1 to 4 (default 1)                                                                          |
 | `export_svg`        | Exports the page, or `nodeId`, as standalone SVG text; `textAsPaths` draws text as glyph outlines                                                    |
+| `export_code`       | Exports the page, or `nodeId`, as `html`, `vue`, `react` or `js` code; returns `{ files: [{ path, content }] }`                                      |
 | `check_ats`         | Reports pass, warn or fail for what an applicant tracking system could read from a file's PDF export, or from a PDF given as `pdfBase64`             |
 | `export_pdf`        | Exports the file as one PDF, one page for each frame with a `pdfPage`, else each page, with embedded fonts                                           |
 | `measure_text`      | Measures a text as the editor lays it out: box size, line count and each line                                                                        |

@@ -21,6 +21,7 @@ import {
   combineNodesTool,
   createFileTool,
   exportPdfTool,
+  exportCodeTool,
   exportSvgTool,
   getDocumentTreeTool,
   getNodeTool,
@@ -668,6 +669,16 @@ describe('export tools', () => {
     expect(pdf.mimeType).toBe('application/pdf')
     expect(source.startsWith('%PDF')).toBe(true)
     expect(source).toContain('/FontFile2')
+  })
+
+  it('export_code writes a node as each kind of code', async () => {
+    const { fileId } = await createSquareFile()
+    const html = await exportCodeTool(context, { fileId, nodeId: 'square', target: 'html' })
+    expect(html.files.map((file) => file.path)).toEqual(['index.html', 'styles.css'])
+    expect(html.files[1]?.content).toContain('background-color: #ff0000;')
+    const react = await exportCodeTool(context, { fileId, target: 'react' })
+    expect(react.files.map((file) => file.path)).toEqual(['Page1.jsx', 'Page1.css'])
+    expect(react.files[0]?.content).toContain('<div className="rectangle">')
   })
 
   it('export_svg returns the svg of a node', async () => {

@@ -385,6 +385,10 @@ The Export section sits at the bottom of the properties panel.
   in the header or footer strip, text over a picture, icons, metadata and links. Only what needs the
   design (which texts were flattened to images) is listed as **not checked**, never as passed. It
   works with no file open.
+- **Code:** **HTML and CSS**, **Vue**, **React** and **JavaScript** download each selected layer, or
+  the page, as code: `index.html` and `styles.css`, a `.vue` component, a `.jsx` component and its
+  CSS, or a `create<Name>.js` function and its CSS. Auto-layout frames become flex boxes. The
+  **Code card** below the palette is one to try it on. See [Exporting code](code-export.md).
 - **A file to try it on:** `pnpm sample:book` writes `book-sample` to the data directory: twelve
   numbered page frames laid out on one canvas, and an art direction board with no number. Its
   PDF has twelve pages and no board. It is rewritten each time it runs, so edit a copy.
@@ -394,7 +398,7 @@ The Export section sits at the bottom of the properties panel.
 
 Characters a file name cannot hold (such as `/` or `:`) in a layer name become `-`. Agents get the
 same SVG, and a PNG made in Node, through the MCP `export_svg` and `get_screenshot` tools, and the
-same PDF through `export_pdf`.
+same PDF through `export_pdf`, and the same code through `export_code`.
 
 ## Shortcuts
 
