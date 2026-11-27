@@ -1,8 +1,8 @@
-# Deploys to a Hetzner Cloud server set up with deploy/hetzner/cloud-init.yaml, on every push to
-# main that touches the app, like generative-art. It needs the HETZNER_HOST, HETZNER_USERNAME and HETZNER_SSH_KEY secrets.
+# Deploys to a server set up with deploy/cloud-init.yaml, on every push to main that touches the
+# app, like generative-art. It needs the DEPLOY_HOST, DEPLOY_USERNAME and DEPLOY_SSH_KEY secrets.
 # Sign-in with Google is off unless the DESIGNO_AUTH variable is google; the settings it needs are
 # listed in documentation/docs/guides/self-hosting.md.
-name: Deploy to Hetzner
+name: Deploy to server
 
 on:
   push:
@@ -75,10 +75,10 @@ jobs:
       - name: Copy the compose file to the server
         uses: appleboy/scp-action@v1
         with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USERNAME }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          port: ${{ secrets.HETZNER_PORT || '22' }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
           source: docker-compose.yml
           target: ${{ env.DEPLOY_DIRECTORY }}
       - name: Start the new image
@@ -95,10 +95,10 @@ jobs:
           DESIGNO_AUTO_APPROVE_EMAILS: ${{ secrets.DESIGNO_AUTO_APPROVE_EMAILS }}
           DESIGNO_SESSION_SECRET: ${{ secrets.DESIGNO_SESSION_SECRET }}
         with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USERNAME }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          port: ${{ secrets.HETZNER_PORT || '22' }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
           envs: DEPLOY_DIRECTORY,DESIGNO_AUTH,DESIGNO_GOOGLE_CLIENT_ID,DESIGNO_PUBLIC_URL,DESIGNO_AUTO_APPROVE_DOMAINS,DESIGNO_GOOGLE_CLIENT_SECRET,DESIGNO_ADMIN_EMAILS,DESIGNO_AUTO_APPROVE_EMAILS,DESIGNO_SESSION_SECRET
           script: |
             # Without this a failed pull still reports success, and the old container keeps
