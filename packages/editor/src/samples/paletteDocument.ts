@@ -218,6 +218,51 @@ const formattedTextOperations = (): DesignOperation[] => [
   }
 ]
 
+// On page 2, saturated screen colours a CMYK export cannot match, to compare the RGB and CMYK PDFs.
+const printColorOperations = (): DesignOperation[] => {
+  const left = PAGE_FRAME_LEFT + (PAGE_FRAME_SIZE + PAGE_FRAME_GAP) + SWATCH_LEFT
+  const width = PAGE_FRAME_SIZE - SWATCH_LEFT * 2
+  return [
+    {
+      kind: 'create',
+      id: 'page-2-print-colors',
+      type: 'rectangle',
+      parentId: 'page-2',
+      properties: {
+        name: 'Print colours',
+        x: left,
+        y: 200,
+        width,
+        height: 48,
+        cornerRadius: 8,
+        gradient: {
+          kind: 'linear',
+          angle: 90,
+          stops: [
+            { offset: 0, color: '#0047ff' },
+            { offset: 1, color: '#00e676' }
+          ]
+        }
+      }
+    },
+    {
+      kind: 'create',
+      id: 'page-2-print-caption',
+      type: 'text',
+      parentId: 'page-2',
+      properties: {
+        x: left,
+        y: 256,
+        width,
+        text: 'Export the PDF as CMYK: this blue and green print duller than the screen shows.',
+        textWrap: true,
+        fontSize: 12,
+        fill: '#111111'
+      }
+    }
+  ]
+}
+
 // On page 1, for the ATS check: a contact line a parser reads as it is, and a blurred line, which a
 // PDF draws as an image, so no parser can read it and the check fails it.
 const atsOperations = (): DesignOperation[] => [
@@ -412,6 +457,7 @@ export const createPaletteDocument = (): DesignDocument => {
     ...pageFrameOperations(0),
     ...pageFrameOperations(1),
     ...formattedTextOperations(),
+    ...printColorOperations(),
     ...atsOperations(),
     ...masterOperations(),
     { kind: 'update', id: 'page-1', patch: { masterId: 'master' } },

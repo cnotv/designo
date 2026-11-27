@@ -482,6 +482,71 @@ describe('exportDocumentToPdf', () => {
     expect(pdf).toContain('/ShadingType 3')
   })
 
+  describe('colour space', () => {
+    const colouredDocument = (): DesignDocument =>
+      build(createDocument('file', 'Print', 'page'), [
+        {
+          kind: 'create',
+          id: 'card',
+          type: 'rectangle',
+          parentId: 'page',
+          properties: { width: 80, height: 80, fill: '#ff0000', stroke: '#000000', strokeWidth: 2 }
+        },
+        {
+          kind: 'create',
+          id: 'band',
+          type: 'rectangle',
+          parentId: 'page',
+          properties: {
+            y: 90,
+            width: 80,
+            height: 20,
+            gradient: {
+              kind: 'linear',
+              angle: 0,
+              stops: [
+                { offset: 0, color: '#0000ff' },
+                { offset: 1, color: '#ffffff' }
+              ]
+            }
+          }
+        },
+        {
+          kind: 'create',
+          id: 'label',
+          type: 'text',
+          parentId: 'page',
+          properties: { y: 120, text: 'Ink', fontFamily: 'Inter', fontSize: 12, fill: '#00ff00' }
+        }
+      ])
+
+    const exportIn = async (colorSpace?: 'rgb' | 'cmyk'): Promise<string> => {
+      const document = colouredDocument()
+      const bytes = await exportDocumentToPdf(document, {
+        ...(await optionsFor(document)),
+        colorSpace,
+        trimMarks: true
+      })
+      return `${asText(bytes)}\n${contentOf(bytes)}`
+    }
+
+    it('writes RGB colour by default', async () => {
+      const pdf = await exportIn()
+      expect(pdf).toContain('/DeviceRGB cs')
+      expect(pdf).not.toContain('DeviceCMYK')
+    })
+
+    it('writes fills, strokes, text, gradients and trim marks as DeviceCMYK when asked', async () => {
+      const pdf = await exportIn('cmyk')
+      expect(pdf).not.toContain('DeviceRGB')
+      expect(pdf).toMatch(/\/DeviceCMYK cs\s+0 1 1 0 scn/)
+      expect(pdf).toMatch(/\/DeviceCMYK CS\s+0 0 0 1 SCN/)
+      expect(pdf).toMatch(/\/DeviceCMYK cs\s+1 0 1 0 scn/)
+      expect(pdf).toContain('/ColorSpace /DeviceCMYK')
+      expect(pdf).toMatch(/\/C0 \[1 1 0 0]/)
+    })
+  })
+
   it('draws a path outline at the node position', async () => {
     const document = build(createDocument('file', 'Path', 'page'), [
       {

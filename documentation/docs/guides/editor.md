@@ -349,7 +349,9 @@ The Export section sits at the bottom of the properties panel.
   it does on the canvas. A layer with blur or a shadow becomes an image, because a PDF has no
   blur. Layout guides are never drawn. A page frame with bleed exports a page grown by the bleed on every
   side, with a BleedBox and a TrimBox, and its fill and clipping reach the bleed edge; the **Trim
-  marks** checkbox adds crop marks in a slug beyond the bleed. CMYK is not part of this export yet.
+  marks** checkbox adds crop marks in a slug beyond the bleed. **Colour** set to CMYK writes shapes,
+  gradients, text and trim marks as DeviceCMYK, converted from RGB by the device formula with no
+  colour profile (the MCP guide states the formula and its limits); images stay RGB.
 - **Metadata and tags:** with PDF chosen, **Title**, **Author**, **Subject** and **Language** fields appear in the
   export section; they are written to the PDF's info dictionary and XMP, the language (a tag such as `en` or
   `de-DE`) as its `Lang`, and the title falls back to

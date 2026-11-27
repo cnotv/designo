@@ -46,6 +46,12 @@ export interface SvgExportOptions {
   getImageHref?: (assetId: string) => string | undefined
 }
 
+/** Cyan, magenta, yellow and black, each from 0 to 100, as pdfkit takes a DeviceCMYK colour. */
+export type CmykColor = [number, number, number, number]
+
+/** The colour space vector colour is written in: sRGB as designed, or converted to print inks. */
+export type PdfColorSpace = 'rgb' | 'cmyk'
+
 /** A node drawn to a PNG, covering the box `getExportBounds` gives for it. */
 export type RasterizedNode = Uint8Array
 
@@ -72,4 +78,9 @@ export interface PdfExportOptions {
    * bleed. A page with bleed always gets a BleedBox and a TrimBox; the marks only add room.
    */
   trimMarks?: boolean
+  /**
+   * The colour space of fills, strokes, gradients, text and trim marks: `rgb` by default, or `cmyk`
+   * for DeviceCMYK, converted from sRGB by `hexToCmyk`. Images and nodes drawn to images stay RGB.
+   */
+  colorSpace?: PdfColorSpace
 }
