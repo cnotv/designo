@@ -347,6 +347,16 @@ const applyUpdateMetadata = (
   }
 }
 
+const applyRenameDocument = (
+  document: DesignDocument,
+  operation: Extract<DesignOperation, { kind: 'renameDocument' }>
+): OperationResult => {
+  const name = operation.name.trim()
+  return name === ''
+    ? { ok: false, error: 'A file name cannot be empty' }
+    : { ok: true, document: { ...document, name } }
+}
+
 const applyCreateInstance = (
   document: DesignDocument,
   operation: Extract<DesignOperation, { kind: 'createInstance' }>
@@ -402,7 +412,10 @@ const applyResetOverrides = (
 
 const applyWithoutLayout = (
   document: DesignDocument,
-  operation: Exclude<DesignOperation, StyleOperation | CommentOperation>
+  operation: Exclude<
+    DesignOperation,
+    StyleOperation | CommentOperation | { kind: 'renameDocument' }
+  >
 ): OperationResult => {
   if (operation.kind === 'create') return applyCreate(document, operation)
   if (operation.kind === 'createPage') return applyCreatePage(document, operation)
@@ -427,9 +440,12 @@ export const applyOperation = (
   operation: DesignOperation
 ): OperationResult => {
   if (isCommentOperation(operation)) return applyCommentOperation(document, operation)
-  const applied = isStyleOperation(operation)
-    ? applyStyleOperation(document, operation)
-    : applyWithoutLayout(document, operation)
+  const applied =
+    operation.kind === 'renameDocument'
+      ? applyRenameDocument(document, operation)
+      : isStyleOperation(operation)
+        ? applyStyleOperation(document, operation)
+        : applyWithoutLayout(document, operation)
   // Variables and styles resolve first, so instances copy the resolved values.
   const result = applied.ok ? resolveStyles(applied.document) : applied
   // Layout is part of every operation, so undo, validation and sync need no second path.

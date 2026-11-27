@@ -59,6 +59,10 @@ export interface DesignoFiles {
   /** Shows a failure on the error line, as for a picture that could not be added. */
   reportError: (message: string) => void
   selectFile: (fileId: string) => void
+  /** Makes an empty file with one page and opens it; in the demo, in this tab only. */
+  createFile: () => Promise<string | undefined>
+  /** Renames a file from what was typed; a blank or unchanged name saves nothing. */
+  renameFile: (fileId: string, typedName: string) => void
   /** Removes a file from the server; in the demo, from the list in this tab. */
   deleteFile: (fileId: string) => Promise<void>
   /** Sends a batch the editor has already applied locally; ignored in the demo. */

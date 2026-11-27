@@ -623,6 +623,15 @@ describe('export tools', () => {
     ])
   })
 
+  it('apply_ops renames a file, and list_files shows the new name', async () => {
+    const { fileId } = await createFileTool(context, { name: 'Untitled' })
+    await applyOperationsTool(context, {
+      fileId,
+      operations: [{ kind: 'renameDocument', name: 'Poster' }]
+    })
+    expect((await listFilesTool(context)).find((file) => file.id === fileId)?.name).toBe('Poster')
+  })
+
   it('export_pdf carries the metadata and the tags apply_ops saved', async () => {
     const { fileId, pageId } = await createFileTool(context, { name: 'Résumé' })
     await applyOperationsTool(context, {

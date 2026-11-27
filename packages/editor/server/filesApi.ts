@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { createDocument } from '@designo/core'
 import type { SyncHub } from '@designo/sync/server'
 import {
   createShortId,
@@ -6,7 +7,8 @@ import {
   fileIdSchema,
   listDocuments,
   operationBatchSchema,
-  readDocument
+  readDocument,
+  writeDocument
 } from '@designo/storage'
 import { z } from 'zod'
 import { handleAssetsRequest, isAssetsPath } from './assetsApi.ts'
@@ -23,6 +25,7 @@ import {
 export const FILES_ROUTE = '/api/files'
 
 const HTTP_OK = 200
+const HTTP_CREATED = 201
 const HTTP_BAD_REQUEST = 400
 const HTTP_FORBIDDEN = 403
 const HTTP_NOT_FOUND = 404
@@ -33,6 +36,48 @@ const HTTP_PAYLOAD_TOO_LARGE = 413
 const OPERATIONS_SUFFIX = '/operations'
 
 const operationsBodySchema = z.object({ operations: operationBatchSchema })
+const newFileBodySchema = z.object({ name: z.string().trim().min(1).max(200) })
+
+// Reads a state-changing JSON body and checks it; on a problem it answers and returns undefined.
+const readValidatedBody = async <Schema extends z.ZodType>(
+  request: IncomingMessage,
+  response: ServerResponse,
+  schema: Schema
+): Promise<z.infer<Schema> | undefined> => {
+  const problem = jsonRequestProblem(request)
+  if (problem) {
+    sendError(response, problem.status, problem.message)
+    return undefined
+  }
+  if (Number(request.headers['content-length'] ?? 0) > MAX_BODY_BYTES) {
+    sendError(response, HTTP_PAYLOAD_TOO_LARGE, 'Body too large')
+    return undefined
+  }
+  const body = await readJsonBody(request).catch((error: unknown) => error)
+  if (body instanceof RangeError) {
+    sendError(response, HTTP_PAYLOAD_TOO_LARGE, body.message)
+    return undefined
+  }
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    sendError(response, HTTP_BAD_REQUEST, z.prettifyError(parsed.error))
+    return undefined
+  }
+  return parsed.data
+}
+
+const handleCreate = async (
+  dataDirectory: string,
+  request: IncomingMessage,
+  response: ServerResponse
+): Promise<void> => {
+  const body = await readValidatedBody(request, response, newFileBodySchema)
+  if (!body) return
+  const fileId = createShortId('file')
+  const pageId = createShortId('page')
+  await writeDocument(dataDirectory, createDocument(fileId, body.name, pageId))
+  sendJson(response, HTTP_CREATED, { fileId, pageId })
+}
 
 /** Applies a batch to a file: through its live room when it is open, else to the file itself. */
 export type ApplyBatch = SyncHub['applyOperations']
@@ -43,27 +88,10 @@ const handleOperationsPost = async (
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
-  const problem = jsonRequestProblem(request)
-  if (problem) {
-    sendError(response, problem.status, problem.message)
-    return
-  }
-  if (Number(request.headers['content-length'] ?? 0) > MAX_BODY_BYTES) {
-    sendError(response, HTTP_PAYLOAD_TOO_LARGE, 'Body too large')
-    return
-  }
-  const body = await readJsonBody(request).catch((error: unknown) => error)
-  if (body instanceof RangeError) {
-    sendError(response, HTTP_PAYLOAD_TOO_LARGE, body.message)
-    return
-  }
-  const parsed = operationsBodySchema.safeParse(body)
-  if (!parsed.success) {
-    sendError(response, HTTP_BAD_REQUEST, z.prettifyError(parsed.error))
-    return
-  }
+  const body = await readValidatedBody(request, response, operationsBodySchema)
+  if (!body) return
   const applied = await target
-    .applyBatch(dataDirectory, target.fileId, parsed.data.operations, createShortId)
+    .applyBatch(dataDirectory, target.fileId, body.operations, createShortId)
     .catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))))
   if (applied instanceof Error) {
     const missing = 'code' in applied && applied.code === 'ENOENT'
@@ -112,26 +140,52 @@ const handleRead = async (
   }
 }
 
+type FileRequestTarget = { fileId: string; isOperations: boolean; applyBatch: ApplyBatch }
+
+type FileRequestHandler = (
+  dataDirectory: string,
+  target: FileRequestTarget,
+  request: IncomingMessage,
+  response: ServerResponse
+) => Promise<void>
+
+const readFile: FileRequestHandler = (dataDirectory, target, _request, response) =>
+  handleRead(dataDirectory, target.fileId, response)
+
+// Keyed by what the path names, then the method; anything else is refused with 405.
+const fileRequestHandlers: Record<
+  'list' | 'file' | 'operations',
+  Record<string, FileRequestHandler>
+> = {
+  list: {
+    GET: readFile,
+    POST: (dataDirectory, _target, request, response) =>
+      handleCreate(dataDirectory, request, response)
+  },
+  file: {
+    GET: readFile,
+    DELETE: (dataDirectory, target, request, response) =>
+      handleDelete(dataDirectory, target.fileId, request, response)
+  },
+  operations: { POST: handleOperationsPost }
+}
+
 const routeFileRequest = async (
   dataDirectory: string,
-  target: { fileId: string; isOperations: boolean; applyBatch: ApplyBatch },
+  target: FileRequestTarget,
   request: IncomingMessage,
   response: ServerResponse
 ): Promise<void> => {
   const { fileId, isOperations } = target
-  if (isOperations && request.method === 'POST') {
-    await handleOperationsPost(dataDirectory, target, request, response)
-  } else if (!isOperations && fileId !== '' && request.method === 'DELETE') {
-    await handleDelete(dataDirectory, fileId, request, response)
-  } else if (isOperations || request.method !== 'GET') {
-    sendError(response, HTTP_METHOD_NOT_ALLOWED, 'Method not allowed')
-  } else {
-    await handleRead(dataDirectory, fileId, response)
-  }
+  const pathKind = isOperations ? 'operations' : fileId === '' ? 'list' : 'file'
+  const handler = fileRequestHandlers[pathKind][request.method ?? '']
+  if (handler) await handler(dataDirectory, target, request, response)
+  else sendError(response, HTTP_METHOD_NOT_ALLOWED, 'Method not allowed')
 }
 
 /**
- * Answers a request under the files route. GET lists files or reads one; DELETE removes one; POST to
+ * Answers a request under the files route. GET lists files or reads one; POST to the route itself
+ * creates an empty file with one page; DELETE removes one; POST to
  * `<file id>/operations` applies a batch of operations to that file; `assets` stores and serves
  * pictures, and `fonts` the account's uploaded fonts.
  * @param dataDirectory - Where Designo files live.

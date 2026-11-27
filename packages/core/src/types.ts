@@ -398,6 +398,8 @@ export type DesignOperation =
   | { kind: 'resetOverrides'; id: string }
   /** Puts a page elsewhere in the print order; a page has no parent to move to. */
   | { kind: 'reorderPage'; id: string; order: number }
+  /** Renames the file, as the file list shows it. */
+  | { kind: 'renameDocument'; name: string }
   /** Changes the document's metadata; a field set to an empty string is cleared. */
   | { kind: 'updateMetadata'; patch: DocumentMetadata }
   /** Adds a variable or changes the one with the same id; every node that uses it follows. */

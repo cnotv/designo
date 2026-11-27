@@ -521,6 +521,10 @@ export const operationInputSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('setComment'), comment: commentSchema }),
   z.object({ kind: z.literal('deleteComment'), id: nodeIdSchema }),
   z.object({
+    kind: z.literal('renameDocument'),
+    name: z.string().trim().min(1).max(200).describe('The file name the file list shows.')
+  }),
+  z.object({
     kind: z.literal('updateMetadata'),
     patch: documentMetadataSchema.describe(
       'The PDF title, author, subject and language (a tag such as en or de-DE); an empty string clears a field.'

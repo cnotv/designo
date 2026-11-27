@@ -91,6 +91,13 @@ describe('pages', () => {
 })
 
 describe('applyOperation', () => {
+  it('renames the file, trimming spaces, and refuses an empty name', () => {
+    expect(
+      unwrap(applyOperation(emptyDocument, { kind: 'renameDocument', name: ' Poster ' })).name
+    ).toBe('Poster')
+    expect(applyOperation(emptyDocument, { kind: 'renameDocument', name: '  ' }).ok).toBe(false)
+  })
+
   it('creates a node with defaults and the given properties', () => {
     const rectangle = documentWithFrame.nodes['rect-1']
     expect(rectangle?.fill).toBe('#ff0000')

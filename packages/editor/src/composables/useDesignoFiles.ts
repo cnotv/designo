@@ -4,6 +4,7 @@ import { documentSummaryListSchema, storedDocumentSchema } from '@designo/storag
 import { computed, onScopeDispose, ref, type Ref } from 'vue'
 import { z } from 'zod'
 import { isAccessRefusal } from '../editing/accessGate.ts'
+import { nextUntitledFileName, renameOperationFor, renameSummary } from '../editing/fileNames.ts'
 import { isJsonEqual } from '@designo/sync'
 import { createDemoFiles } from './demoFiles.ts'
 import { useLiveFile } from './useLiveFile.ts'
@@ -14,6 +15,7 @@ import type { DesignoFiles, LiveFile } from './types.ts'
 const POLL_INTERVAL_MILLISECONDS = 1000
 
 const errorBodySchema = z.object({ error: z.string() })
+const createdFileSchema = z.object({ fileId: z.string() })
 
 const isJsonResponse = (response: Response): boolean =>
   response.ok && (response.headers.get('Content-Type') ?? '').includes('application/json')
@@ -82,6 +84,84 @@ const showLiveDocument = (
   if (!isJsonEqual(activeDocument.value, document)) activeDocument.value = document
 }
 
+// A refusal is not an error to show in the editor: the sign-in screens take over.
+const flagRefusal =
+  (accessRefused: Ref<boolean>) =>
+  (response: Response | undefined): boolean => {
+    if (!response || !isAccessRefusal(response.status)) return false
+    accessRefused.value = true
+    return true
+  }
+
+// Opens the new file once the server has it, so a failed create leaves the open file as it was.
+const createServerFile = async (handlers: {
+  documentSummaries: Ref<DocumentSummary[]>
+  saveError: Ref<string | undefined>
+  refusedAccess: (response: Response | undefined) => boolean
+  selectFile: (fileId: string) => void
+}): Promise<string | undefined> => {
+  const name = nextUntitledFileName(handlers.documentSummaries.value.map((file) => file.name))
+  const response = await fetch('/api/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  }).catch(() => undefined)
+  if (handlers.refusedAccess(response)) return undefined
+  if (!response?.ok) {
+    handlers.saveError.value = await failureMessage(response)
+    return undefined
+  }
+  const { fileId } = createdFileSchema.parse(await response.json())
+  // Listed at once so it can be named straight away; the next poll brings the server's list.
+  handlers.documentSummaries.value = [
+    ...handlers.documentSummaries.value,
+    { id: fileId, name, nodeCount: 1 }
+  ]
+  handlers.saveError.value = undefined
+  handlers.selectFile(fileId)
+  return fileId
+}
+
+// The list shows the new name at once; the open file picks it up from the server.
+const renameFileIn = (
+  handlers: {
+    documentSummaries: Ref<DocumentSummary[]>
+    isDemo: Ref<boolean>
+    demo: ReturnType<typeof createDemoFiles>
+    queueSave: (fileId: string, operations: readonly DesignOperation[]) => void
+  },
+  fileId: string,
+  typedName: string
+): void => {
+  const { documentSummaries } = handlers
+  const current = documentSummaries.value.find((summary) => summary.id === fileId)
+  const operation = current && renameOperationFor(current.name, typedName)
+  if (!operation) return
+  if (handlers.isDemo.value) handlers.demo.rename(fileId, operation)
+  documentSummaries.value = renameSummary(documentSummaries.value, fileId, operation.name)
+  handlers.queueSave(fileId, [operation])
+}
+
+// Shows the open file as the server has it, unless a local edit came after the request began.
+const refreshOpenFile = async (
+  fileId: string,
+  generationAtStart: number,
+  state: {
+    refusedAccess: (response: Response | undefined) => boolean
+    lastDocumentJson: Ref<string>
+    localEditGeneration: Ref<number>
+    activeDocument: Ref<DesignDocument | undefined>
+  }
+): Promise<void> => {
+  const response = await fetch(`/api/files/${encodeURIComponent(fileId)}`)
+  if (state.refusedAccess(response) || !response.ok) return
+  const documentJson = await response.text()
+  if (documentJson === state.lastDocumentJson.value) return
+  if (generationAtStart !== state.localEditGeneration.value) return
+  state.lastDocumentJson.value = documentJson
+  state.activeDocument.value = storedDocumentSchema.parse(JSON.parse(documentJson))
+}
+
 // Loads now and polls until the store is disposed; a poll waits for the saves before it.
 const followServer = (refresh: () => Promise<void>, pendingSave: Ref<Promise<void>>): void => {
   const pollTimer = setInterval(() => {
@@ -116,12 +196,8 @@ export const useDesignoFiles = (): DesignoFiles => {
   const live = useLiveFile(selectedFileId, isServerReachable, (document) =>
     showLiveDocument(activeDocument, document)
   )
-  // A refusal is not an error to show in the editor: the sign-in screens take over.
-  const refusedAccess = (response: Response | undefined): boolean => {
-    if (!response || !isAccessRefusal(response.status)) return false
-    accessRefused.value = true
-    return true
-  }
+  const refusedAccess = flagRefusal(accessRefused)
+  const openFileState = { refusedAccess, lastDocumentJson, localEditGeneration, activeDocument }
 
   // False when this round has nothing more to load: a refusal, the sample, or no files yet.
   const refreshList = async (): Promise<boolean> => {
@@ -137,31 +213,21 @@ export const useDesignoFiles = (): DesignoFiles => {
     return selectedFileId.value !== undefined
   }
 
-  const refreshOpenFile = async (fileId: string, generationAtStart: number): Promise<void> => {
-    const response = await fetch(`/api/files/${encodeURIComponent(fileId)}`)
-    if (refusedAccess(response) || !response.ok) return
-    const documentJson = await response.text()
-    if (documentJson === lastDocumentJson.value) return
-    if (generationAtStart !== localEditGeneration.value) return
-    lastDocumentJson.value = documentJson
-    activeDocument.value = storedDocumentSchema.parse(JSON.parse(documentJson))
-  }
-
   const refresh = async (): Promise<void> => {
     if (isDemo.value) return
     const generationAtStart = localEditGeneration.value
     const hasOpenFile = await refreshList()
     if (hasOpenFile && selectedFileId.value && !live.isLive.value) {
-      await refreshOpenFile(selectedFileId.value, generationAtStart)
+      await refreshOpenFile(selectedFileId.value, generationAtStart, openFileState)
     }
   }
 
   // Saves run one after another so the server applies batches in the order they were made.
-  const saveOperations = (operations: readonly DesignOperation[]): void => {
+  const queueSave = (fileId: string | undefined, operations: readonly DesignOperation[]): void => {
     localEditGeneration.value += 1
-    const fileId = selectedFileId.value
     if (isDemo.value || !fileId) return
-    if (saveThroughLiveFile(live, operations, { saveError, activeDocument })) return
+    const isOpenFile = fileId === selectedFileId.value
+    if (isOpenFile && saveThroughLiveFile(live, operations, { saveError, activeDocument })) return
     pendingSave.value = pendingSave.value.then(() =>
       postOperations(fileId, operations, { lastDocumentJson, saveError, refusedAccess })
     )
@@ -190,6 +256,15 @@ export const useDesignoFiles = (): DesignoFiles => {
     await refresh()
   }
 
+  const handlers = {
+    documentSummaries,
+    saveError,
+    refusedAccess,
+    selectFile,
+    isDemo,
+    demo,
+    queueSave
+  }
   followServer(refresh, pendingSave)
 
   return {
@@ -203,8 +278,11 @@ export const useDesignoFiles = (): DesignoFiles => {
       saveError.value = message
     },
     selectFile,
+    createFile: async () => (isDemo.value ? demo.create() : createServerFile(handlers)),
+    renameFile: (fileId: string, typedName: string) => renameFileIn(handlers, fileId, typedName),
     deleteFile,
-    saveOperations,
+    saveOperations: (operations: readonly DesignOperation[]) =>
+      queueSave(selectedFileId.value, operations),
     isLive: live.isLive,
     presence: live.presence,
     updatePresence: live.updatePresence,

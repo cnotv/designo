@@ -102,6 +102,14 @@ describe('text spans and lists in a patch', () => {
   })
 })
 
+describe('renaming a file', () => {
+  it('takes a name and refuses a blank one', () => {
+    const accepts = (name: string): boolean =>
+      operationBatchSchema.safeParse([{ kind: 'renameDocument', name }]).success
+    expect([accepts('Poster'), accepts('   '), accepts('')]).toEqual([true, false, false])
+  })
+})
+
 describe('PDF metadata and tags', () => {
   it('takes a title, author and subject operation and refuses other fields', () => {
     expect(
