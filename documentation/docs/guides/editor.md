@@ -68,8 +68,8 @@ a stroke. Shift on the Line tool snaps the direction to 45 degrees.
 **Editing a path.** Double-click a path, or select it and press Enter, to show its anchors as
 squares. Click an anchor to show its two bezier handles as circles, then drag an anchor or a handle
 to reshape the curve; dragging one handle of a smooth point turns the other along the same line.
-Double-click an anchor to switch it between a corner and a smooth point, double-click the outline to
-add an anchor there, and press Delete to remove the picked anchor. Escape, Enter or selecting
+Double-click an anchor to switch it between a corner and a smooth point, double-click a handle to
+remove that arm, double-click the outline to add an anchor there, and press Delete to remove the picked anchor. Escape, Enter or selecting
 something else ends the edit. A turned path has its turn baked into its outline when editing starts.
 
 Select two or more rectangles, ellipses or paths that share a parent and choose **Union**,

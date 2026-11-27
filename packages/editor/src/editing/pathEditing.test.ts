@@ -12,6 +12,7 @@ import {
   createBakeRotationOperations,
   createMoveTargetOperations,
   createRemoveAnchorOperations,
+  createRemoveHandleOperations,
   createToggleAnchorOperations,
   findPathEditTarget,
   getPathEditHandles
@@ -172,5 +173,39 @@ describe('createBakeRotationOperations', () => {
 
   it('has nothing to do for a path that is not turned', () => {
     expect(createBakeRotationOperations(makePath())).toEqual([])
+  })
+})
+
+describe('createRemoveHandleOperations', () => {
+  const curved = makePath({ pathData: 'M0,0C0,10 10,10 10,0' })
+
+  it('removes the one handle and keeps the other anchor and handle', () => {
+    const next = apply(
+      curved,
+      createRemoveHandleOperations(curved, { contour: 0, index: 0, part: 'handleOut' })
+    )
+    const [first, second] = getPathContours(next?.pathData ?? '')[0]?.anchors ?? []
+    expect(first?.handleOut).toBeNull()
+    expect(second?.handleIn).not.toBeNull()
+  })
+
+  it('turns the segment straight when both of its handles are removed', () => {
+    const half = apply(
+      curved,
+      createRemoveHandleOperations(curved, { contour: 0, index: 0, part: 'handleOut' })
+    )
+    if (!half) throw new Error('no node')
+    const straight = apply(
+      half,
+      createRemoveHandleOperations(half, { contour: 0, index: 1, part: 'handleIn' })
+    )
+    expect(straight?.pathData).not.toContain('c')
+    expect(straight?.height).toBe(0)
+  })
+
+  it('has nothing to remove from an anchor', () => {
+    expect(createRemoveHandleOperations(curved, { contour: 0, index: 0, part: 'anchor' })).toEqual(
+      []
+    )
   })
 })

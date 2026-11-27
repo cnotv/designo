@@ -4,6 +4,7 @@ import {
   createAddAnchorOperations,
   createBakeRotationOperations,
   createRemoveAnchorOperations,
+  createRemoveHandleOperations,
   createToggleAnchorOperations,
   PATH_GRAB_RADIUS_PX
 } from '../editing/pathEditing.ts'
@@ -18,6 +19,7 @@ type PathEditActions = Pick<
   | 'stopPathEdit'
   | 'selectPathAnchor'
   | 'removePathAnchor'
+  | 'removePathHandle'
   | 'togglePathAnchor'
   | 'addPathAnchor'
 >
@@ -81,6 +83,10 @@ export const usePathEdit = (
       if (commitEdit(createRemoveAnchorOperations(node, selected)) && pathEdit.value) {
         pathEdit.value = { ...pathEdit.value, selected: undefined }
       }
+    },
+    removePathHandle: (target) => {
+      const node = editedNode()
+      if (node) commitEdit(createRemoveHandleOperations(node, target))
     },
     togglePathAnchor: (address) => {
       const node = editedNode()

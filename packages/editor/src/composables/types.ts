@@ -22,6 +22,7 @@ import type {
   LayerOrderMode,
   PathDraft,
   PathEditSession,
+  PathEditTarget,
   Point,
   SnapGuide,
   TextBoxMeasurer,
@@ -93,6 +94,8 @@ export interface Editor {
   selectPathAnchor: (selected: PathEditSession['selected']) => void
   /** Removes the picked anchor; the outline closes over the gap. */
   removePathAnchor: () => void
+  /** Removes one bezier handle of an anchor, straightening that side of the curve. */
+  removePathHandle: (target: PathEditTarget) => void
   /** Switches an anchor between a corner and a smooth point. */
   togglePathAnchor: (address: { contour: number; index: number }) => void
   /** Adds an anchor on the outline at a point, picking it; nothing when the point is off the outline. */

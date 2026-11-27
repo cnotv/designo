@@ -250,3 +250,22 @@ export const createBakeRotationOperations = (node: DesignNode): DesignOperation[
           patch: { ...getPathBox(getWorldOutline(node)), rotation: 0 }
         }
       ]
+
+/**
+ * Builds the removal of one bezier handle, so the curve on that side of the anchor becomes a
+ * straight segment, or follows the far anchor's own handle alone.
+ * @param node - The path node.
+ * @param target - The handle; an anchor target has nothing to remove.
+ * @returns The update, or none for an anchor.
+ */
+export const createRemoveHandleOperations = (
+  node: DesignNode,
+  target: PathEditTarget
+): DesignOperation[] => {
+  if (target.part === 'anchor') return []
+  const contours = replaceAnchor(getPathContours(node.pathData), target, (anchor) => ({
+    ...anchor,
+    [target.part]: null
+  }))
+  return toUpdate(node, contours)
+}

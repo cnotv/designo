@@ -359,8 +359,8 @@ const useGuides = (
       : []
   })
 
-// A double click in path edit mode switches the anchor under it between corner and smooth, or adds
-// an anchor where it lands on the outline. True when it was one of those.
+// A double click in path edit mode switches the anchor under it between corner and smooth, removes
+// the bezier handle under it, or adds an anchor where it lands on the outline. True when it was one of those.
 const editPathAt = (editor: Editor, world: Point): boolean => {
   const session = editor.pathEdit.value
   const node = session && editor.document.value?.nodes[session.nodeId]
@@ -368,7 +368,8 @@ const editPathAt = (editor: Editor, world: Point): boolean => {
   const scale = editor.viewport.value.scale
   const target = findPathEditTarget(getPathEditHandles(node, session.selected), world, scale)
   if (target?.part === 'anchor') editor.togglePathAnchor(target)
-  else if (!target) editor.addPathAnchor(world, scale)
+  else if (target) editor.removePathHandle(target)
+  else editor.addPathAnchor(world, scale)
   return true
 }
 
